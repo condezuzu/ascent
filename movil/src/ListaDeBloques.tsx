@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
 import type { Unidad } from '@nucleo/peso';
@@ -12,7 +12,13 @@ import { nuevaEnCadaApertura } from './hojaNueva';
 import CampoPeso from './CampoPeso';
 import EtiquetaDeCarga from './EtiquetaDeCarga';
 import SelectorEjercicio from './SelectorEjercicio';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import { R } from './roles';
+import Tocable from './Tocable';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * LO QUE LLEVÁS HOY, Y CÓMO CORREGIRLO. La misma hoja que la web: cada bloque
@@ -49,6 +55,7 @@ function ListaDeBloques({
   alTocar: (indice: number, delta: number | 'quitar') => void;
   alCerrar: () => void;
 }) {
+  useTema();
   // El bloque que está por quitarse, POR IDENTIDAD (su id) y no por índice: el
   // índice se corre si la lista cambia entre "✕" y "Sí". `i:<n>` es el respaldo
   // para bloques de una caché vieja sin id.
@@ -135,7 +142,7 @@ function ListaDeBloques({
             // un peso a medio teclear se anotaba en OTRO bloque.
             <View key={clave} style={estilos.fila}>
               <View style={estilos.filaArriba}>
-                <Pressable
+                <Tocable
                   style={{ flexShrink: 1 }}
                   onPress={() => setCambiando(i)}
                   accessibilityRole="button"
@@ -143,29 +150,29 @@ function ListaDeBloques({
                   hitSlop={8}
                 >
                   <Text style={[estilos.nombre, estilos.tocable]}>{nombre(b.ejercicio)}</Text>
-                </Pressable>
+                </Tocable>
                 {porQuitar === clave ? (
                   <View style={estilos.controles}>
                     <Text style={estilos.pregunta}>{T.sesion.listaQuitarPregunta}</Text>
-                    <Pressable style={estilos.boton} onPress={() => quitar(clave)}>
+                    <Tocable style={estilos.boton} onPress={() => quitar(clave)}>
                       <Text style={estilos.botonTexto}>{T.album.si}</Text>
-                    </Pressable>
-                    <Pressable style={estilos.boton} onPress={() => setPorQuitar(null)}>
+                    </Tocable>
+                    <Tocable style={estilos.boton} onPress={() => setPorQuitar(null)}>
                       <Text style={estilos.botonTexto}>{T.album.no}</Text>
-                    </Pressable>
+                    </Tocable>
                   </View>
                 ) : (
                   <View style={estilos.controles}>
-                    <Pressable style={estilos.paso} onPress={() => alTocar(i, -1)} disabled={b.series === 0} accessibilityLabel={T.inicio.sacarSerie}>
+                    <Tocable style={estilos.paso} onPress={() => alTocar(i, -1)} disabled={b.series === 0} accessibilityLabel={T.inicio.sacarSerie}>
                       <Text style={estilos.pasoTexto}>−</Text>
-                    </Pressable>
+                    </Tocable>
                     <Text style={estilos.cuantas}>{b.series}</Text>
-                    <Pressable style={estilos.paso} onPress={() => alTocar(i, 1)} accessibilityLabel={T.inicio.sumarSerie}>
+                    <Tocable style={estilos.paso} onPress={() => alTocar(i, 1)} accessibilityLabel={T.inicio.sumarSerie}>
                       <Text style={estilos.pasoTexto}>+</Text>
-                    </Pressable>
-                    <Pressable style={estilos.paso} onPress={() => setPorQuitar(clave)} accessibilityLabel={T.sesion.listaQuitar}>
+                    </Tocable>
+                    <Tocable style={estilos.paso} onPress={() => setPorQuitar(clave)} accessibilityLabel={T.sesion.listaQuitar}>
                       <Text style={estilos.quitar}>✕</Text>
-                    </Pressable>
+                    </Tocable>
                   </View>
                 )}
               </View>
@@ -175,7 +182,7 @@ function ListaDeBloques({
           })}
 
           {estado.hechas > 0 && (
-            <View style={[estilos.fila, estilos.ahora]}>
+            <View style={estilos.fila}>
               <View style={estilos.filaArriba}>
                 <Text style={estilos.nombre}>{nombre(estado.ejercicio)}</Text>
                 <View style={estilos.controles}>
@@ -189,9 +196,10 @@ function ListaDeBloques({
         </>
       )}
 
-      <Pressable style={estilos.listo} onPress={cerrar}>
+      <Tocable style={estilos.listo} onPress={cerrar}>
+<FondoOctogonal relleno={C.claro} luz={C.claro} />
         <Text style={estilos.listoTexto}>{T.sesion.listo}</Text>
-      </Pressable>
+      </Tocable>
       {cambiando !== null && estado.cerrados[cambiando] && (
         <SelectorEjercicio
           visible
@@ -213,25 +221,24 @@ function ListaDeBloques({
 
 export default nuevaEnCadaApertura(ListaDeBloques, (p) => p.visible);
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Una línea punteada debajo: "esto se toca" sin parecer un enlace.
   tocable: { textDecorationLine: 'underline', textDecorationStyle: 'dotted', textDecorationColor: C.sub },
   titulo: { color: C.tinta, fontSize: 20, fontWeight: '500', marginBottom: 12 },
   vacio: { color: C.sub, fontSize: 14, marginVertical: 12 },
-  fila: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.linea },
-  ahora: { opacity: 0.85 },
+  fila: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.linea },
   filaArriba: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   nombre: { color: C.tinta, fontSize: 15, flexShrink: 1 },
   controles: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   paso: { minWidth: 40, minHeight: 40, alignItems: 'center', justifyContent: 'center' },
   pasoTexto: { color: C.sub, fontSize: 20 },
   quitar: { color: C.apagado, fontSize: 14 },
-  cuantas: { color: C.tinta, fontSize: 16, minWidth: 22, textAlign: 'center', fontVariant: ['tabular-nums'] },
-  rotulo: { color: C.apagado, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', marginLeft: 8 },
+  cuantas: { color: C.tinta, fontSize: 16, minWidth: 22, textAlign: 'center', fontFamily: L.dato },
+  rotulo: { ...R.etiqueta, marginLeft: 8  },
   pregunta: { color: C.sub, fontSize: 13, marginRight: 6 },
   boton: { minHeight: 40, paddingHorizontal: 10, justifyContent: 'center' },
   botonTexto: { color: C.tinta, fontSize: 14 },
   pesos: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 14, marginTop: 6 },
-  listo: { backgroundColor: C.claro, borderRadius: 2, paddingVertical: 14, alignItems: 'center', marginTop: 18 },
+  listo: { paddingVertical: 14, alignItems: 'center', marginTop: 18 },
   listoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
-});
+}));

@@ -1,10 +1,14 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { CLAVE_OBJETIVO_PESO, leerObjetivo, llego, objetivoValido, rumboDelPaso } from '@nucleo/pesoObjetivo';
 import { aKilos, conComa, deKilos, type Unidad } from '@nucleo/peso';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text, TextInput } from './Texto';
+import { L } from './fuentes';
+import Tocable from './Tocable';
 
 /**
  * EL OBJETIVO DE PESO: un número al que se quiere llegar. Va arriba de la lista
@@ -29,6 +33,7 @@ export default function ObjetivoDePeso({
   recientes?: { fecha: string; valor: number }[];
   alCambiar: (kg: number | null) => void;
 }) {
+  useTema();
   const [editando, setEditando] = useState(false);
   const [valor, setValor] = useState('');
   const [error, setError] = useState('');
@@ -63,16 +68,16 @@ export default function ObjetivoDePeso({
           placeholderTextColor={C.apagado}
           onSubmitEditing={guardar}
         />
-        <Pressable onPress={guardar} hitSlop={8} style={estilos.accionBtn}>
+        <Tocable onPress={guardar} hitSlop={8} style={estilos.accionBtn}>
           <Text style={estilos.accion}>{T.general.guardar}</Text>
-        </Pressable>
-        <Pressable onPress={() => setEditando(false)} hitSlop={8} style={estilos.accionBtn}>
+        </Tocable>
+        <Tocable onPress={() => setEditando(false)} hitSlop={8} style={estilos.accionBtn}>
           <Text style={estilos.apagada}>{T.general.cancelar}</Text>
-        </Pressable>
+        </Tocable>
         {objetivo !== null && (
-          <Pressable onPress={borrar} hitSlop={8} style={estilos.accionBtn}>
+          <Tocable onPress={borrar} hitSlop={8} style={estilos.accionBtn}>
             <Text style={estilos.apagada}>{T.stats.objetivoQuitar}</Text>
-          </Pressable>
+          </Tocable>
         )}
         {error !== '' && <Text style={estilos.error}>{error}</Text>}
       </View>
@@ -82,9 +87,9 @@ export default function ObjetivoDePeso({
   // Sin objetivo: una invitación tenue.
   if (objetivo === null) {
     return (
-      <Pressable onPress={() => { setValor(''); setEditando(true); }} hitSlop={8} style={estilos.pill}>
+      <Tocable onPress={() => { setValor(''); setEditando(true); }} hitSlop={8} style={estilos.pill}>
         <Text style={estilos.pillTexto}>{T.stats.objetivoPoner}</Text>
-      </Pressable>
+      </Tocable>
     );
   }
 
@@ -96,11 +101,11 @@ export default function ObjetivoDePeso({
   if (enObjetivo) {
     return (
       <View>
-        <Pressable onPress={() => { setValor(objLindo); setEditando(true); }} hitSlop={8} style={estilos.llegado}>
+        <Tocable onPress={() => { setValor(objLindo); setEditando(true); }} hitSlop={8} style={estilos.llegado}>
           <Text style={estilos.llegadoTexto}>{T.stats.objetivoLlegado} </Text>
           <Text style={estilos.llegadoNumero}>{objLindo} {unidad}</Text>
           <Text style={estilos.llegadoMarca}> ✓</Text>
-        </Pressable>
+        </Tocable>
         <MiniTendencia recientes={recientes} unidad={unidad} objetivo={objetivo} />
       </View>
     );
@@ -108,9 +113,9 @@ export default function ObjetivoDePeso({
 
   return (
     <View>
-      <Pressable onPress={() => { setValor(objLindo); setEditando(true); }} hitSlop={8} style={estilos.pill}>
+      <Tocable onPress={() => { setValor(objLindo); setEditando(true); }} hitSlop={8} style={estilos.pill}>
         <Text style={estilos.pillTexto}>{T.stats.objetivoEs(objLindo, unidad)}</Text>
-      </Pressable>
+      </Tocable>
       <MiniTendencia recientes={recientes} unidad={unidad} objetivo={objetivo} />
     </View>
   );
@@ -123,6 +128,7 @@ export default function ObjetivoDePeso({
  * lista. Reusa `rumboDelPaso`, la misma regla de color que la lista.
  */
 function MiniTendencia({ recientes, unidad, objetivo }: { recientes: { fecha: string; valor: number }[]; unidad: Unidad; objetivo: number | null }) {
+  useTema();
   const ultimos = [...recientes].sort((a, b) => a.fecha.localeCompare(b.fecha)).slice(-5);
   if (ultimos.length < 2) return null; // con uno no hay tendencia que mostrar
   return (
@@ -152,24 +158,24 @@ function MiniTendencia({ recientes, unidad, objetivo }: { recientes: { fecha: st
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   pill: { alignSelf: 'flex-start', marginTop: 12, marginBottom: 2 },
   pillTexto: { color: C.sub, fontSize: 13 },
   llegado: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', marginTop: 12, marginBottom: 2 },
   llegadoTexto: { color: C.sub, fontSize: 13 },
-  llegadoNumero: { color: C.claro, fontSize: 15, fontVariant: ['tabular-nums'] },
+  llegadoNumero: { color: C.claro, fontSize: 15, fontFamily: L.dato },
   llegadoMarca: { color: C.claro, fontSize: 14 },
   editor: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginTop: 12 },
   campo: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
-    borderRadius: 8,
+    borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 7,
     color: C.tinta,
     fontSize: 15,
     minWidth: 96,
-    fontVariant: ['tabular-nums'],
+    fontFamily: L.dato,
   },
   accionBtn: { paddingVertical: 2 },
   accion: { color: C.sub, fontSize: 13 },
@@ -179,10 +185,10 @@ const estilos = StyleSheet.create({
   trend: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginTop: 8 },
   trendItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   trendFlecha: { fontSize: 9 },
-  trendValor: { color: C.apagado, fontSize: 12, fontVariant: ['tabular-nums'] },
+  trendValor: { color: C.apagado, fontSize: 12, fontFamily: L.dato },
   trendUltimo: { color: C.sub },
-  tBien: { color: '#7fae86' },
-  tLejos: { color: '#c58f7a' },
+  tBien: { color: C.bien },
+  tLejos: { color: C.lejos },
   tObj: { color: C.claro },
   tNeutro: { color: C.apagado },
-});
+}));

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
 import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
-import { Animated, Easing, Pressable, StyleSheet, Text, TextInput, View, type GestureResponderEvent } from 'react-native';
+import { Animated, StyleSheet, View, type GestureResponderEvent, Pressable } from 'react-native';
 import { supabase } from './supabase';
 import { metaAMano, metaCumplida, pildorasDeMeta, type EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
@@ -25,7 +25,7 @@ import Tocable from './Tocable';
 import FondoOctogonal from './FondoOctogonal';
 
 // Los botones grandes del bloque: el mismo fondo tenue de siempre, y el corte de las esquinas.
-const FONDO_BOTON = 'rgba(255,255,255,0.03)';
+const FONDO_BOTON = C.superficie;
 const CORTE = 12;
 import { unidadDeDistancia } from '@nucleo/distancia';
 import { rangoParaMostrar, type SubirPeso } from '@nucleo/dosPorDos';
@@ -38,13 +38,19 @@ const MINUTOS_DE_ARRANQUE = 20;
 import EtiquetaDeCarga from './EtiquetaDeCarga';
 import Globito from './Globito';
 import { esPropio, nombreVisible } from '@nucleo/propios';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, DESHABILITADO, HALO, conTema, luz } from './colores';
+import { useTema } from './useTema';
 import { leerRecordados, marcarSubida } from '@compartido/pesosRecordados';
 import { claveDeSubida, loQueSePuedeSubir, type Subida } from '@nucleo/subir';
 import { pasoDelCampo } from '@nucleo/campoPeso';
 import { fechaLinda, hoyISO } from '@nucleo/fechas';
 import { cronoLindo } from '@nucleo/sesiones';
 import { cierraElBloque, cuentaLaSerie, horaDelToque, TOQUE_REPETIDO_MS } from './toques';
+import { Text, TextInput } from './Texto';
+import { L } from './fuentes';
+import { Fantasma, R } from './roles';
+import Tic from './Tic';
+import { LLEGA } from './movimiento';
 
 /**
  * QUÉ ESTÁS HACIENDO, CUÁNTAS TE PROPUSISTE, CUÁNTAS VAN — en nativo.
@@ -151,6 +157,7 @@ export default function Bloque({
   alCorregirCarga: (indice: number, c: Carga) => void;
   alCorregirEjercicio: (indice: number, id: string, cargaQueSeVeia?: Carga) => void;
 }) {
+  useTema();
   const [anchoBotones, setAnchoBotones] = useState(0);
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([]);
   const [eligiendo, setEligiendo] = useState(false);
@@ -322,18 +329,18 @@ export default function Bloque({
   return (
     <View style={estilos.bloque}>
       <View style={estilos.fila}>
-        <Pressable style={estilos.ejercicio} onPress={() => setEligiendo(true)} accessibilityRole="button">
+        <Tocable style={estilos.ejercicio} onPress={() => setEligiendo(true)} accessibilityRole="button">
           <Text
             style={[estilos.ejercicioTexto, !estado.ejercicio && estilos.apagadoTexto, esFantasma && estilos.fantasmaTexto]}
             numberOfLines={1}
           >
             {actual
-              ? `${actual.nombre} · ${nombreDeGrupo(actual.grupo).toLowerCase()}`
+              ? <>{actual.nombre}<Text style={estilos.ejercicioGrupo}> · {nombreDeGrupo(actual.grupo).toLowerCase()}</Text></>
               : estado.ejercicio && esPropio(estado.ejercicio)
                 ? T.ejercicios.propioAjeno
                 : T.sesion.sinEjercicio}
           </Text>
-        </Pressable>
+        </Tocable>
         {esFantasma && <Text style={estilos.badgeSugerido}>{T.sesion.sugerido}</Text>}
       </View>
       {esFantasma && <Text style={estilos.sugeridoNota}>{T.sesion.sugeridoNota}</Text>}
@@ -379,13 +386,13 @@ export default function Bloque({
 
       {esTiempo && !corriendoCardio && estado.hechas > 0 && (
         <View testID="minutos-de-cardio" style={estilos.minutos} accessibilityLabel={T.sesion.minutosDeCardio}>
-          <Pressable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.max(1, Math.ceil(minutos / 5) * 5 - 5))} accessibilityLabel="−5">
+          <Tocable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.max(1, Math.ceil(minutos / 5) * 5 - 5))} accessibilityLabel="−5">
             <Text style={estilos.minutosPasoTexto}>−</Text>
-          </Pressable>
+          </Tocable>
           <Text style={estilos.minutosTexto}>{T.rutina.minutos(minutos)}</Text>
-          <Pressable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.floor(minutos / 5) * 5 + 5)} accessibilityLabel="+5">
+          <Tocable hitSlop={10} style={estilos.minutosPaso} onPress={() => alElegirMinutos?.(Math.floor(minutos / 5) * 5 + 5)} accessibilityLabel="+5">
             <Text style={estilos.minutosPasoTexto}>+</Text>
-          </Pressable>
+          </Tocable>
         </View>
       )}
       {/* LA DISTANCIA DE LA VUELTA (21/10), con la migración 95. */}
@@ -436,14 +443,14 @@ export default function Bloque({
             maxLength={2}
             onSubmitEditing={usarMetaEscrita}
           />
-          <Pressable
+          <Tocable
             testID="meta-a-mano-usar"
             style={[estilos.meta, estilos.metaUsar, metaAMano(metaEscrita) !== null && estilos.metaPrendida]}
             disabled={metaAMano(metaEscrita) === null}
             onPress={usarMetaEscrita}
           >
             <Text style={[estilos.metaTexto, metaAMano(metaEscrita) !== null && estilos.metaTextoPrendido]}>{T.descanso.aManoUsar}</Text>
-          </Pressable>
+          </Tocable>
         </View>
         </Aparece>
       )}
@@ -480,9 +487,9 @@ export default function Bloque({
           <Text style={estilos.preguntaTexto}>{T.sesion.conQueLoHaces(actual.nombre)}</Text>
           <View style={estilos.opciones}>
             {OPCIONES_DE_LA_PREGUNTA.map((c) => (
-              <Pressable key={c} style={estilos.opcion} onPress={() => alElegirCarga(c)}>
+              <Tocable key={c} style={estilos.opcion} onPress={() => alElegirCarga(c)}>
                 <Text style={estilos.opcionTexto}>{T.sesion.respuestaCarga[c as 'par' | 'total' | 'una']}</Text>
-              </Pressable>
+              </Tocable>
             ))}
           </View>
           <Text style={estilos.nota}>{T.sesion.conQueNota}</Text>
@@ -494,7 +501,7 @@ export default function Bloque({
         <View style={estilos.pregunta}>
           <Text style={estilos.preguntaTexto}>{T.sesion.deCual(estado.hechas)}</Text>
           <View style={estilos.opciones}>
-            <Pressable
+            <Tocable
               style={estilos.opcion}
               onPress={() => {
                 elegir(aDonde);
@@ -502,8 +509,8 @@ export default function Bloque({
               }}
             >
               <Text style={estilos.opcionTexto} numberOfLines={1}>{T.sesion.eranDe(nombreDe(estado.ejercicio))}</Text>
-            </Pressable>
-            <Pressable
+            </Tocable>
+            <Tocable
               style={estilos.opcion}
               onPress={() => {
                 alMudarSeries(aDonde, conCarga ? cargaVista : undefined);
@@ -511,7 +518,7 @@ export default function Bloque({
               }}
             >
               <Text style={estilos.opcionTexto} numberOfLines={1}>{T.sesion.eranDe(nombreDe(aDonde))}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         </View>
       )}
@@ -535,7 +542,9 @@ export default function Bloque({
           ))}
         </View>
         )}
-        <Text style={estilos.cuentaTotal}>{T.sesion.totalHoy(total)}</Text>
+        <Tic valor={total}>
+          <Text style={estilos.cuentaTotal}>{T.sesion.totalHoy(total)}</Text>
+        </Tic>
       </View>
 
       {/* EL − AL LADO DEL +, DEL MISMO ALTO (25/9).
@@ -562,7 +571,7 @@ export default function Bloque({
             accessibilityLabel={T.inicio.sacarSerie}
             accessibilityRole="button"
           >
-            <FondoOctogonal relleno={FONDO_BOTON} borde={C.lineaFuerte} corte={CORTE} />
+            <FondoOctogonal relleno={FONDO_BOTON} superficie borde={C.bordeOcto} corte={CORTE} />
             <Text style={[estilos.masTexto, menosApagado && estilos.apagadoTexto]}>−</Text>
           </Tocable>
           <Tocable
@@ -576,7 +585,7 @@ export default function Bloque({
               setTimeout(() => setPausa(false), TOQUE_REPETIDO_MS);
             }}
           >
-            <FondoOctogonal relleno={C.claro} corte={CORTE} />
+            <FondoOctogonal relleno={C.claro} luz={C.claro} corte={CORTE} />
             <Text style={estilos.cerrarTexto}>{T.sesion.terminarSerie}</Text>
           </Tocable>
         </View>
@@ -589,7 +598,7 @@ export default function Bloque({
             accessibilityLabel={T.inicio.sacarSerie}
             accessibilityRole="button"
           >
-            <FondoOctogonal relleno={FONDO_BOTON} borde={C.lineaFuerte} corte={CORTE} />
+            <FondoOctogonal relleno={FONDO_BOTON} superficie borde={C.bordeOcto} corte={CORTE} />
             <Text style={[estilos.masTexto, menosApagado && estilos.apagadoTexto]}>−</Text>
           </Tocable>
           <MasQuePulsa
@@ -599,7 +608,7 @@ export default function Bloque({
             onPress={esTiempo ? principalDeCardio.accion : sumar}
             accessibilityLabel={esTiempo ? principalDeCardio.texto : T.inicio.sumarSerie}
           >
-            <FondoOctogonal relleno={esTiempo ? C.claro : FONDO_BOTON} borde={esTiempo ? undefined : C.lineaFuerte} corte={CORTE} />
+            <FondoOctogonal relleno={esTiempo ? C.claro : FONDO_BOTON} superficie={!esTiempo} luz={esTiempo ? C.claro : undefined} borde={esTiempo ? undefined : C.bordeOcto} corte={CORTE} />
             <Text style={esTiempo ? estilos.cerrarTexto : estilos.masTexto}>{esTiempo ? principalDeCardio.texto : '+'}</Text>
           </MasQuePulsa>
         </View>
@@ -611,7 +620,7 @@ export default function Bloque({
       {debajoDelMas}
 
       {oferta && (
-        <Pressable
+        <Tocable
           testID="la-proxima-mas"
           style={[estilos.subir, marcada && estilos.subirPrendido]}
           onPress={() =>
@@ -623,37 +632,29 @@ export default function Bloque({
           <Text style={[estilos.subirTexto, marcada && estilos.subirTextoPrendido]}>
             {marcada ? T.sesion.proximaMasMarcada(enUnidad(pasoDelCampo(oferta.peso, unidad, 1) ?? oferta.peso)) : T.sesion.proximaMas}
           </Text>
-        </Pressable>
+        </Tocable>
       )}
 
       {esTiempo && !corriendoCardio && estado.hechas > 0 && (
-        <Pressable
+        <Fantasma
           testID="cardio-terminar"
-          style={estilos.texto}
-          onPress={() => {
+          texto={T.sesion.cardioTerminar}
+          alTocar={() => {
             alSiguiente();
             setLista(true);
           }}
-        >
-          <Text style={estilos.textoBoton}>{T.sesion.cardioTerminar}</Text>
-        </Pressable>
+        />
       )}
       {/* Quien se olvidó del cronómetro anota los minutos a mano. */}
       {esTiempo && !corriendoCardio && estado.hechas === 0 && (
-        <Pressable testID="cardio-sin-cronometro" style={estilos.texto} onPress={sumar}>
-          <Text style={estilos.textoBoton}>{T.sesion.cardioSinCronometro}</Text>
-        </Pressable>
+        <Fantasma testID="cardio-sin-cronometro" texto={T.sesion.cardioSinCronometro} alTocar={sumar} />
       )}
       {/* Una segunda vuelta de cardio en el mismo bloque no suma minutos: se corrigen arriba. */}
       {cumplida && !esTiempo && (
-        <Pressable style={estilos.texto} onPress={sumar}>
-          <Text style={estilos.textoBoton}>{T.sesion.sumarOtra}</Text>
-        </Pressable>
+        <Fantasma texto={T.sesion.sumarOtra} alTocar={sumar} />
       )}
       {(estado.cerrados.length > 0 || estado.hechas > 0) && (
-        <Pressable style={estilos.texto} onPress={() => setLista(true)}>
-          <Text style={estilos.textoBoton}>{T.sesion.verLista}</Text>
-        </Pressable>
+        <Fantasma texto={T.sesion.verLista} alTocar={() => setLista(true)} />
       )}
 
       <SelectorEjercicio
@@ -686,7 +687,7 @@ export default function Bloque({
   );
 }
 
-const CURVA_SALE = Easing.bezier(0.2, 0.8, 0.3, 1);
+const CURVA_SALE = LLEGA;
 
 /**
  * EL PUNTO DE UNA SERIE (15/10, aprobada en la galería): el que se acaba de llenar
@@ -694,6 +695,7 @@ const CURVA_SALE = Easing.bezier(0.2, 0.8, 0.3, 1);
  * la serie que se suma, no la pantalla que aparece.
  */
 function PuntoDeSerie({ lleno, extra }: { lleno: boolean; extra: boolean }) {
+  useTema();
   const relleno = useRef(new Animated.Value(lleno ? 1 : 0)).current;
   const antes = useRef(lleno);
   useEffect(() => {
@@ -727,6 +729,7 @@ function MasQuePulsa({
   testID?: string;
   accessibilityLabel: string;
 }) {
+  useTema();
   const pulso = useRef(new Animated.Value(0)).current;
   const escala = pulso.interpolate({ inputRange: [0, 1], outputRange: [1, 0.965] });
   return (
@@ -737,7 +740,7 @@ function MasQuePulsa({
         if (pulsa) {
           pulso.setValue(0);
           Animated.sequence([
-            Animated.timing(pulso, { toValue: 1, duration: 100, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+            Animated.timing(pulso, { toValue: 1, duration: 100, easing: LLEGA, useNativeDriver: true }),
             Animated.timing(pulso, { toValue: 0, duration: 220, easing: CURVA_SALE, useNativeDriver: true }),
           ]).start();
         }
@@ -752,17 +755,18 @@ function MasQuePulsa({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Una capa más arriba que lo que viene después ("Terminar"): el globito del + flota
   // debajo del + y tiene que quedar encima, no tapado.
   bloque: { marginTop: 22, zIndex: 2, elevation: 2 },
   fila: { flexDirection: 'row', alignItems: 'center' },
   ejercicio: { flex: 1, borderBottomWidth: 1, borderBottomColor: C.lineaFuerte, paddingVertical: 10 },
-  ejercicioTexto: { color: C.tinta, fontSize: 17 },
+  ejercicioTexto: { color: C.tinta, fontSize: 17, fontWeight: '500', letterSpacing: -0.15 },
+  ejercicioGrupo: { color: C.sub, fontWeight: '400' },
   apagadoTexto: { color: C.apagado },
   // FANTASMA (sugerido sin confirmar): tenue y en cursiva, distinto del confirmado.
   fantasmaTexto: { color: C.sub, fontStyle: 'italic' },
-  fantasmaPeso: { opacity: 0.5 },
+  fantasmaPeso: { opacity: DESHABILITADO },
   // La etiqueta "sugerido": una píldora chica al lado del ejercicio, imposible
   // de confundir con un bloque ya cargado.
   badgeSugerido: {
@@ -771,6 +775,7 @@ const estilos = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1,
     textTransform: 'uppercase',
+    fontWeight: '500',
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 999,
@@ -779,26 +784,26 @@ const estilos = StyleSheet.create({
   },
   sugeridoNota: { color: C.apagado, fontSize: 12, lineHeight: 16, marginTop: 6 },
   metas: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  meta: { flex: 1, borderWidth: 1, borderColor: C.linea, borderRadius: 999, paddingVertical: 9, alignItems: 'center' },
-  metaPrendida: { borderColor: C.sub },
-  metaTexto: { color: C.apagado, fontSize: 14 },
-  metaTextoPrendido: { color: C.tinta },
+  meta: { flex: 1, borderWidth: 1, borderColor: C.bordeMeta, borderRadius: 999, paddingVertical: 9, alignItems: 'center' },
+  metaPrendida: { borderColor: C.claro, backgroundColor: C.fondoMeta },
+  metaTexto: { color: C.apagado, fontSize: 13, fontFamily: L.dato },
+  metaTextoPrendido: { color: C.claro },
   metaAMano: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 10 },
-  metaAManoCampo: { color: C.tinta, fontSize: 16, minWidth: 150, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.lineaFuerte, paddingVertical: 6, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  metaAManoCampo: { color: C.tinta, fontSize: 16, minWidth: 150, borderBottomWidth: 1, borderBottomColor: C.lineaFuerte, paddingVertical: 6, textAlign: 'center', fontFamily: L.dato },
   metaUsar: { flex: 0, minWidth: 76, paddingHorizontal: 18 },
   peso: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, marginTop: 12 },
   minutos: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 12 },
   cardio: { alignItems: 'center', marginTop: 14, gap: 4 },
-  cardioReloj: { color: C.tinta, fontSize: 56, fontWeight: '200', fontVariant: ['tabular-nums'] },
-  cardioNota: { color: C.sub, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase' },
+  cardioReloj: { color: C.tinta, fontSize: 56, fontWeight: '200', fontFamily: L.dato },
+  cardioNota: { color: C.sub, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500' },
   // Quieto en 0:00 hasta que se arranca: el mismo reloj, más tenue.
   cardioQuieto: { color: C.sub },
   distancia: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 10 },
-  distanciaEtiqueta: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
-  minutosPaso: { width: 44, height: 44, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, alignItems: 'center', justifyContent: 'center' },
+  distanciaEtiqueta: { ...R.etiqueta },
+  minutosPaso: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: C.lineaFuerte, alignItems: 'center', justifyContent: 'center' },
   minutosPasoTexto: { color: C.tinta, fontSize: 22, fontWeight: '300' },
-  minutosTexto: { color: C.tinta, fontSize: 22, fontVariant: ['tabular-nums'], minWidth: 90, textAlign: 'center' },
-  total: { width: '100%', color: C.apagado, fontSize: 12, marginTop: -2, paddingLeft: 44 },
+  minutosTexto: { color: C.tinta, fontSize: 22, fontFamily: L.dato, minWidth: 90, textAlign: 'center' },
+  total: { width: '100%', color: C.sub, fontSize: 11.5, marginTop: -2, paddingLeft: 44, fontFamily: L.dato },
   pregunta: { borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 2, padding: 12, marginTop: 12 },
   preguntaTexto: { color: C.sub, fontSize: 13, marginBottom: 10 },
   opciones: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -814,13 +819,13 @@ const estilos = StyleSheet.create({
   opcionTexto: { color: C.claro, fontSize: 13 },
   nota: { color: C.apagado, fontSize: 12, marginTop: 8 },
   puntos: { flexDirection: 'row', justifyContent: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 1 },
-  punto: { width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: C.sub },
+  punto: { width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: C.bordeSerie },
   puntoBorde: { borderColor: C.claro },
-  puntoRelleno: { ...StyleSheet.absoluteFillObject, borderRadius: 8, backgroundColor: C.claro },
+  puntoRelleno: { ...StyleSheet.absoluteFillObject, borderRadius: 8, backgroundColor: C.claro, ...luz(C.claro, 0.42, 4) },
   luzDelMas: { ...StyleSheet.absoluteFillObject, backgroundColor: conAlfa(C.claro, 0.14) },
   puntoExtra: { width: 11, height: 11, borderRadius: 6, marginTop: 2.5 },
   cuenta: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 22 },
-  cuentaTotal: { color: C.apagado, fontSize: 12, letterSpacing: 1 },
+  cuentaTotal: { color: C.apagado, fontSize: 11.5, fontFamily: L.dato },
   // La fila de los dos botones: el − angosto y el + con todo lo que sobra.
   filaBotones: { flexDirection: 'row', gap: 8, marginTop: 18 },
   // A LA MITAD (26/9), de 150 a 75 y el signo de 56 a 28.
@@ -844,14 +849,12 @@ const estilos = StyleSheet.create({
   },
   masTexto: { color: C.claro, fontSize: 28, fontWeight: '200' },
   masCerrar: { flex: 3, marginTop: 0 },
-  masEnPausa: { opacity: 0.35 },
+  masEnPausa: { opacity: DESHABILITADO },
   // Un cuarto del ancho contra tres: doce sumas contra una resta.
   menos: { flex: 1, marginTop: 0 },
   menosApagado: { opacity: 0.35 },
   masAncho: { flex: 3, marginTop: 0 },
   cerrarTexto: { color: C.fondo, fontSize: 18, fontWeight: '600' },
-  texto: { paddingVertical: 12, alignItems: 'center' },
-  textoBoton: { color: C.sub, fontSize: 14 },
   // "La próxima, más": un contorno, no un sólido. No compite con el `+`, que
   // es lo que se toca doce veces; este se toca una.
   subir: {
@@ -860,11 +863,11 @@ const estilos = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 18,
     borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
   },
   subirPrendido: { borderColor: C.sub },
   subirTexto: { color: C.sub, fontSize: 14 },
   subirTextoPrendido: { color: C.tinta },
   subidaNota: { color: C.sub, fontSize: 13, marginTop: 8 },
-});
+}));

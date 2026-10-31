@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import {
   CLAVE_META_PASOS,
   META_PASOS_POR_OMISION,
@@ -8,7 +8,12 @@ import {
 } from '@nucleo/pasos';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
-import { C } from '../colores';
+import { C, conTema } from '../colores';
+import { useTema } from '../useTema';
+import { Text, TextInput } from '../Texto';
+import { L } from '../fuentes';
+import { R } from '../roles';
+import Tocable from '../Tocable';
 
 /**
  * LA META DE PASOS DEL DÍA.
@@ -27,6 +32,7 @@ import { C } from '../colores';
  * escribiría cinco veces para un número de cinco cifras.
  */
 export default function MetaDePasos({ alCambiar }: { alCambiar?: (meta: number) => void } = {}) {
+  useTema();
   const [valor, setValor] = useState(String(META_PASOS_POR_OMISION));
   const [error, setError] = useState('');
 
@@ -76,31 +82,31 @@ export default function MetaDePasos({ alCambiar }: { alCambiar?: (meta: number) 
       />
       {/* Un botón además del `onBlur`: en un teclado numérico de iOS no hay
           "listo", y tocar afuera para guardar no se le ocurre a nadie. */}
-      <Pressable style={estilos.boton} onPress={guardar}>
+      <Tocable style={estilos.boton} onPress={guardar}>
         <Text style={estilos.botonTexto}>{T.general.guardar}</Text>
-      </Pressable>
+      </Tocable>
       {error !== '' && <Text style={estilos.error}>{error}</Text>}
       <Text style={estilos.nota}>{T.ajustes.metaPasosNota}</Text>
     </View>
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 12 },
+  titulo: { ...R.etiqueta, marginBottom: 12  },
   campo: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.linea,
-    borderRadius: 12,
+    borderRadius: 999,
     paddingVertical: 12,
     paddingHorizontal: 14,
     color: C.tinta,
     fontSize: 16,
-    fontVariant: ['tabular-nums'],
+    fontFamily: L.dato,
   },
   boton: {
     marginTop: 10,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.linea,
     borderRadius: 999,
     paddingVertical: 11,
@@ -109,4 +115,4 @@ const estilos = StyleSheet.create({
   botonTexto: { color: C.tinta, fontSize: 14 },
   error: { color: C.error, fontSize: 12, marginTop: 8 },
   nota: { color: C.apagado, fontSize: 12, marginTop: 10, lineHeight: 17 },
-});
+}));

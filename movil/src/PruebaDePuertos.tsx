@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { plataformaNativa } from './plataforma';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * TANDA 1 — que los diez puertos existan y contesten EN EL TELÉFONO.
@@ -21,6 +25,7 @@ import { plataformaNativa } from './plataforma';
 type Linea = { que: string; dice: string };
 
 export default function PruebaDePuertos() {
+  useTema();
   const [lineas, setLineas] = useState<Linea[]>([]);
   const [ultimo, setUltimo] = useState('');
 
@@ -92,7 +97,7 @@ export default function PruebaDePuertos() {
       ))}
 
       <View style={estilos.botones}>
-        <Pressable
+        <Tocable
           style={estilos.boton}
           onPress={async () => {
             await plataformaNativa.audio.preparar();
@@ -101,8 +106,8 @@ export default function PruebaDePuertos() {
           }}
         >
           <Text style={estilos.textoBoton}>probar el bip</Text>
-        </Pressable>
-        <Pressable
+        </Tocable>
+        <Tocable
           style={estilos.boton}
           onPress={() => {
             const salio = plataformaNativa.haptica.pulso();
@@ -110,34 +115,35 @@ export default function PruebaDePuertos() {
           }}
         >
           <Text style={estilos.textoBoton}>probar la vibración</Text>
-        </Pressable>
+        </Tocable>
       </View>
       {ultimo !== '' && <Text style={estilos.ultimo}>{ultimo}</Text>}
     </View>
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   caja: { marginTop: 34, alignSelf: 'stretch' },
   titulo: {
-    color: '#8a93a8',
+    color: C.sub,
     fontSize: 10,
     letterSpacing: 4,
     textTransform: 'uppercase',
+    fontWeight: '500',
     marginBottom: 10,
   },
   fila: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
-  que: { color: '#c4c2ba', fontSize: 13 },
-  dice: { color: '#8a93a8', fontSize: 13, flexShrink: 1, textAlign: 'right' },
+  que: { color: C.claro, fontSize: 13 },
+  dice: { color: C.sub, fontSize: 13, flexShrink: 1, textAlign: 'right' },
   botones: { flexDirection: 'row', gap: 10, marginTop: 18 },
   boton: {
     flex: 1,
-    borderColor: '#2a3040',
+    borderColor: C.lineaFuerte,
     borderWidth: 1,
     borderRadius: 999,
     paddingVertical: 11,
     alignItems: 'center',
   },
-  textoBoton: { color: '#c4c2ba', fontSize: 13 },
-  ultimo: { color: '#8a93a8', fontSize: 12, marginTop: 10, textAlign: 'center' },
-});
+  textoBoton: { color: C.claro, fontSize: 13 },
+  ultimo: { color: C.sub, fontSize: 12, marginTop: 10, textAlign: 'center' },
+}));

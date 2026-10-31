@@ -1,12 +1,16 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { cuentaAtras } from '@compartido/descanso';
 import { renglonDe, type Union } from '@nucleo/enVivo';
 import { T } from '@nucleo/textos';
 import Avatar from './Avatar';
 import CadaSegundo from './CadaSegundo';
 import { irAPestana } from './irAPestana';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 import Aparece from './Aparece';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import Tocable from './Tocable';
 
 /**
  * LA TIRA DEL GRUPO EN INICIO (15/10, multijugador completo). Mientras entrenás
@@ -15,11 +19,12 @@ import Aparece from './Aparece';
  * detalle está en Ranking: tocarla lleva ahí. Llega en tiempo real (`useUniones`).
  */
 export default function TiraDelGrupo({ uniones, recibidoEn }: { uniones: Union[]; recibidoEn: number }) {
+  useTema();
   const companeros = uniones.filter((u) => u.estado === 'aceptada');
   if (companeros.length === 0) return null;
   return (
     <Aparece>
-    <Pressable testID="tira-del-grupo" onPress={() => irAPestana('ranking')} accessibilityRole="button" accessibilityLabel={T.social.juntos}>
+    <Tocable testID="tira-del-grupo" onPress={() => irAPestana('ranking')} accessibilityRole="button" accessibilityLabel={T.social.juntos}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.fila}>
         <CadaSegundo>
           {() =>
@@ -48,18 +53,18 @@ export default function TiraDelGrupo({ uniones, recibidoEn }: { uniones: Union[]
           }
         </CadaSegundo>
       </ScrollView>
-    </Pressable>
+    </Tocable>
     </Aparece>
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   fila: { gap: 10, paddingVertical: 2, marginTop: 14 },
   persona: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 5,
@@ -67,6 +72,6 @@ const estilos = StyleSheet.create({
     paddingRight: 14,
   },
   nombre: { color: C.tinta, fontSize: 13, maxWidth: 110 },
-  que: { color: C.sub, fontSize: 12, fontVariant: ['tabular-nums'] },
+  que: { color: C.sub, fontSize: 12, fontFamily: L.dato },
   descansa: { color: C.claro },
-});
+}));

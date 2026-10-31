@@ -33,6 +33,9 @@ config.resolver.extraNodeModules = {
   '@compartido': path.resolve(raiz, 'compartido'),
   '@plataforma': path.resolve(__dirname, 'src', 'plataforma'),
   '@cliente': path.resolve(__dirname, 'src', 'cliente'),
+  // Está en el binario, anidado adentro de expo. No se suma a package.json: movería su ruta de
+  // autolinking, cambiaría la huella y las OTA no les llegarían a las builds de hoy.
+  'expo-font': path.resolve(__dirname, 'node_modules', 'expo', 'node_modules', 'expo-font'),
 };
 
 // UN SOLO REACT. `compartido/` vive en la raíz del repo, y ahí al lado está el

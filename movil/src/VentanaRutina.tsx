@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema, conAlfa } from './colores';
+import { useTema } from './useTema';
 import { catalogoDeRutina, type CatalogoDeRutina } from '@compartido/rutinas';
 import RutinaPlegada from './RutinaPlegada';
 import { supabase } from './supabase';
 import { guardarDiaDeRutina, rutinaReemplazada, type PreguntaDeRutina } from './preguntarPorLaRutina';
+import { Text } from './Texto';
+import FondoOctogonal from './FondoOctogonal';
+import Tocable from './Tocable';
 
 /**
  * LA VENTANA AL TERMINAR (19/10, aprobada en la galería): con el estilo de la app, en
@@ -18,6 +22,7 @@ import { guardarDiaDeRutina, rutinaReemplazada, type PreguntaDeRutina } from './
  * preguntar. Tocar afuera la cierra sin guardar nada. Se monta solo mientras está abierta.
  */
 export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: PreguntaDeRutina; alCerrar: () => void }) {
+  useTema();
   const [paso, setPaso] = useState<'pregunta' | 'seguro'>('pregunta');
   const [guardando, setGuardando] = useState(false);
   const [fallo, setFallo] = useState(false);
@@ -48,6 +53,7 @@ export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: Pregun
       <View style={estilos.fondo}>
         <Pressable style={StyleSheet.absoluteFill} onPress={alCerrar} disabled={guardando} accessibilityRole="button" accessibilityLabel={T.general.cerrar} />
         <View testID="ventana-rutina" style={estilos.caja}>
+          <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={14} luz={C.claro} />
           <View style={estilos.marca}>
             <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.claro} strokeWidth={1.8} strokeLinecap="round">
               <Path d="M4 12a8 8 0 0 1 13.7-5.6M20 12a8 8 0 0 1-13.7 5.6" />
@@ -72,7 +78,7 @@ export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: Pregun
           )}
           {fallo && <Text style={estilos.fallo}>{T.general.noSePudo}</Text>}
           <View style={estilos.acciones}>
-            <Pressable
+            <Tocable
               testID={seguro ? 'ventana-rutina-si' : 'ventana-rutina-reemplazar'}
               style={[estilos.pildora, estilos.crema]}
               disabled={guardando}
@@ -80,8 +86,8 @@ export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: Pregun
               accessibilityRole="button"
             >
               <Text style={estilos.cremaTexto}>{guardando && seguro ? T.sesion.guardando : seguro ? T.rutina.si : T.rutina.reemplazar}</Text>
-            </Pressable>
-            <Pressable
+            </Tocable>
+            <Tocable
               testID={seguro ? 'ventana-rutina-no' : 'ventana-rutina-nueva'}
               style={[estilos.pildora, estilos.borde]}
               disabled={guardando}
@@ -89,9 +95,9 @@ export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: Pregun
               accessibilityRole="button"
             >
               <Text style={estilos.bordeTexto}>{guardando && !seguro ? T.sesion.guardando : seguro ? T.rutina.no : T.rutina.crearRutinaNueva}</Text>
-            </Pressable>
+            </Tocable>
             {!seguro && (
-              <Pressable
+              <Tocable
                 testID="ventana-rutina-olvidar"
                 style={[estilos.pildora, estilos.tenue]}
                 disabled={guardando}
@@ -99,7 +105,7 @@ export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: Pregun
                 accessibilityRole="button"
               >
                 <Text style={estilos.tenueTexto}>{T.rutina.olvidarDia}</Text>
-              </Pressable>
+              </Tocable>
             )}
           </View>
         </View>
@@ -108,25 +114,16 @@ export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: Pregun
   );
 }
 
-const estilos = StyleSheet.create({
-  fondo: { flex: 1, backgroundColor: 'rgba(5,6,10,0.72)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+const estilos = conTema(() => StyleSheet.create({
+  fondo: { flex: 1, backgroundColor: conAlfa(C.negro, 0.72), alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   caja: {
     width: '100%',
     maxWidth: 340,
-    backgroundColor: '#10131c',
-    borderWidth: 1,
-    borderColor: '#2e3548',
-    borderRadius: 22,
     paddingTop: 22,
     paddingHorizontal: 18,
     paddingBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.55,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 8,
   },
-  marca: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(126,140,168,0.16)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  marca: { width: 38, height: 38, borderRadius: 19, backgroundColor: conAlfa(C.principal, 0.16), alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   titulo: { color: C.tinta, fontSize: 17, fontWeight: '600', lineHeight: 22 },
   texto: { color: C.sub, fontSize: 14, lineHeight: 20, marginTop: 8 },
   fallo: { color: C.error, fontSize: 13, marginTop: 8 },
@@ -140,4 +137,4 @@ const estilos = StyleSheet.create({
   bordeTexto: { color: C.tinta, fontSize: 14 },
   tenue: { borderWidth: 1, borderColor: C.lineaFuerte },
   tenueTexto: { color: C.sub, fontSize: 14 },
-});
+}));

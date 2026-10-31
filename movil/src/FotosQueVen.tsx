@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Image, StyleSheet, View, useWindowDimensions } from 'react-native';
 import FotoGrande from './FotoGrande';
 import { fechaCorta } from '@nucleo/fechas';
 import type { FotoDePerfil } from '@compartido/perfil';
 import Surgir from './Surgir';
-import { C } from './colores';
+import { C, conTema, luz } from './colores';
+import { useTema } from './useTema';
 import { useFotoLocal } from './fotoLocal';
+import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * LAS FOTOS COMO LAS VE UN AMIGO, y nada más: sin administrar. Tocar una la
@@ -23,6 +26,7 @@ import { useFotoLocal } from './fotoLocal';
 const HUECO = 8;
 
 export default function FotosQueVen({ fotos }: { fotos: FotoDePerfil[] }) {
+  useTema();
   const { width } = useWindowDimensions();
   // Tres por fila del ancho que de verdad tiene la grilla (19/10): calcularlo desde la
   // pantalla suponía el margen de quien la monta.
@@ -36,12 +40,12 @@ export default function FotosQueVen({ fotos }: { fotos: FotoDePerfil[] }) {
     <View style={estilos.grilla} onLayout={(e) => setAncho(e.nativeEvent.layout.width)}>
       {fotos.map((f, i) => (
         <Surgir key={f.id} indice={i}>
-          <Pressable testID="foto-de-perfil" style={{ width: lado }} onPress={() => setGrande(f.url || f.miniatura || null)} accessibilityRole="imagebutton">
+          <Tocable testID="foto-de-perfil" style={{ width: lado }} onPress={() => setGrande(f.url || f.miniatura || null)} accessibilityRole="imagebutton">
             <Cuadrito foto={f} lado={lado} />
             {/* La fecha solo si la foto cuelga de un día: una suelta no tiene
                 cuándo, y poner uno inventado sería peor que no poner nada. */}
             {!!f.fecha && <Text style={estilos.cuando}>{fechaCorta(f.fecha)}</Text>}
-          </Pressable>
+          </Tocable>
         </Surgir>
       ))}
       <FotoGrande url={grande} onCerrar={() => setGrande(null)} />
@@ -51,6 +55,7 @@ export default function FotosQueVen({ fotos }: { fotos: FotoDePerfil[] }) {
 
 /** Del disco del teléfono si ya se bajó (15/10): la clave es la foto, que no cambia aunque cambie el enlace. */
 function Cuadrito({ foto, lado }: { foto: FotoDePerfil; lado: number }) {
+  useTema();
   const uri = useFotoLocal((foto.miniatura ? 'mini-foto-' : 'entera-foto-') + foto.id, foto.miniatura || foto.url);
   // La sombra va afuera: con `overflow: hidden` en la misma vista, iOS la recorta.
   return (
@@ -60,9 +65,9 @@ function Cuadrito({ foto, lado }: { foto: FotoDePerfil; lado: number }) {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: HUECO, marginTop: 6 },
-  sombra: { borderRadius: 14, backgroundColor: C.linea, shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
-  cuadrito: { borderRadius: 14, overflow: 'hidden' },
+  sombra: { borderRadius: 1, backgroundColor: C.linea, ...luz(C.claro, 0.16, 8) },
+  cuadrito: { borderRadius: 1, overflow: 'hidden' },
   cuando: { color: C.apagado, fontSize: 10, marginTop: 4 },
-});
+}));

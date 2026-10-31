@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { Ejercicio } from '@nucleo/tipos';
 import {
   agregarEjercicio,
@@ -35,10 +35,15 @@ import { supabase } from './supabase';
 import RutinaPlegada from './RutinaPlegada';
 import FilasArrastrables from './FilasArrastrables';
 import SelectorEjercicio from './SelectorEjercicio';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 import Aparece from './Aparece';
 import GloboPrimeraVez from './GloboPrimeraVez';
 import { copiarDiaAlPortapapeles, useDiaCopiado } from './portapapelesDeDia';
+import { Text, TextInput } from './Texto';
+import { L } from './fuentes';
+import { Fantasma, R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * TU RUTINA, EN STATS (14/10). Se mira, se edita, se copia y se pega antes de ir
@@ -65,6 +70,7 @@ export default function MiRutina({
   alArrastrar?: (si: boolean) => void;
   abrirHoy?: boolean;
 }) {
+  useTema();
   // El chip de las repeticiones objetivo, con la migración 95.
   const conObjetivo = disponible('distanciaYObjetivo', useVersionDelEsquema());
   // Dónde está el nombre del entrenamiento, para que el globito de la rutina salga de él.
@@ -212,7 +218,7 @@ export default function MiRutina({
       <View>
         <View style={estilos.acciones}>
           {(dia.ejercicios.length > 0 || dia.descanso) && (
-            <Pressable
+            <Tocable
               testID={`rutina-copiar-dia-${d}`}
               style={[estilos.chico, esteRecien && estilos.chicoActivo]}
               onPress={() => {
@@ -222,10 +228,10 @@ export default function MiRutina({
               }}
             >
               <Text style={estilos.chicoTexto}>{T.rutina.copiarEsteDia}</Text>
-            </Pressable>
+            </Tocable>
           )}
           {copiado && !esteRecien && (
-            <Pressable
+            <Tocable
               testID={`rutina-pegar-${d}`}
               style={estilos.chico}
               onPress={() => (dia.ejercicios.length > 0 ? setPreguntaPegar(d) : pegar(d, 'reemplazar'))}
@@ -233,24 +239,24 @@ export default function MiRutina({
               <Text style={estilos.chicoTexto} numberOfLines={1}>
                 {T.rutina.pegarDia(copiado.origen)}
               </Text>
-            </Pressable>
+            </Tocable>
           )}
         </View>
-        {esteRecien && <Aparece><Text style={estilos.nota}>{T.rutina.diaCopiado}</Text></Aparece>}
+        <Aparece visible={!!(esteRecien)}><Text style={estilos.nota}>{T.rutina.diaCopiado}</Text></Aparece>
         {preguntaPegar === d && (
           <Aparece>
           <View style={estilos.pregunta}>
             <Text style={estilos.nota}>{T.rutina.yaTieneEjercicios(T.fechas.diasLargos[d])}</Text>
             <View style={estilos.acciones}>
-              <Pressable testID={`rutina-pegar-reemplazar-${d}`} style={estilos.chico} onPress={() => pegar(d, 'reemplazar')}>
+              <Tocable testID={`rutina-pegar-reemplazar-${d}`} style={estilos.chico} onPress={() => pegar(d, 'reemplazar')}>
                 <Text style={estilos.chicoTexto}>{T.rutina.reemplazar}</Text>
-              </Pressable>
-              <Pressable style={estilos.chico} onPress={() => pegar(d, 'agregar')}>
+              </Tocable>
+              <Tocable style={estilos.chico} onPress={() => pegar(d, 'agregar')}>
                 <Text style={estilos.chicoTexto}>{T.rutina.agregarAlFinal}</Text>
-              </Pressable>
-              <Pressable style={estilos.chico} onPress={() => setPreguntaPegar(null)}>
+              </Tocable>
+              <Tocable style={estilos.chico} onPress={() => setPreguntaPegar(null)}>
                 <Text style={estilos.chicoTexto}>{T.rutina.cancelar}</Text>
-              </Pressable>
+              </Tocable>
             </View>
           </View>
           </Aparece>
@@ -279,38 +285,38 @@ export default function MiRutina({
             <Text style={estilos.ejercicio} numberOfLines={1}>
               {nombreVisible(e.ejercicio, catalogo.get(e.ejercicio)?.nombre)}
             </Text>
-            <Pressable hitSlop={8} onPress={() => con(cambiarCantidad(actual.dias, d, i, -1))} accessibilityLabel={T.rutina.menos}>
+            <Tocable hitSlop={8} onPress={() => con(cambiarCantidad(actual.dias, d, i, -1))} accessibilityLabel={T.rutina.menos}>
               <Text style={estilos.paso}>−</Text>
-            </Pressable>
+            </Tocable>
             <Text style={estilos.cantidad}>{e.minutos !== undefined ? T.rutina.minutos(e.minutos) : T.rutina.series(e.series)}</Text>
-            <Pressable hitSlop={8} onPress={() => con(cambiarCantidad(actual.dias, d, i, 1))} accessibilityLabel={T.rutina.mas}>
+            <Tocable hitSlop={8} onPress={() => con(cambiarCantidad(actual.dias, d, i, 1))} accessibilityLabel={T.rutina.mas}>
               <Text style={estilos.paso}>+</Text>
-            </Pressable>
+            </Tocable>
             {/* LAS REPETICIONES OBJETIVO (21/10, migración 95): contra esto mira el aviso de subir el peso. */}
             {e.minutos === undefined && conObjetivo && (
-              <Pressable testID={`rutina-objetivo-${d}-${i}`} hitSlop={6} onPress={() => con(siguienteObjetivo(actual.dias, d, i))} accessibilityLabel={T.rutina.objetivo(e.reps)}>
+              <Tocable testID={`rutina-objetivo-${d}-${i}`} hitSlop={6} onPress={() => con(siguienteObjetivo(actual.dias, d, i))} accessibilityLabel={T.rutina.objetivo(e.reps)}>
                 <Text style={[estilos.objetivo, e.reps === undefined && estilos.objetivoVacio]}>{e.reps ? `×${e.reps}` : '×–'}</Text>
-              </Pressable>
+              </Tocable>
             )}
-            <Pressable hitSlop={8} onPress={() => con(quitarEjercicio(actual.dias, d, i))} accessibilityLabel={T.rutina.quitar}>
+            <Tocable hitSlop={8} onPress={() => con(quitarEjercicio(actual.dias, d, i))} accessibilityLabel={T.rutina.quitar}>
               <Text style={estilos.quitar}>✕</Text>
-            </Pressable>
+            </Tocable>
           </View>
           )}
         />
         <View style={estilos.acciones}>
           {!dia.descanso && (
-            <Pressable testID={`rutina-agregar-${d}`} style={estilos.chico} onPress={() => setEligiendoPara(d)}>
+            <Tocable testID={`rutina-agregar-${d}`} style={estilos.chico} onPress={() => setEligiendoPara(d)}>
               <Text style={estilos.chicoTexto}>{T.rutina.agregarEjercicio}</Text>
-            </Pressable>
+            </Tocable>
           )}
-          <Pressable
+          <Tocable
             testID={`rutina-descanso-${d}`}
             style={[estilos.chico, dia.descanso && estilos.chicoActivo]}
             onPress={() => (!dia.descanso && dia.ejercicios.length > 0 ? setPreguntaDescanso(d) : con(marcarDescanso(actual.dias, d, !dia.descanso)))}
           >
             <Text style={estilos.chicoTexto}>{T.rutina.diaDeDescanso}</Text>
-          </Pressable>
+          </Tocable>
         </View>
         {accionesDeCopia(d)}
         {preguntaDescanso === d && (
@@ -318,7 +324,7 @@ export default function MiRutina({
           <View style={estilos.pregunta}>
             <Text style={estilos.nota}>{T.rutina.descansoPregunta(T.fechas.diasLargos[d])}</Text>
             <View style={estilos.acciones}>
-              <Pressable
+              <Tocable
                 testID={`rutina-descanso-si-${d}`}
                 style={estilos.chico}
                 onPress={() => {
@@ -327,10 +333,10 @@ export default function MiRutina({
                 }}
               >
                 <Text style={estilos.chicoTexto}>{T.rutina.diaDeDescanso}</Text>
-              </Pressable>
-              <Pressable style={estilos.chico} onPress={() => setPreguntaDescanso(null)}>
+              </Tocable>
+              <Tocable style={estilos.chico} onPress={() => setPreguntaDescanso(null)}>
                 <Text style={estilos.chicoTexto}>{T.rutina.cancelar}</Text>
-              </Pressable>
+              </Tocable>
             </View>
           </View>
           </Aparece>
@@ -345,9 +351,9 @@ export default function MiRutina({
       <View testID="mi-rutina">
         <Text style={estilos.seccion}>{T.rutina.titulo}</Text>
         <Text style={estilos.nota}>{T.inicio.noCargo}</Text>
-        <Pressable testID="rutina-reintentar" style={estilos.chico} onPress={() => void cargar()}>
+        <Tocable testID="rutina-reintentar" style={estilos.chico} onPress={() => void cargar()}>
           <Text style={estilos.chicoTexto}>{T.inicio.reintentar}</Text>
-        </Pressable>
+        </Tocable>
       </View>
     );
   }
@@ -359,7 +365,7 @@ export default function MiRutina({
       {guardadas && rutinas.length > 0 && (
         <View style={estilos.acciones}>
           {rutinas.map((r) => (
-            <Pressable
+            <Tocable
               key={r.id}
               testID="rutina-elegir"
               style={[estilos.chip, r.id === sel && estilos.chipElegido]}
@@ -372,10 +378,10 @@ export default function MiRutina({
               {/* LA ACTIVA LLEVA UN PUNTO ADELANTE (15/10): el " ·" pegado atrás del nombre se leía como un error. */}
               {r.activa && <View testID="rutina-activa-punto" style={estilos.puntoActiva} />}
               <Text style={[estilos.chipTexto, r.id === sel && estilos.chipTextoElegido]}>{r.nombre}</Text>
-            </Pressable>
+            </Tocable>
           ))}
           {rutinas.length < 10 && (
-            <Pressable
+            <Tocable
               testID="rutina-nueva"
               style={estilos.chip}
               onPress={() => {
@@ -384,7 +390,7 @@ export default function MiRutina({
               }}
             >
               <Text style={estilos.chipTexto}>{T.rutina.nueva}</Text>
-            </Pressable>
+            </Tocable>
           )}
         </View>
       )}
@@ -405,20 +411,18 @@ export default function MiRutina({
               <Text style={estilos.estado}>{actual.activa ? T.rutina.activa : ''}</Text>
             )}
             {!actual.activa && !editando && (
-              <Pressable testID="rutina-usar" style={estilos.chico} onPress={() => void activar(actual.id)}>
+              <Tocable testID="rutina-usar" style={estilos.chico} onPress={() => void activar(actual.id)}>
                 <Text style={estilos.chicoTexto}>{T.rutina.usarEsta}</Text>
-              </Pressable>
+              </Tocable>
             )}
-            <Pressable
+            <Fantasma
               testID="rutina-editar"
-              style={estilos.chico}
-              onPress={() => {
+              texto={editando ? T.rutina.listo : T.rutina.editar}
+              alTocar={() => {
                 if (editando) guardarNombre();
                 setEditando(!editando);
               }}
-            >
-              <Text style={estilos.chicoTexto}>{editando ? T.rutina.listo : T.rutina.editar}</Text>
-            </Pressable>
+            />
           </View>
           {/* EL GLOBITO DE LA RUTINA (15/10), saliendo del nombre del entrenamiento
               ("Entrenamiento 1" por defecto), la primera vez que se edita. */}
@@ -444,18 +448,18 @@ export default function MiRutina({
                 <>
                   <Text style={estilos.nota}>{T.rutina.borrarPregunta(actual.nombre)}</Text>
                   <View style={estilos.acciones}>
-                    <Pressable style={estilos.chico} onPress={() => void borrar(actual.id)}>
+                    <Tocable style={estilos.chico} onPress={() => void borrar(actual.id)}>
                       <Text style={[estilos.chicoTexto, { color: C.error }]}>{T.rutina.borrar}</Text>
-                    </Pressable>
-                    <Pressable style={estilos.chico} onPress={() => setPreguntaBorrar(false)}>
+                    </Tocable>
+                    <Tocable style={estilos.chico} onPress={() => setPreguntaBorrar(false)}>
                       <Text style={estilos.chicoTexto}>{T.rutina.cancelar}</Text>
-                    </Pressable>
+                    </Tocable>
                   </View>
                 </>
               ) : (
-                <Pressable onPress={() => setPreguntaBorrar(true)}>
+                <Tocable onPress={() => setPreguntaBorrar(true)}>
                   <Text style={estilos.borrar}>{T.rutina.borrar}</Text>
-                </Pressable>
+                </Tocable>
               )}
             </View>
           )}
@@ -466,12 +470,12 @@ export default function MiRutina({
           <RutinaPlegada dias={deducida} catalogo={catalogo} soloConAlgo abiertos testID="rutina-deducida" />
           {guardadas && (
             <View style={estilos.acciones}>
-              <Pressable testID="rutina-guardar-deducida" style={estilos.chico} onPress={() => void crear(deducida)}>
+              <Tocable testID="rutina-guardar-deducida" style={estilos.chico} onPress={() => void crear(deducida)}>
                 <Text style={estilos.chicoTexto}>{T.rutina.guardarDeducida}</Text>
-              </Pressable>
-              <Pressable style={estilos.chico} onPress={() => void crear(semanaVacia())}>
+              </Tocable>
+              <Tocable style={estilos.chico} onPress={() => void crear(semanaVacia())}>
                 <Text style={estilos.chicoTexto}>{T.rutina.armarNueva}</Text>
-              </Pressable>
+              </Tocable>
             </View>
           )}
         </>
@@ -480,9 +484,9 @@ export default function MiRutina({
           <Text style={estilos.nota}>{T.rutina.vacia}</Text>
           {guardadas && (
             <View style={estilos.acciones}>
-              <Pressable testID="rutina-armar" style={estilos.chico} onPress={() => void crear(semanaVacia())}>
+              <Tocable testID="rutina-armar" style={estilos.chico} onPress={() => void crear(semanaVacia())}>
                 <Text style={estilos.chicoTexto}>{T.rutina.armarNueva}</Text>
-              </Pressable>
+              </Tocable>
             </View>
           )}
         </>
@@ -509,30 +513,30 @@ export default function MiRutina({
 // Todas las filas del editor miden lo mismo: así el arrastre sabe sobre cuál está el dedo.
 const ALTO_FILA = 44;
 
-const estilos = StyleSheet.create({
-  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 34, marginBottom: 10 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginBottom: 8 },
+const estilos = conTema(() => StyleSheet.create({
+  seccion: { ...R.etiqueta, marginTop: 34, marginBottom: 10  },
+  nota: { ...R.nota, marginBottom: 8  },
   error: { color: C.error, fontSize: 13, marginTop: 8 },
   acciones: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 6 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
   puntoActiva: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.claro },
   chipElegido: { borderColor: C.tinta },
   chipTexto: { color: C.sub, fontSize: 13 },
   chipTextoElegido: { color: C.tinta },
   barra: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, marginBottom: 4 },
   estado: { flex: 1, color: C.apagado, fontSize: 12 },
-  nombre: { flex: 1, color: C.tinta, fontSize: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.lineaFuerte, paddingVertical: 4 },
-  chico: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10 },
+  nombre: { flex: 1, color: C.tinta, fontSize: 15, borderBottomWidth: 1, borderBottomColor: C.lineaFuerte, paddingVertical: 4 },
+  chico: { borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 10 },
   chicoActivo: { borderColor: C.tinta },
   chicoTexto: { color: C.tinta, fontSize: 13 },
   editor: { paddingBottom: 12 },
   filaEditable: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   ejercicio: { flex: 1, color: C.sub, fontSize: 14 },
-  cantidad: { color: C.tinta, fontSize: 13, minWidth: 58, textAlign: 'center', fontVariant: ['tabular-nums'] },
-  objetivo: { color: C.tinta, fontSize: 13, minWidth: 30, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  cantidad: { color: C.tinta, fontSize: 13, minWidth: 58, textAlign: 'center', fontFamily: L.dato },
+  objetivo: { color: C.tinta, fontSize: 13, minWidth: 30, textAlign: 'center', fontFamily: L.dato },
   objetivoVacio: { color: C.apagado },
   paso: { color: C.tinta, fontSize: 18, width: 20, textAlign: 'center' },
   quitar: { color: C.apagado, fontSize: 14, width: 20, textAlign: 'center' },
   pregunta: { marginTop: 8 },
   borrar: { color: C.apagado, fontSize: 13, marginTop: 10 },
-});
+}));

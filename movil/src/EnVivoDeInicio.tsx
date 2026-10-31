@@ -1,5 +1,5 @@
 import { useEffect, useRef, memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { publicarEnVivo, responderUnion } from '@compartido/enVivo';
 import { firmaDe, loQueSePublica } from '@nucleo/enVivo';
 import { T } from '@nucleo/textos';
@@ -9,7 +9,11 @@ import TiraDelGrupo from './TiraDelGrupo';
 import Aparece from './Aparece';
 import { useCartelVisible } from './cartelVisible';
 import { tarjetasDeInicio } from '@nucleo/novedades';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import FondoOctogonal from './FondoOctogonal';
+import Tocable from './Tocable';
 import { fijarExtras } from '@compartido/tarjeta';
 
 /**
@@ -33,6 +37,7 @@ type Visto = { corriendo: boolean; ejercicio: string | null; hechas: number; met
 const LATIDO_MS = 45_000;
 
 function EnVivoDeInicio(visto: Visto) {
+  useTema();
   const { uniones, recibidoEn, recargar } = useUniones(visto.corriendo, true);
   const enCartel = useCartelVisible();
 
@@ -80,23 +85,24 @@ function EnVivoDeInicio(visto: Visto) {
       {pedidos.map((u) => (
         <Aparece key={u.id}>
         <View testID="pedido-de-union" style={estilos.tarjeta} accessibilityRole="alert">
+          <FondoOctogonal relleno={conAlfa(C.hoja, 0.96)} borde={C.lineaFuerte} corte={10} />
           <Text style={estilos.texto}>{T.social.quiereUnirse(u.otro.username)}</Text>
           <View style={estilos.botones}>
-            <Pressable
+            <Tocable
               testID="pedido-de-union-no"
               style={estilos.borde}
               hitSlop={8}
               onPress={() => void responderUnion(supabase, u.id, false).then(recargar)}
             >
               <Text style={estilos.bordeTexto}>{T.social.no}</Text>
-            </Pressable>
-            <Pressable
+            </Tocable>
+            <Tocable
               testID="pedido-de-union-aceptar"
               style={estilos.solido}
               onPress={() => void responderUnion(supabase, u.id, true).then(recargar)}
             >
               <Text style={estilos.solidoTexto}>{T.social.aceptar}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         </View>
         </Aparece>
@@ -105,23 +111,19 @@ function EnVivoDeInicio(visto: Visto) {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   tarjeta: {
     marginTop: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.lineaFuerte,
-    backgroundColor: conAlfa(C.hoja, 0.96),
   },
   texto: { color: C.tinta, fontSize: 15, lineHeight: 21 },
   botones: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 12 },
-  borde: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 18 },
+  borde: { borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 18 },
   bordeTexto: { color: C.tinta, fontSize: 14 },
-  solido: { backgroundColor: C.tinta, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 18 },
+  solido: { backgroundColor: C.tinta, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 18 },
   solidoTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
-});
+}));
 
 // Con los mismos props no se redibuja: el + de la sesión redibuja Inicio y esto no cambió (15/10).
 export default memo(EnVivoDeInicio);

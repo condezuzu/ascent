@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { Unidad } from '@nucleo/peso';
 import { confirmarCampo, hayQueAvisar, limpiarTecleo, pasoDelCampo, pesoEscrito, textoDelCampo } from '@nucleo/campoPeso';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text, TextInput } from './Texto';
+import { L } from './fuentes';
+import Tocable from './Tocable';
 
 /**
  * EL PESO, escrito una vez. La misma pieza que `src/components/CampoPeso.tsx`:
@@ -36,6 +40,7 @@ export default function CampoPeso({
    */
   alTeclear?: (confirmar: (() => void) | null) => void;
 }) {
+  useTema();
   const mostrar = (v: number | null | undefined) => textoDelCampo(v, unidad);
   const [texto, setTexto] = useState(mostrar(kg));
   // HAY ALGO TECLEADO SIN CONFIRMAR. El peso puede cambiar desde afuera —llega
@@ -93,9 +98,9 @@ export default function CampoPeso({
   return (
     <View style={estilos.fila}>
       {!compacto && (
-        <Pressable style={estilos.paso} onPress={() => paso(-1)} disabled={!kg} accessibilityLabel={T.sesion.pesoBajar}>
+        <Tocable style={estilos.paso} onPress={() => paso(-1)} disabled={!kg} accessibilityLabel={T.sesion.pesoBajar}>
           <Text style={[estilos.pasoTexto, !kg && estilos.apagado]}>−</Text>
-        </Pressable>
+        </Tocable>
       )}
       <View style={estilos.caja}>
         <TextInput
@@ -120,15 +125,15 @@ export default function CampoPeso({
         <Text style={[estilos.unidad, compacto && estilos.unidadCompacta]}>{unidad}</Text>
       </View>
       {!compacto && (
-        <Pressable style={estilos.paso} onPress={() => paso(1)} disabled={!kg} accessibilityLabel={T.sesion.pesoSubir}>
+        <Tocable style={estilos.paso} onPress={() => paso(1)} disabled={!kg} accessibilityLabel={T.sesion.pesoSubir}>
           <Text style={[estilos.pasoTexto, !kg && estilos.apagado]}>+</Text>
-        </Pressable>
+        </Tocable>
       )}
     </View>
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   fila: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   // Grandes de tocar aunque se vean chicos: se tocan con la mano transpirada.
   paso: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
@@ -144,15 +149,16 @@ const estilos = StyleSheet.create({
   },
   input: {
     color: C.tinta,
-    fontSize: 22,
+    fontSize: 16,
+    letterSpacing: -0.3,
     // Ancho FIJO: en web un campo sin ancho ocupa la fila entera y empuja la
     // etiqueta del modo al renglón de abajo.
     width: 66,
     textAlign: 'right',
-    fontVariant: ['tabular-nums'],
+    fontFamily: L.dato,
     padding: 0,
   },
   inputCompacto: { fontSize: 14, width: 44 },
-  unidad: { color: C.apagado, fontSize: 12 },
+  unidad: { color: C.sub, fontSize: 12 },
   unidadCompacta: { fontSize: 10 },
-});
+}));

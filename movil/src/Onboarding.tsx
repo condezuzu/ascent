@@ -1,19 +1,15 @@
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-} from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
 import { nombreValido } from '@nucleo/usuario';
 import { T } from '@nucleo/textos';
 import { reiniciarGuia } from '@compartido/guia';
+import { C, DESHABILITADO, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text, TextInput } from './Texto';
+import Tocable from './Tocable';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * ELEGIR EL NOMBRE — lo que falta para que una cuenta nueva sirva.
@@ -32,6 +28,7 @@ import { reiniciarGuia } from '@compartido/guia';
  * en el teléfono.
  */
 export default function Onboarding({ alElegir }: { alElegir: () => void }) {
+  useTema();
   const [nombre, setNombre] = useState('');
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
@@ -99,20 +96,21 @@ export default function Onboarding({ alElegir }: { alElegir: () => void }) {
           autoCorrect={false}
           maxLength={20}
           placeholder={T.ajustes.nombrePlaceholder}
-          placeholderTextColor="#4a5163"
+          placeholderTextColor={C.apagado}
         />
 
-        <Pressable
+        <Tocable
           style={[estilos.solido, cargando && estilos.apagado]}
           onPress={guardar}
           disabled={cargando}
         >
+<FondoOctogonal relleno={C.claro} luz={C.claro} />
           {cargando ? (
-            <ActivityIndicator color="#05060a" />
+            <ActivityIndicator color={C.fondo} />
           ) : (
             <Text style={estilos.textoSolido}>{T.entrar.empezar}</Text>
           )}
-        </Pressable>
+        </Tocable>
 
         {error !== '' && <Text style={estilos.error}>{error}</Text>}
 
@@ -126,16 +124,16 @@ export default function Onboarding({ alElegir }: { alElegir: () => void }) {
 
             Es la misma familia que el perfil sin señal y que la cuenta
             borrada desde otro aparato: una pantalla de la que no se sale. */}
-        <Pressable style={estilos.salir} onPress={salir} hitSlop={8}>
+        <Tocable style={estilos.salir} onPress={salir} hitSlop={8}>
           <Text style={estilos.salirTexto}>{T.ajustes.cerrarSesion}</Text>
-        </Pressable>
+        </Tocable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const estilos = StyleSheet.create({
-  todo: { flex: 1, backgroundColor: '#05060a' },
+const estilos = conTema(() => StyleSheet.create({
+  todo: { flex: 1, backgroundColor: C.fondo },
   centro: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -145,28 +143,29 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
   },
   marca: {
-    color: '#8a93a8',
+    color: C.sub,
     fontSize: 13,
     letterSpacing: 6,
     textTransform: 'uppercase',
+    fontWeight: '500',
     textAlign: 'center',
     marginBottom: 44,
   },
-  titulo: { color: '#e8ecf6', fontSize: 22, marginBottom: 6 },
-  sub: { color: '#8a93a8', fontSize: 14, marginBottom: 22 },
+  titulo: { color: C.tinta, fontSize: 22, marginBottom: 6 },
+  sub: { color: C.sub, fontSize: 14, marginBottom: 22 },
   campo: {
-    borderBottomColor: '#2a3040',
+    borderBottomColor: C.lineaFuerte,
     borderBottomWidth: 1,
-    color: '#e8ecf6',
+    color: C.tinta,
     fontSize: 16,
     paddingVertical: 10,
     marginBottom: 20,
   },
-  solido: { backgroundColor: '#c4c2ba', borderRadius: 2, paddingVertical: 15, alignItems: 'center' },
-  apagado: { opacity: 0.6 },
-  textoSolido: { color: '#05060a', fontSize: 15, fontWeight: '600' },
-  error: { color: '#e8705f', fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },
+  solido: { paddingVertical: 15, alignItems: 'center' },
+  apagado: { opacity: DESHABILITADO },
+  textoSolido: { color: C.fondo, fontSize: 15, fontWeight: '600' },
+  error: { color: C.error, fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },
   // Discreta y abajo: es la salida de emergencia, no una de las dos opciones.
   salir: { marginTop: 28, alignItems: 'center', paddingVertical: 10 },
-  salirTexto: { color: '#8a93a8', fontSize: 14 },
-});
+  salirTexto: { color: C.sub, fontSize: 14 },
+}));

@@ -12,6 +12,7 @@ import {
 import { GLView, type ExpoWebGLRenderingContext } from 'expo-gl';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import VeloDeLectura from './VeloDeLectura';
 import type { WebGLRenderer } from 'three';
 import type { Montaje, OpcionesFondo } from '@compartido/motor/escena';
 import { eventos } from '@compartido/eventos';
@@ -661,6 +662,7 @@ export default function FondoRaiz() {
         colors={[conAlfa(fondo, 0.8), conAlfa(fondo, 0), conAlfa(fondo, 0), conAlfa(fondo, 0.88)]}
         locations={[0, 0.26, 0.86, 1]}
       />
+      <VeloDeLectura entero={!op.lecturaMedia} />
       </>
       )}
     </View>

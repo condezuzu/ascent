@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { cuentaAtras } from '@compartido/descanso';
 import { renglonDe } from '@nucleo/enVivo';
 import { T } from '@nucleo/textos';
@@ -6,7 +6,10 @@ import { nombreVisible } from '@nucleo/propios';
 import { useUniones } from './useUniones';
 import { useNombresDeEjercicios } from './useNombresDeEjercicios';
 import Avatar from './Avatar';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
 
 /**
  * EL COMPAÑERO, ABAJO DE MI DESCANSO (12/10/2026): su ejercicio, su serie y su
@@ -18,6 +21,7 @@ import { C } from './colores';
  * repinta cuatro veces por segundo: acá no hay un segundo reloj.
  */
 export default function CompaneroEnDescanso({ visible, ahora }: { visible: boolean; ahora: number }) {
+  useTema();
   const { uniones, recibidoEn } = useUniones(visible, true);
   const aceptadas = uniones.filter((u) => u.estado === 'aceptada');
   const hay = aceptadas.length > 0;
@@ -61,16 +65,16 @@ export default function CompaneroEnDescanso({ visible, ahora }: { visible: boole
   );
 }
 
-const estilos = StyleSheet.create({
-  caja: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineaFuerte, marginTop: 8, paddingTop: 6 },
+const estilos = conTema(() => StyleSheet.create({
+  caja: { borderTopWidth: 1, borderTopColor: C.lineaFuerte, marginTop: 8, paddingTop: 6 },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   nombre: { color: C.tinta, fontSize: 15, flexShrink: 1 },
   detalle: { color: C.sub, fontSize: 14, marginTop: 3 },
   viejo: { color: C.apagado },
   apagada: { color: C.apagado, fontSize: 13 },
-  pildora: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 11 },
+  pildora: { borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 11 },
   pildoraLista: { borderColor: C.sub },
-  pildoraTexto: { color: C.sub, fontSize: 13, fontVariant: ['tabular-nums'] },
+  pildoraTexto: { color: C.sub, fontSize: 13, fontFamily: L.dato },
   pildoraTextoLista: { color: C.tinta },
-});
+}));

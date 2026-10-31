@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Pressable, StyleSheet, View } from 'react-native';
 import { ORDEN_SEMANA, tituloDelDia, type DiaDeSemana } from '@nucleo/rutinas';
 import { T } from '@nucleo/textos';
 import { nombreVisible } from '@nucleo/propios';
 import type { CatalogoDeRutina } from '@compartido/rutinas';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import { LLEGA } from './movimiento';
 
 /**
  * UNA RUTINA PLEGADA POR DÍA (14/10): "Lunes — Pecho, hombro y brazo", y al
@@ -34,6 +38,7 @@ export default function RutinaPlegada({
   abiertos?: boolean;
   testID?: string;
 }) {
+  useTema();
   const [abierto, setAbierto] = useState<number | null>(abiertoAlEmpezar ?? null);
   const grupoDe = (id: string) => catalogo.get(id)?.grupo ?? null;
   const visibles = ORDEN_SEMANA.filter((d) => !soloConAlgo || dias[d].descanso || dias[d].ejercicios.length > 0);
@@ -104,6 +109,7 @@ const TOPE_DE_ESCALONES = 28;
 const seriesAntes = (dia: DiaDeSemana, i: number) => dia.ejercicios.slice(0, i).reduce((n, e) => n + (e.minutos === undefined ? e.series : 0), 0);
 
 function BloquesDeSeries({ series, desde }: { series: number; desde: number }) {
+  useTema();
   return (
     <View style={estilos.bloques} accessible accessibilityLabel={T.rutina.series(series)}>
       {Array.from({ length: series }, (_, i) => (
@@ -114,6 +120,7 @@ function BloquesDeSeries({ series, desde }: { series: number; desde: number }) {
 }
 
 function BloqueDeSerie({ indice }: { indice: number }) {
+  useTema();
   const t = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     let vivo = true;
@@ -126,7 +133,7 @@ function BloqueDeSerie({ indice }: { indice: number }) {
           toValue: 1,
           duration: ESCALON_MS,
           delay: 150 + Math.min(indice, TOPE_DE_ESCALONES) * ENTRE_ESCALONES_MS,
-          easing: Easing.bezier(0.2, 0.8, 0.3, 1),
+          easing: LLEGA,
           useNativeDriver: true,
         }).start();
       });
@@ -137,8 +144,8 @@ function BloqueDeSerie({ indice }: { indice: number }) {
   return <Animated.View style={[estilos.bloque, { opacity: t, transform: [{ scale: t.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }] }]} />;
 }
 
-const estilos = StyleSheet.create({
-  dia: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.linea },
+const estilos = conTema(() => StyleSheet.create({
+  dia: { borderTopWidth: 1, borderTopColor: C.linea },
   cabecera: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 13 },
   tocado: { opacity: 0.6 },
   nombre: { flex: 1, color: C.tinta, fontSize: 15 },
@@ -148,7 +155,7 @@ const estilos = StyleSheet.create({
   lista: { paddingBottom: 12 },
   fila: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 5 },
   ejercicio: { color: C.sub, fontSize: 14, flexShrink: 1 },
-  cantidad: { color: C.apagado, fontSize: 13, fontVariant: ['tabular-nums'] },
+  cantidad: { color: C.apagado, fontSize: 13, fontFamily: L.dato },
   bloques: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 4, maxWidth: '55%' },
-  bloque: { width: 16, height: 12, borderRadius: 3, backgroundColor: C.principal },
-});
+  bloque: { width: 16, height: 12, borderRadius: 1, backgroundColor: C.cuadro },
+}));

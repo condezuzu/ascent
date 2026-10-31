@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Modal, Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { RANGOS } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
 import LienzoSubida from './LienzoSubida';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, conTema } from './colores';
+import { useTema } from './useTema';
 import { taparElFondo } from './desenfoqueDelFondo';
+import { Text, TextoAnimado } from './Texto';
+import { L } from './fuentes';
+import { R } from './roles';
+import { LLEGA, LLENA } from './movimiento';
 
 /**
  * SUBISTE DE RANGO. El premio de la app, que en el teléfono no existía.
@@ -62,6 +67,7 @@ export default function SubidaRango({
   planeta?: string | null;
   alCerrar: () => void;
 }) {
+  useTema();
   const [formado, setFormado] = useState(false);
   // LA PULIDA (15/10, elegida en la galería): el fondo se cierra mientras se deshace
   // el viejo y se abre al formarse el nuevo, un anillo de luz sale una vez, el objeto
@@ -95,13 +101,13 @@ export default function SubidaRango({
   const alTerminar = useCallback(() => {
     setFormado(true);
     plataforma.haptica.pulso();
-    const sale = Easing.bezier(0.2, 0.7, 0.2, 1);
+    const sale = LLENA;
     const sube = (v: Animated.Value, demora: number, dura: number, nativo = true) =>
       Animated.timing(v, { toValue: 1, delay: demora, duration: dura, easing: sale, useNativeDriver: nativo });
     Animated.parallel([
       Animated.timing(vineta, { toValue: 0.25, duration: 1400, useNativeDriver: true }),
       Animated.sequence([
-        Animated.timing(pulso, { toValue: 1, duration: 360, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(pulso, { toValue: 1, duration: 360, easing: LLEGA, useNativeDriver: true }),
         Animated.timing(pulso, { toValue: 0, duration: 540, easing: sale, useNativeDriver: true }),
       ]),
       sube(anillo, 0, 1200),
@@ -198,9 +204,9 @@ export default function SubidaRango({
               animación sin correr. Es lo que hace la web. */}
           {formado && (
             <View>
-              <Animated.Text style={[estilos.rotulo, aparece(rotulo)]}>{T.sesion.nuevoRango}</Animated.Text>
+              <TextoAnimado style={[estilos.rotulo, aparece(rotulo)]}>{T.sesion.nuevoRango}</TextoAnimado>
               {/* El nombre entra apretando el espaciado, como si se enfocara. */}
-              <Animated.Text
+              <TextoAnimado
                 style={[
                   estilos.nombre,
                   {
@@ -210,14 +216,14 @@ export default function SubidaRango({
                 ]}
               >
                 {nombre}
-              </Animated.Text>
+              </TextoAnimado>
               {/* DE DÓNDE VENÍAS NO SE DICE (sacado el 23/9, a pedido). El
                   momento es el rango nuevo; nombrar el viejo al lado le
                   reparte la atención a lo que se acaba de dejar. */}
               {typeof racha === 'number' && racha > 0 && (
-                <Animated.Text style={[estilos.dia, aparece(dia)]}>{T.sesion.rangoDia(racha)}</Animated.Text>
+                <TextoAnimado style={[estilos.dia, aparece(dia)]}>{T.sesion.rangoDia(racha)}</TextoAnimado>
               )}
-              <Animated.Text style={[estilos.seguir, aparece(seguir)]}>{T.sesion.rangoSeguir}</Animated.Text>
+              <TextoAnimado style={[estilos.seguir, aparece(seguir)]}>{T.sesion.rangoSeguir}</TextoAnimado>
             </View>
           )}
         </View>
@@ -231,14 +237,14 @@ function aparece(v: Animated.Value) {
   return { opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [4, 0] }) }] };
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   centro: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   anillo: { width: 240, height: 240, borderRadius: 120, borderWidth: 6, borderColor: conAlfa(C.tinta, 0.22) },
   todo: { flex: 1, backgroundColor: C.fondo },
   // El texto abajo y el objeto en el medio: la forma se mira primero.
   texto: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 28, paddingBottom: 64 },
-  rotulo: { color: C.sub, fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 10 },
+  rotulo: { ...R.etiqueta, marginBottom: 10  },
   nombre: { color: C.tinta, fontSize: 32, fontWeight: '300', letterSpacing: -0.4 },
-  dia: { color: C.apagado, fontSize: 13, marginTop: 4, fontVariant: ['tabular-nums'] },
+  dia: { color: C.apagado, fontSize: 13, marginTop: 4, fontFamily: L.dato },
   seguir: { color: C.apagado, fontSize: 12, marginTop: 26 },
-});
+}));

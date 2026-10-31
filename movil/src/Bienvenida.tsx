@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { T } from '@nucleo/textos';
 import Espacio from './bienvenida/Espacio';
 import { despertarMotor } from './despertarMotor';
@@ -7,7 +7,10 @@ import Objetos from './bienvenida/Objetos';
 import Circulito from './bienvenida/Circulito';
 import RankingDeEntrada from './bienvenida/RankingDeEntrada';
 import { MiniAmigo, MiniBloque, MiniSemana } from './bienvenida/Muestras';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import { LLENA } from './movimiento';
 
 /**
  * LA ENTRADA (15/10, aprobada en la galería): cuatro pantallas, una cosa real de la
@@ -36,6 +39,7 @@ function useReloj(clave: string) {
 }
 
 export default function Bienvenida({ alSalir }: { alSalir: (destino: 'crear' | 'entrar') => void }) {
+  useTema();
   const [clave, setClave] = useState<Clave>('pesos');
   const t = useReloj(clave);
   const entra = useRef(new Animated.Value(0)).current;
@@ -43,7 +47,7 @@ export default function Bienvenida({ alSalir }: { alSalir: (destino: 'crear' | '
 
   useEffect(() => {
     entra.setValue(0);
-    Animated.timing(entra, { toValue: 1, duration: 500, easing: Easing.bezier(0.2, 0.7, 0.2, 1), useNativeDriver: true }).start();
+    Animated.timing(entra, { toValue: 1, duration: 500, easing: LLENA, useNativeDriver: true }).start();
   }, [clave, entra]);
 
   const texto = {
@@ -90,7 +94,7 @@ export default function Bienvenida({ alSalir }: { alSalir: (destino: 'crear' | '
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   raiz: { ...StyleSheet.absoluteFillObject, backgroundColor: C.fondo },
   contenido: { flex: 1, justifyContent: 'center', paddingHorizontal: 28, gap: 34 },
   titulo: { color: C.tinta, fontSize: 30, lineHeight: 36, fontWeight: '500', marginBottom: 12 },
@@ -99,4 +103,4 @@ const estilos = StyleSheet.create({
   puntos: { flexDirection: 'row', gap: 8 },
   punto: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.apagado },
   puntoVivo: { backgroundColor: C.tinta },
-});
+}));

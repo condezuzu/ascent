@@ -3,6 +3,7 @@ import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from 'react-nat
 import Svg, { Circle, Defs, Path, RadialGradient, Stop } from 'react-native-svg';
 import { ENTRADA, ENTRADA_ESPERA_MAX_MS } from '@nucleo/animacion';
 import { LOGO, arcoDelLogo, puntoDelLogo } from '@nucleo/logo';
+import { LLEGA, SE_VA } from './movimiento';
 
 // Animated le agrega `collapsable={false}`, y en la web llega al <path> del DOM como un
 // atributo que no existe (React lo canta en la consola). Al trazo no le sirve: se descarta.
@@ -50,11 +51,11 @@ export default function EntradaDeLaApp({ lista, alAbrir, alTerminar }: { lista: 
           Animated.parallel([
             // El trazo no anda con el driver nativo; el resto sí. Por eso la app no se monta todavía.
             Animated.timing(aro, { toValue: 1, duration: ENTRADA.aro, easing: Easing.bezier(0.45, 0, 0.25, 1), useNativeDriver: false }),
-            Animated.timing(planeta, { toValue: 1, duration: ENTRADA.aro * 0.9, easing: Easing.out(Easing.quad), useNativeDriver: false }),
+            Animated.timing(planeta, { toValue: 1, duration: ENTRADA.aro * 0.9, easing: LLEGA, useNativeDriver: false }),
           ]),
           Animated.parallel([
-            Animated.timing(punto, { toValue: 1, duration: ENTRADA.destello, easing: Easing.out(Easing.quad), useNativeDriver: false }),
-            Animated.timing(destello, { toValue: 1, duration: ENTRADA.destello * 1.6, easing: Easing.out(Easing.quad), useNativeDriver: false }),
+            Animated.timing(punto, { toValue: 1, duration: ENTRADA.destello, easing: LLEGA, useNativeDriver: false }),
+            Animated.timing(destello, { toValue: 1, duration: ENTRADA.destello * 1.6, easing: LLEGA, useNativeDriver: false }),
           ]),
         ]).start(() => vivo && setFase('esperando'));
       });
@@ -76,7 +77,7 @@ export default function EntradaDeLaApp({ lista, alAbrir, alTerminar }: { lista: 
     Animated.timing(zoom, {
       toValue: 1,
       duration: quieto ? 200 : ENTRADA.zoom,
-      easing: Easing.bezier(0.55, 0, 0.8, 0.2),
+      easing: SE_VA,
       // Nativo: la app se monta justo ahora y traba el hilo de JS; el zoom no se entera.
       useNativeDriver: true,
     }).start(() => alTerminar());

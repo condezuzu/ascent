@@ -1,5 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { C, conAlfa } from './colores';
+import { StyleSheet, View } from 'react-native';
+import { C, conAlfa, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * UNA ELECCIÓN ENTRE POCAS, EN UNA SOLA PIEZA (15/10/2026). Ajustes eran pastillas
@@ -16,12 +19,13 @@ export default function Segmentado<V>({
   valor: V;
   alElegir: (v: V) => void;
 }) {
+  useTema();
   return (
     <View style={estilos.caja} accessibilityRole="radiogroup">
       {opciones.map((o, i) => {
         const elegida = o.valor === valor;
         return (
-          <Pressable
+          <Tocable
             key={String(o.valor)}
             testID={o.testID}
             onPress={() => alElegir(o.valor)}
@@ -32,24 +36,24 @@ export default function Segmentado<V>({
             <Text style={[estilos.texto, elegida && estilos.textoElegido]} numberOfLines={1}>
               {o.texto}
             </Text>
-          </Pressable>
+          </Tocable>
         );
       })}
     </View>
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   caja: {
     flexDirection: 'row',
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
-    borderRadius: 12,
+    borderRadius: 999,
     overflow: 'hidden',
   },
-  parte: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 11, paddingHorizontal: 6 },
-  separada: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: C.lineaFuerte },
+  parte: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 11, paddingHorizontal: 2 },
+  separada: { borderLeftWidth: 1, borderLeftColor: C.lineaFuerte },
   elegida: { backgroundColor: conAlfa(C.claro, 0.14) },
-  texto: { color: C.apagado, fontSize: 14 },
-  textoElegido: { color: C.tinta, fontWeight: '600' },
-});
+  texto: { color: C.apagado, fontSize: 13 },
+  textoElegido: { color: C.tinta, fontWeight: '500' },
+}));

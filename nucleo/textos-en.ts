@@ -150,7 +150,7 @@ export const EN: Textos = {
     registrarDia: 'Log day',
     registrarPrimerDia: 'Log your first day',
     diaRegistrado: 'Day logged',
-    minutosDeHoy: (n: number) => `${n} minutes today`,
+    minutosDeHoy: (n: number) => `${n} ${n === 1 ? 'minute' : 'minutes'} today`,
     diaSolo: 'You were there. The day logged itself.',
     iniciarEntrenamiento: 'Start workout',
     iniciarGrupo: 'Start group',

@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { cargasOfrecidas, claveDeEtiqueta, type Carga } from '@nucleo/carga';
 import { T } from '@nucleo/textos';
 import { useVersionDelEsquema } from '@compartido/esquema';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * QUÉ SIGNIFICA EL NÚMERO, pegado al número. La misma pieza que la web: una
@@ -25,13 +28,14 @@ export default function EtiquetaDeCarga({
   alElegir: (c: Carga) => void;
   chica?: boolean;
 }) {
+  useTema();
   const [abierta, setAbierta] = useState(false);
   const version = useVersionDelEsquema();
   const clave = claveDeEtiqueta(carga, ejercicio);
 
   return (
     <>
-      <Pressable
+      <Tocable
         style={[estilos.etiqueta, chica && estilos.etiquetaChica]}
         onPress={() => setAbierta((x) => !x)}
         accessibilityRole="button"
@@ -39,11 +43,11 @@ export default function EtiquetaDeCarga({
       >
         <Text style={[estilos.texto, chica && estilos.textoChico]}>{T.sesion.carga[clave]}</Text>
         <Text style={estilos.flecha}>▾</Text>
-      </Pressable>
+      </Tocable>
       {abierta && (
         <View style={estilos.opciones}>
           {cargasOfrecidas(version).map((c) => (
-            <Pressable
+            <Tocable
               key={c}
               style={[estilos.opcion, c === carga && estilos.prendida]}
               onPress={() => {
@@ -55,7 +59,7 @@ export default function EtiquetaDeCarga({
               <Text style={[estilos.opcionTexto, c === carga && estilos.opcionPrendida]}>
                 {T.sesion.cargaOpcion[claveDeEtiqueta(c, ejercicio)]}
               </Text>
-            </Pressable>
+            </Tocable>
           ))}
         </View>
       )}
@@ -63,12 +67,12 @@ export default function EtiquetaDeCarga({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   etiqueta: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 44, paddingHorizontal: 4 },
   etiquetaChica: { minHeight: 30 },
   texto: { color: C.sub, fontSize: 13 },
   textoChico: { fontSize: 12 },
-  flecha: { color: C.apagado, fontSize: 10 },
+  flecha: { color: C.sub, fontSize: 10 },
   opciones: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 4 },
   opcion: {
     borderWidth: 1,
@@ -80,4 +84,4 @@ const estilos = StyleSheet.create({
   prendida: { borderColor: C.principal },
   opcionTexto: { color: C.sub, fontSize: 13 },
   opcionPrendida: { color: C.tinta },
-});
+}));

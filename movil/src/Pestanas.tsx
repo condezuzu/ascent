@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, AppState, Easing, PanResponder, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Animated, AppState, PanResponder, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from './supabase';
 import { miId, quienSoy } from '@compartido/quienSoy';
@@ -20,6 +20,13 @@ import IconoDePestana from './IconoDePestana';
 import { ContextoVisible } from './pedidoDeFondo';
 import { deslizarPestanasBloqueado } from './gestoDePestanas';
 import CartelDeArriba from './CartelDeArriba';
+import { C, conTema, conAlfa } from './colores';
+import { useTema } from './useTema';
+import { Text, TextoAnimado } from './Texto';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import { LLEGA } from './movimiento';
+import Tocable from './Tocable';
 
 /**
  * LA BARRA DE ABAJO, con las pantallas que ya existen en nativo.
@@ -132,6 +139,7 @@ export default function Pestanas({
   alSalir: () => void;
   alFaltarNombre: () => void;
 }) {
+  useTema();
   const [pestana, setPestana] = useState<Pestana>('inicio');
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [perfilNoCargo, setPerfilNoCargo] = useState(false);
@@ -352,7 +360,7 @@ export default function Pestanas({
       Animated.timing(correr, {
         toValue: llega,
         duration: VIAJE_MS,
-        easing: Easing.bezier(...CURVA),
+        easing: LLEGA,
         useNativeDriver: true,
       }).start();
     },
@@ -416,7 +424,7 @@ export default function Pestanas({
           Animated.timing(correr, {
             toValue: llega,
             duration: VIAJE_MS,
-            easing: Easing.bezier(...CURVA),
+            easing: LLEGA,
             useNativeDriver: true,
           }).start(({ finished }) => {
             // UN VIAJE CORTADO NO DECIDE NADA. Lo corta otro gesto o un toque en
@@ -445,7 +453,7 @@ export default function Pestanas({
           Animated.timing(correr, {
             toValue: llega,
             duration: VIAJE_MS,
-            easing: Easing.bezier(...CURVA),
+            easing: LLEGA,
             useNativeDriver: true,
           }).start(({ finished }) => {
             if (finished && !gesto.current.decidido) setAsomando(null);
@@ -470,13 +478,13 @@ export default function Pestanas({
     ) : perfilNoCargo ? (
       <View style={estilos.centrado}>
         <Text style={estilos.noCargo}>{T.inicio.noCargo}</Text>
-        <Pressable style={estilos.reintentar} onPress={cargarPerfil}>
+        <Tocable style={estilos.reintentar} onPress={cargarPerfil}>
           <Text style={estilos.reintentarTexto}>{T.inicio.reintentar}</Text>
-        </Pressable>
+        </Tocable>
       </View>
     ) : (
       <View style={estilos.centrado}>
-        <ActivityIndicator color="#8a93a8" />
+        <ActivityIndicator color={C.sub} />
       </View>
     );
   };
@@ -561,14 +569,23 @@ export default function Pestanas({
         })}
       </View>
 
+      {/* Lo que se desplaza se apaga debajo de la barra de estado, sin cortarse de golpe. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[conAlfa(C.fondo, 0.95), conAlfa(C.fondo, 0)]}
+        style={estilos.tope}
+      />
+
       <View style={estilos.barra} accessibilityRole="tablist">
+        <BlurView tint="dark" intensity={40} style={StyleSheet.absoluteFill} pointerEvents="none" />
+        <View style={[StyleSheet.absoluteFill, estilos.barraVelo]} pointerEvents="none" />
         {/* El orden de la web: Inicio, Ranking, Álbum, Stats, Ajustes. */}
         {ORDEN.map((p, i) => {
           // EL PUNTITO EN RANKING: hay solicitudes esperando y no estás mirando
           // Ranking. Estando ahí ya las ves (van al final de la pantalla).
           const avisa = p === 'ranking' && solicitudes > 0 && pestana !== 'ranking';
           return (
-            <Pressable
+            <Tocable
               key={p}
               style={estilos.boton}
               onPress={() => irA(p)}
@@ -581,9 +598,9 @@ export default function Pestanas({
               {/* EL ICONO ARRIBA Y LA PALABRA CHICA ABAJO (28/10). El icono se enciende igual
                   que el rótulo: uno apagado y otro encendido encima, con la luz de la tira. */}
               <View style={estilos.icono}>
-                <IconoDePestana cual={p} color="#4a5163" />
+                <IconoDePestana cual={p} color={C.apagado} />
                 <Animated.View style={[StyleSheet.absoluteFill, { opacity: luces[i] }]} pointerEvents="none">
-                  <IconoDePestana cual={p} color="#e8ecf6" />
+                  <IconoDePestana cual={p} color={C.claro} luz />
                 </Animated.View>
                 {avisa && <View style={estilos.punto} />}
               </View>
@@ -592,16 +609,16 @@ export default function Pestanas({
                 {/* LA LUZ: el mismo rótulo, encendido, encima del apagado. Lo
                     que cambia es su opacidad, y sale de la tira (`luces`), no
                     de `pestana`. */}
-                <Animated.Text
+                <TextoAnimado
                   testID={'luz-' + p}
                   style={[estilos.texto, estilos.luz, { opacity: luces[i] }]}
                   accessibilityElementsHidden
                   importantForAccessibility="no"
                 >
                   {rotuloDe(p)}
-                </Animated.Text>
+                </TextoAnimado>
               </View>
-            </Pressable>
+            </Tocable>
           );
         })}
       </View>
@@ -615,7 +632,7 @@ export default function Pestanas({
 // La pestaña de Ranking dice "Social" en la barra (15/10).
 const rotuloDe = (p: keyof typeof T.nav) => (p === 'ranking' ? T.nav.social : T.nav[p]);
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // SIN FONDO PROPIO: el motor vive en la raíz del router, detrás de todo, y
   // pintar acá lo taparía. Ver .
   todo: { flex: 1 },
@@ -625,22 +642,24 @@ const estilos = StyleSheet.create({
   // veía el fondo del motor en vez de la pantalla que asoma (visto a :8092).
   carril: { position: 'absolute', top: 0, bottom: 0, left: 0 },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  noCargo: { color: '#8a93a8', fontSize: 14, textAlign: 'center', paddingHorizontal: 32, marginBottom: 14 },
-  reintentar: { borderWidth: StyleSheet.hairlineWidth, borderColor: '#8a93a8', borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10 },
-  reintentarTexto: { color: '#e8ebf2', fontSize: 14 },
+  noCargo: { color: C.sub, fontSize: 14, textAlign: 'center', paddingHorizontal: 32, marginBottom: 14 },
+  reintentar: { borderWidth: 1, borderColor: C.sub, borderRadius: 999, paddingHorizontal: 18, paddingVertical: 10 },
+  reintentarTexto: { color: C.tinta, fontSize: 14 },
   barra: {
     flexDirection: 'row',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#1d2230',
+    borderTopWidth: 1,
+    borderTopColor: C.linea,
     paddingBottom: 20,
     paddingTop: 6,
-    backgroundColor: '#05060a',
   },
+  // Encima del desenfoque y no en la barra: iOS dibuja mal un desenfoque con algo translúcido debajo.
+  barraVelo: { backgroundColor: conAlfa(C.negro, 0.62) },
+  tope: { position: 'absolute', left: 0, right: 0, top: 0, height: 62 },
   boton: { flex: 1, alignItems: 'center', paddingVertical: 4, minHeight: 44, justifyContent: 'center', gap: 3 },
   icono: { width: 22, height: 22 },
-  texto: { color: '#4a5163', fontSize: 10, letterSpacing: 0.3 },
+  texto: { color: C.apagado, fontSize: 10, fontWeight: '500', letterSpacing: 0.3 },
   // Encima del rótulo apagado, calzado: mismo texto, mismo tamaño, otro color.
-  luz: { position: 'absolute', left: 0, top: 0, color: '#e8ecf6' },
+  luz: { position: 'absolute', left: 0, top: 0, color: C.claro },
   // El puntito de aviso, arriba a la derecha del icono de la pestaña.
   punto: {
     position: 'absolute',
@@ -649,6 +668,6 @@ const estilos = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 999,
-    backgroundColor: '#e8705f',
+    backgroundColor: C.error,
   },
-});
+}));

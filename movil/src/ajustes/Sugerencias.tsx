@@ -1,10 +1,14 @@
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
 import { versionCompleta } from '../reporteDeErrores';
 import CampoTexto from '../CampoTexto';
-import { C } from '../colores';
+import { C, DESHABILITADO, conTema } from '../colores';
+import { useTema } from '../useTema';
+import { Text } from '../Texto';
+import { R } from '../roles';
+import Tocable from '../Tocable';
 
 /**
  * DECIR ALGO SIN SALIR DE LA APP.
@@ -18,6 +22,7 @@ import { C } from '../colores';
  * campo que después dice si un problema es de un lado o de los dos.
  */
 export default function Sugerencias({ userId }: { userId: string }) {
+  useTema();
   const [texto, setTexto] = useState('');
   const [enviado, setEnviado] = useState(false);
   const [error, setError] = useState('');
@@ -53,25 +58,25 @@ export default function Sugerencias({ userId }: { userId: string }) {
         numberOfLines={3}
         maxLength={2000}
       />
-      <Pressable style={[estilos.boton, !texto.trim() && estilos.apagado]} onPress={mandar} disabled={!texto.trim()}>
+      <Tocable style={[estilos.boton, !texto.trim() && estilos.apagado]} onPress={mandar} disabled={!texto.trim()}>
         <Text style={estilos.botonTexto}>{T.ajustes.mandar}</Text>
-      </Pressable>
+      </Tocable>
       {enviado && <Text style={estilos.ok}>{T.ajustes.sugerenciaEnviada}</Text>}
       {error !== '' && <Text style={estilos.error}>{error}</Text>}
     </View>
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
   // EL MISMO RÓTULO QUE EL RESTO DE AJUSTES: chico, en versalitas y apagado.
   // Estas secciones nacieron con título grande y quedaban como pegadas de otra
   // pantalla — dos estilos de título en una lista se leen como un error.
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
+  titulo: { ...R.etiqueta, marginBottom: 10  },
   campo: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 1,
     paddingHorizontal: 14,
     paddingVertical: 11,
     color: C.tinta,
@@ -80,15 +85,15 @@ const estilos = StyleSheet.create({
     textAlignVertical: 'top',
   },
   boton: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingVertical: 12,
     alignItems: 'center',
     marginTop: 8,
   },
-  apagado: { opacity: 0.45 },
+  apagado: { opacity: DESHABILITADO },
   botonTexto: { color: C.tinta, fontSize: 14 },
   ok: { color: C.sub, fontSize: 13, marginTop: 8 },
   error: { color: C.error, fontSize: 13, marginTop: 8 },
-});
+}));

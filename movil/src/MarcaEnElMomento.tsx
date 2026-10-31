@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { pesoCorto, type Unidad } from '@nucleo/peso';
 import { REPETICIONES_PARA_MARCA } from '@nucleo/marcaSugerida';
 import type { EstadoBloques } from '@nucleo/bloques';
 import { T } from '@nucleo/textos';
 import { useMarcaEnElMomento } from '@compartido/marcaSugerida';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import Tocable from './Tocable';
 
 /**
  * "¿LO GUARDO COMO MARCA?", debajo del bloque y al confirmar la serie que puede
@@ -32,6 +36,7 @@ export default function MarcaEnElMomento({
    */
   alAparecer?: (vista: View) => void;
 }) {
+  useTema();
   const { actual: s, guardar, descartar } = useMarcaEnElMomento(bloques, inicio);
   const vista = useRef<View>(null);
   // SU LUGAR QUEDA AL IRSE SOLA (18/10). Guardada, se va a los 4,5 s, y lo de abajo —«La
@@ -71,13 +76,13 @@ export default function MarcaEnElMomento({
           <Text style={estilos.cuantas}>{T.marcaSugerida.cuantas}</Text>
           <View style={estilos.reps}>
             {REPETICIONES_PARA_MARCA.map((r) => (
-              <Pressable key={r} style={estilos.rep} disabled={s.estado === 'guardando'} onPress={() => guardar(r)}>
+              <Tocable key={r} style={estilos.rep} disabled={s.estado === 'guardando'} onPress={() => guardar(r)}>
                 <Text style={estilos.repTexto}>{r}</Text>
-              </Pressable>
+              </Tocable>
             ))}
-            <Pressable style={[estilos.rep, estilos.no]} onPress={descartar}>
+            <Tocable style={[estilos.rep, estilos.no]} onPress={descartar}>
               <Text style={estilos.noTexto}>{T.marcaSugerida.no}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         </>
       )}
@@ -85,7 +90,7 @@ export default function MarcaEnElMomento({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   todo: { marginTop: 14, paddingVertical: 12, paddingHorizontal: 14, borderLeftWidth: 2 },
   reserva: { marginTop: 14 },
   texto: { color: C.tinta, fontSize: 15, lineHeight: 21, marginBottom: 8 },
@@ -102,7 +107,7 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 10,
   },
-  repTexto: { color: C.tinta, fontSize: 14, fontVariant: ['tabular-nums'] },
+  repTexto: { color: C.tinta, fontSize: 14, fontFamily: L.dato },
   no: { paddingHorizontal: 14 },
   noTexto: { color: C.sub, fontSize: 14 },
-});
+}));

@@ -1,7 +1,11 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { Semana } from '@nucleo/volumen';
 import { T } from '@nucleo/textos';
 import { C, conAlfa } from './colores';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import { R } from './roles';
+import Tocable from './Tocable';
 
 const ALTO = 72;
 
@@ -37,7 +41,7 @@ export default function KilosPorSemana({
       </Text>
       <View style={estilos.barras}>
         {semanas.map((s, i) => (
-          <Pressable
+          <Tocable
             key={s.desde}
             style={estilos.columna}
             onPress={() => alElegir(i)}
@@ -51,7 +55,7 @@ export default function KilosPorSemana({
                 { height: Math.max(2, (s.kilos / tope) * ALTO), backgroundColor: i === elegida ? color : conAlfa(color, 0.35) },
               ]}
             />
-          </Pressable>
+          </Tocable>
         ))}
       </View>
     </View>
@@ -60,10 +64,10 @@ export default function KilosPorSemana({
 
 const estilos = StyleSheet.create({
   caja: { marginTop: 18 },
-  rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
-  numero: { color: C.tinta, fontSize: 22, fontVariant: ['tabular-nums'], marginTop: 6, marginBottom: 10 },
+  rotulo: { ...R.etiqueta },
+  numero: { color: C.tinta, fontSize: 22, fontFamily: L.dato, marginTop: 6, marginBottom: 10 },
   unidad: { color: C.sub, fontSize: 13 },
   barras: { flexDirection: 'row', alignItems: 'flex-end', height: ALTO, gap: 4 },
   columna: { flex: 1, height: ALTO, justifyContent: 'flex-end' },
-  barra: { borderRadius: 3 },
+  barra: { borderRadius: 1},
 });

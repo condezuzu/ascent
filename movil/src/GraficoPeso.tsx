@@ -1,10 +1,15 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import { StyleSheet, View, type GestureResponderEvent, Animated } from 'react-native';
 import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { conComa, puntoMasCercano, trazarPeso, type Unidad } from '@nucleo/peso';
 import { fechaLinda } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, conTema, luz } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import Tocable from './Tocable';
+import { LLENA, MS, sinMovimiento } from './movimiento';
 
 /**
  * LA TENDENCIA DEL PESO, en la app nativa: la misma que la web
@@ -45,6 +50,7 @@ export default function GraficoPeso({
   /** El `--pal-claro` de la web: la paleta del rango. */
   claro: string;
 }) {
+  useTema();
   const [rango, setRango] = useState<number | null>(null);
   const [tocado, setTocado] = useState<number | null>(null);
   const [ancho, setAncho] = useState(0);
@@ -83,14 +89,7 @@ export default function GraficoPeso({
                 </LinearGradient>
               </Defs>
               <Path d={trazo.area} fill="url(#peso-relleno)" />
-              <Path
-                d={trazo.linea}
-                fill="none"
-                stroke={claro}
-                strokeWidth={1.6}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              <LineaQueSeDibuja d={trazo.linea} color={claro} largo={ancho * 2} />
               {posElegido && (
                 <Line
                   x1={posElegido.x}
@@ -141,7 +140,7 @@ export default function GraficoPeso({
         {RANGOS.map((r) => {
           const activo = r.dias === rango;
           return (
-            <Pressable
+            <Tocable
               key={String(r.dias)}
               hitSlop={8}
               onPress={() => {
@@ -157,7 +156,7 @@ export default function GraficoPeso({
               >
                 {r.etiqueta()}
               </Text>
-            </Pressable>
+            </Tocable>
           );
         })}
       </View>
@@ -170,17 +169,42 @@ export default function GraficoPeso({
  * sombra, que va por FUERA; acá un borde translúcido se mezclaría con el
  * relleno del punto, así que el aro es otra vista, detrás.
  */
+const TrazoAnimado = Animated.createAnimatedComponent(Path);
+
+/** La línea se dibuja de izquierda a derecha al aparecer; después es una línea común. */
+function LineaQueSeDibuja({ d, color, largo }: { d: string; color: string; largo: number }) {
+  useTema();
+  const t = useRef(new Animated.Value(0)).current;
+  const [lista, setLista] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    void sinMovimiento().then((quieto) => {
+      if (!vivo) return;
+      if (quieto) return setLista(true);
+      // Por JS: el trazo de un SVG no va por el motor nativo.
+      Animated.timing(t, { toValue: 1, duration: MS.barra, easing: LLENA, useNativeDriver: false }).start(() => vivo && setLista(true));
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [t]);
+  const comun = { d, fill: 'none', stroke: color, strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  if (lista) return <Path {...comun} />;
+  return <TrazoAnimado {...comun} strokeDasharray={[largo, largo]} strokeDashoffset={t.interpolate({ inputRange: [0, 1], outputRange: [largo, 0] })} />;
+}
+
 function Punto({ x, y, color, aro }: { x: number; y: number; color: string; aro: string }) {
+  useTema();
   return (
     <>
       <View style={[estilos.aro, { left: x, top: y, backgroundColor: aro }]} />
-      <View style={[estilos.punto, { left: x, top: y, backgroundColor: color }]} />
+      <View style={[estilos.punto, { left: x, top: y, backgroundColor: color }, luz(color, 0.9, 5)]} />
     </>
   );
 }
 
-const estilos = StyleSheet.create({
-  grafico: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea, paddingTop: 26, paddingBottom: 6 },
+const estilos = conTema(() => StyleSheet.create({
+  grafico: { borderTopWidth: 1, borderColor: C.linea, paddingTop: 26, paddingBottom: 6 },
   lienzo: { height: ALTO },
   punto: {
     position: 'absolute',
@@ -192,10 +216,10 @@ const estilos = StyleSheet.create({
   },
   aro: { position: 'absolute', width: 13, height: 13, marginLeft: -6.5, marginTop: -6.5, borderRadius: 6.5 },
   pie: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 14, marginTop: 16 },
-  hoy: { color: C.tinta, fontSize: 30, fontWeight: '300', fontVariant: ['tabular-nums'] },
+  hoy: { color: C.tinta, fontSize: 30, fontWeight: '300', fontFamily: L.dato },
   unidad: { color: C.sub, fontSize: 13 },
-  cambio: { color: C.apagado, fontSize: 11, letterSpacing: 0.7, fontVariant: ['tabular-nums'] },
-  cuando: { flex: 1, color: C.apagado, fontSize: 12 },
+  cambio: { color: C.apagado, fontSize: 11, letterSpacing: 0.7, fontFamily: L.dato },
+  cuando: { flex: 1, color: C.apagado, fontSize: 12, fontFamily: L.dato },
   rangos: { flexDirection: 'row', gap: 14, marginTop: 10 },
   rango: { color: C.apagado, fontSize: 12, paddingVertical: 4 },
-});
+}));

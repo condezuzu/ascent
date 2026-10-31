@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { Novedad } from '@nucleo/novedades';
 import { T } from '@nucleo/textos';
 import Avatar from './Avatar';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, conTema, luz } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import { LLEGA, SE_VA } from './movimiento';
+import Tocable from './Tocable';
 
 /** Lo que dura la mecha. Si se quema entera, la invitación se cancela sola. */
 export const MECHA_MS = 10_000;
@@ -28,6 +32,7 @@ export default function InvitacionQueLlega({
   alContestar: (acepta: boolean | null) => void;
   alTerminar: () => void;
 }) {
+  useTema();
   const { width } = useWindowDimensions();
   const ancho = width - MARGEN * 2;
   const caida = useRef(new Animated.Value(0)).current;
@@ -48,8 +53,8 @@ export default function InvitacionQueLlega({
     alContestar(acepta);
     const d = quieto.current ? 0 : 1;
     Animated.sequence([
-      Animated.timing(abre, { toValue: 0, duration: 350 * d, easing: Easing.in(Easing.cubic), useNativeDriver: false }),
-      Animated.timing(salida, { toValue: 1, duration: 500 * d, easing: Easing.in(Easing.cubic), useNativeDriver: false }),
+      Animated.timing(abre, { toValue: 0, duration: 350 * d, easing: SE_VA, useNativeDriver: false }),
+      Animated.timing(salida, { toValue: 1, duration: 500 * d, easing: SE_VA, useNativeDriver: false }),
     ]).start(() => alTerminar());
   }
 
@@ -63,7 +68,7 @@ export default function InvitacionQueLlega({
         const d = q ? 0 : 1;
         Animated.sequence([
           Animated.spring(caida, { toValue: 1, useNativeDriver: false, speed: 9, bounciness: 12 }),
-          Animated.timing(abre, { toValue: 1, duration: 500 * d, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+          Animated.timing(abre, { toValue: 1, duration: 500 * d, easing: LLEGA, useNativeDriver: false }),
         ]).start(({ finished }) => {
           if (!finished || !vivo) return;
           setAbierta(true);
@@ -127,10 +132,10 @@ export default function InvitacionQueLlega({
                   {T.social.cartelInvitacion}
                 </Text>
               </View>
-              <Pressable testID="cartel-no" style={estilos.no} hitSlop={8} onPress={() => irse(false)}>
+              <Tocable testID="cartel-no" style={estilos.no} hitSlop={8} onPress={() => irse(false)}>
                 <Text style={estilos.noTexto} maxFontSizeMultiplier={1.3}>{T.social.no}</Text>
-              </Pressable>
-              <Pressable testID="cartel-aceptar" style={estilos.si} hitSlop={4} onPress={() => irse(true)}>
+              </Tocable>
+              <Tocable testID="cartel-aceptar" style={estilos.si} hitSlop={4} onPress={() => irse(true)}>
                 <Text style={estilos.siTexto} maxFontSizeMultiplier={1.3}>{T.social.aceptar}</Text>
                 <Animated.View
                   pointerEvents="none"
@@ -143,7 +148,7 @@ export default function InvitacionQueLlega({
                     style={StyleSheet.absoluteFill}
                   />
                 </Animated.View>
-              </Pressable>
+              </Tocable>
             </Animated.View>
           </View>
           <Animated.View style={[estilos.mecha, { opacity: resto }]}>
@@ -158,21 +163,17 @@ export default function InvitacionQueLlega({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   lugar: { position: 'absolute', top: 54, left: MARGEN, right: MARGEN, alignItems: 'center' },
   sombra: {
     height: ALTO,
     backgroundColor: C.hoja,
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 12,
+    ...luz(C.claro, 0.22, 12),
   },
   pildora: {
     flex: 1,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     backgroundColor: C.hoja,
   },
@@ -182,7 +183,7 @@ const estilos = StyleSheet.create({
   textos: { flex: 1, minWidth: 0 },
   nombre: { color: C.tinta, fontSize: 14, fontWeight: '600' },
   que: { color: C.sub, fontSize: 13, marginTop: 1 },
-  no: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 7, paddingHorizontal: 12 },
+  no: { borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 7, paddingHorizontal: 12 },
   noTexto: { color: C.sub, fontSize: 13 },
   si: { backgroundColor: C.tinta, borderRadius: 999, paddingVertical: 7, paddingHorizontal: 13, overflow: 'hidden' },
   siTexto: { color: C.fondo, fontSize: 13, fontWeight: '600' },
@@ -201,4 +202,4 @@ const estilos = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 0 },
   },
-});
+}));

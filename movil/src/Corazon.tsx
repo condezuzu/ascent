@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema, conAlfa } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import { LLEGA } from './movimiento';
+import Tocable from './Tocable';
 
 /**
  * EL CORAZÓN DE LA RUTINA DE OTRA PERSONA (20/10). Sin corazones no hay número; con
@@ -14,6 +19,7 @@ const ESTALLIDO_MS = 450;
 const CHISPAS = Array.from({ length: 6 }, (_, i) => (i / 6) * Math.PI * 2);
 
 export default function Corazon({ cantidad, mio, alTocar, tam = 46 }: { cantidad: number; mio: boolean; alTocar: () => void; tam?: number }) {
+  useTema();
   const late = useRef(new Animated.Value(1)).current;
   const estallido = useRef(new Animated.Value(0)).current;
   // Cuántas veces estalló: la animación arranca con la capa ya montada (arrancada antes, en
@@ -27,10 +33,10 @@ export default function Corazon({ cantidad, mio, alTocar, tam = 46 }: { cantidad
     estallido.setValue(0);
     const anim = Animated.parallel([
       Animated.sequence([
-        Animated.timing(late, { toValue: 1.3, duration: 150, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(late, { toValue: 1.3, duration: 150, easing: LLEGA, useNativeDriver: true }),
         Animated.timing(late, { toValue: 1, duration: ESTALLIDO_MS - 150, easing: Easing.out(Easing.back(2)), useNativeDriver: true }),
       ]),
-      Animated.timing(estallido, { toValue: 1, duration: ESTALLIDO_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(estallido, { toValue: 1, duration: ESTALLIDO_MS, easing: LLEGA, useNativeDriver: true }),
     ]);
     anim.start(({ finished }) => finished && setEstallando(false));
     return () => anim.stop();
@@ -46,7 +52,7 @@ export default function Corazon({ cantidad, mio, alTocar, tam = 46 }: { cantidad
 
   const radio = tam * 1.15;
   return (
-    <Pressable
+    <Tocable
       testID="rutina-corazon"
       hitSlop={10}
       onPress={() => void tocar()}
@@ -57,7 +63,7 @@ export default function Corazon({ cantidad, mio, alTocar, tam = 46 }: { cantidad
     >
       <Animated.View style={[estilos.caja, { width: tam, height: tam, transform: [{ scale: late }] }]}>
         <Svg width={tam} height={tam} viewBox="0 0 100 100" style={StyleSheet.absoluteFill}>
-          <Path d={FORMA} fill={mio ? C.corazon : 'rgba(5,6,10,0.72)'} stroke={mio ? C.corazon : C.tinta} strokeWidth={5} strokeLinejoin="round" />
+          <Path d={FORMA} fill={mio ? C.corazon : conAlfa(C.negro, 0.72)} stroke={mio ? C.corazon : C.tinta} strokeWidth={5} strokeLinejoin="round" />
         </Svg>
         {cantidad > 0 && <Text style={[estilos.numero, { color: mio ? C.fondo : C.tinta }]}>{cantidad > 99 ? '99+' : cantidad}</Text>}
       </Animated.View>
@@ -90,14 +96,14 @@ export default function Corazon({ cantidad, mio, alTocar, tam = 46 }: { cantidad
           ))}
         </View>
       )}
-    </Pressable>
+    </Tocable>
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Sin sombra: en la web y en Android se dibuja con la forma de la caja, un cuadrado detrás del corazón.
   caja: { alignItems: 'center', justifyContent: 'center', paddingBottom: 5 },
-  numero: { fontSize: 13, fontWeight: '700' },
+  numero: { fontSize: 13, fontWeight: '500', fontFamily: L.dato },
   anillo: { position: 'absolute', borderWidth: 2, borderColor: C.corazon },
   chispa: { position: 'absolute', width: 5, height: 5, borderRadius: 2.5, backgroundColor: C.corazon },
-});
+}));

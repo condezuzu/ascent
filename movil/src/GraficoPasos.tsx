@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
+import { StyleSheet, View, type GestureResponderEvent } from 'react-native';
 import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 import { puntoMasCercano, trazarSerie } from '@nucleo/tendencia';
 import { faltanPasos, pasosDeHoy } from '@nucleo/pasos';
@@ -7,7 +7,11 @@ import { DIAS_SEMANA, aISO, deISO, fechaLinda, hoyISO } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 import Hoja from './Hoja';
 import MetaDePasos from './ajustes/MetaDePasos';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import Tocable from './Tocable';
 
 /**
  * LOS PASOS, COMO TENDENCIA. El mismo gráfico que el del peso —la misma media
@@ -70,6 +74,7 @@ export default function GraficoPasos({
   /** Se avisa al cambiarla desde acá: la línea punteada se mueve en el acto. */
   alCambiarMeta?: (meta: number) => void;
 }) {
+  useTema();
   // ARRANCA EN LA SEMANA: es la ventana en la que la meta del día significa
   // algo. En un año, "te faltan 2.588" habla de un punto perdido en 365.
   const [rango, setRango] = useState<number>(7);
@@ -311,12 +316,13 @@ function Ventanas({
   claro: string;
   alElegir: (dias: number) => void;
 }) {
+  useTema();
   return (
     <View style={estilos.rangos}>
       {RANGOS.map((r) => {
         const activo = r.dias === rango;
         return (
-          <Pressable key={r.dias} hitSlop={8} onPress={() => alElegir(r.dias)}>
+          <Tocable key={r.dias} hitSlop={8} onPress={() => alElegir(r.dias)}>
             <Text
               style={[
                 estilos.rango,
@@ -325,7 +331,7 @@ function Ventanas({
             >
               {r.etiqueta()}
             </Text>
-          </Pressable>
+          </Tocable>
         );
       })}
     </View>
@@ -345,13 +351,14 @@ function Ventanas({
  */
 // El promedio de la semana ya no va acá: está arriba del gráfico, grande (16/10).
 function PieDeMeta({ meta, alTocar }: { meta: number; alTocar: () => void }) {
+  useTema();
   return (
     <>
       {/* Un botón de verdad, no un texto subrayado que parecía un link (28/9):
           píldora con borde, del mismo lenguaje que el resto de la app. */}
-      <Pressable onPress={alTocar} hitSlop={8} accessibilityRole="button" style={estilos.metaBoton}>
+      <Tocable onPress={alTocar} hitSlop={8} accessibilityRole="button" style={estilos.metaBoton}>
         <Text style={estilos.metaBotonTexto}>{T.stats.pasosMeta(conMiles(meta))}</Text>
-      </Pressable>
+      </Tocable>
     </>
   );
 }
@@ -365,6 +372,7 @@ export function HojaDeMeta({
   alCerrar: () => void;
   alCambiar?: (meta: number) => void;
 }) {
+  useTema();
   return (
     <Hoja visible={visible} alCerrar={alCerrar}>
       <MetaDePasos
@@ -383,6 +391,7 @@ export function HojaDeMeta({
  * relleno del punto, así que el aro es otra vista, detrás.
  */
 function Punto({ x, y, color, aro }: { x: number; y: number; color: string; aro: string }) {
+  useTema();
   return (
     <>
       <View style={[estilos.aro, { left: x, top: y, backgroundColor: aro }]} />
@@ -391,8 +400,8 @@ function Punto({ x, y, color, aro }: { x: number; y: number; color: string; aro:
   );
 }
 
-const estilos = StyleSheet.create({
-  grafico: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea, paddingTop: 26, paddingBottom: 6 },
+const estilos = conTema(() => StyleSheet.create({
+  grafico: { borderTopWidth: 1, borderColor: C.linea, paddingTop: 26, paddingBottom: 6 },
   lienzo: { height: ALTO },
   punto: {
     position: 'absolute',
@@ -404,9 +413,9 @@ const estilos = StyleSheet.create({
   },
   aro: { position: 'absolute', width: 13, height: 13, marginLeft: -6.5, marginTop: -6.5, borderRadius: 6.5 },
   pie: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 14, marginTop: 16 },
-  hoy: { color: C.tinta, fontSize: 30, fontWeight: '300', fontVariant: ['tabular-nums'] },
-  cambio: { color: C.apagado, fontSize: 11, letterSpacing: 0.7, fontVariant: ['tabular-nums'] },
-  cuando: { flex: 1, color: C.apagado, fontSize: 12 },
+  hoy: { color: C.tinta, fontSize: 30, fontWeight: '300', fontFamily: L.dato },
+  cambio: { color: C.apagado, fontSize: 11, letterSpacing: 0.7, fontFamily: L.dato },
+  cuando: { flex: 1, color: C.apagado, fontSize: 12, fontFamily: L.dato },
   rangos: { flexDirection: 'row', gap: 14, marginTop: 10 },
   rango: { color: C.apagado, fontSize: 12, paddingVertical: 4 },
   nota: { color: C.apagado, fontSize: 11, marginTop: 12, lineHeight: 16 },
@@ -414,7 +423,7 @@ const estilos = StyleSheet.create({
   metaBoton: {
     alignSelf: 'flex-start',
     marginTop: 12,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 8,
@@ -429,5 +438,5 @@ const estilos = StyleSheet.create({
   // La linea de la meta cruza las siete, como en el trazo.
   metaBarras: { position: 'absolute', left: 0, right: 0, height: 1, opacity: 0.45 },
   letras: { flexDirection: 'row', gap: 6, marginTop: 8 },
-  letra: { flex: 1, textAlign: 'center', color: C.apagado, fontSize: 10 },
-});
+  letra: { flex: 1, textAlign: 'center', color: C.apagado, fontSize: 10, fontFamily: L.dato },
+}));

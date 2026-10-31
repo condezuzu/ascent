@@ -1,7 +1,7 @@
 import type React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { subioLoDeLaSesion } from '@compartido/antesDePreguntar';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View, Animated } from 'react-native';
 import { supabase } from './supabase';
 import { T } from '@nucleo/textos';
 import { deISO, fechaLinda, hoyISO, restarDias } from '@nucleo/fechas';
@@ -16,7 +16,8 @@ import type { Log } from '@nucleo/tipos';
 import { plataforma } from '@plataforma';
 import { CLAVE_META_PASOS, contraLaMeta, leerMeta, promedioDeLaSemana } from '@nucleo/pasos';
 import { CLAVE_OBJETIVO_PESO, leerObjetivo } from '@nucleo/pesoObjetivo';
-import { C } from './colores';
+import { C, conTema, luz } from './colores';
+import { useTema } from './useTema';
 import GraficoPeso from './GraficoPeso';
 import GraficoPasos from './GraficoPasos';
 import Insignia from './Insignia';
@@ -27,6 +28,11 @@ import ObjetivoDePeso from './ObjetivoDePeso';
 import { useRecargarAlVolver } from './irAPestana';
 import EstrellaQueTitila from './EstrellaQueTitila';
 import { modosDeLasVidas } from '@nucleo/impulsos';
+import { Text, TextInput } from './Texto';
+import { L } from './fuentes';
+import { Fantasma, Seccion, R } from './roles';
+import { LLEGA, MS, sinMovimiento } from './movimiento';
+import Relleno from './Relleno';
 
 /**
  * STATS → GENERAL, lo que va además de los cuatro números. Las mismas
@@ -53,6 +59,7 @@ export type Vidas = { quedan: number; total: number; tope?: number; vuelve: stri
 export type PesoAnotado = { fecha: string; valor: number };
 
 export function LineaDeVidas({ vidas }: { vidas: Vidas }) {
+  useTema();
   // Con la 79 vuelven todas juntas; antes, de a una (y el texto dice cada cosa).
   const juntas = disponible('vidasDeUna', useVersionDelEsquema());
   const usadas = Math.max(0, vidas.total - vidas.quedan);
@@ -96,6 +103,7 @@ export default function StatsGeneral({
   /** El calendario del mes, para corregir días: se abre con el botón de debajo del año. */
   calendario?: React.ReactNode;
 }) {
+  useTema();
   const [calendarioAbierto, setCalendarioAbierto] = useState(false);
   const [pesoAbierto, setPesoAbierto] = useState(false);
   const hoy = hoyISO();
@@ -171,34 +179,35 @@ export default function StatsGeneral({
   }
 
   const rangoActual = rangoDeRacha(racha);
+  const ultimoEntrenado = [...entrenados].sort().pop();
 
   return (
     <View>
-      <Text style={estilos.seccion}>{T.stats.elAno}</Text>
+      <Seccion>{T.stats.elAno}</Seccion>
       <View style={[estilos.tarjeta, estilos.mapa]}>
         {semanas.map((s, i) => (
-          <View key={i} style={estilos.columna}>
+          <ColumnaDelAno key={i} indice={i}>
             {s.map((c) => (
               <View
                 key={c.fecha}
                 style={[
                   estilos.celdaAno,
                   c.clase === 'si' && { backgroundColor: pal.claro },
+                  // Hoy, o el último día entrenado: emite.
+                  c.fecha === ultimoEntrenado && luz(pal.claro, 0.6, 3.5),
                   c.clase === 'descanso' && { backgroundColor: pal.principal, opacity: 0.25 },
                   c.clase === 'futuro' && { backgroundColor: 'transparent' },
                 ]}
               />
             ))}
-          </View>
+          </ColumnaDelAno>
         ))}
       </View>
 
       {/* CORREGIR DÍAS (15/10): un botón que se ve como botón y abre el calendario del mes acá mismo. */}
       {calendario && (
         <>
-          <Pressable testID="corregir-dias" style={estilos.botonCorregir} onPress={() => setCalendarioAbierto((v) => !v)} accessibilityRole="button" accessibilityState={{ expanded: calendarioAbierto }}>
-            <Text style={estilos.botonCorregirTexto}>{T.calendario.corregirDias}</Text>
-          </Pressable>
+          <Fantasma testID="corregir-dias" texto={T.calendario.corregirDias} alinear="flex-start" alTocar={() => setCalendarioAbierto((v) => !v)} accesibilidad={{ expanded: calendarioAbierto }} />
           {calendarioAbierto && calendario}
         </>
       )}
@@ -208,7 +217,7 @@ export default function StatsGeneral({
       {/* Los tres casos de la web: con dos pesos o más, la tendencia; con uno,
           el número solo —decirle "anota tu peso" a quien acaba de anotarlo
           parece un error—; sin ninguno, la invitación. */}
-      <Text style={estilos.seccion}>{pesos.length >= 2 ? T.stats.pesoTendencia : T.stats.peso}</Text>
+      <Seccion>{pesos.length >= 2 ? T.stats.pesoTendencia : T.stats.peso}</Seccion>
       {pesos.length >= 2 && <GraficoPeso pesos={pesos} unidad={unidad} claro={pal.claro} />}
       {pesos.length === 1 && (
         <Text style={estilos.pesoSolo}>
@@ -219,9 +228,7 @@ export default function StatsGeneral({
       {pesos.length === 1 && <Text style={estilos.nota}>{T.stats.pesoUnoMas}</Text>}
       {pesos.length === 0 && <Text style={estilos.nota}>{T.stats.pesoVacio}</Text>}
       {/* La pantalla de anotar el peso (20/10) es una hoja: la misma que se abre desde Inicio. */}
-      <Pressable style={estilos.botonCorregir} onPress={() => setPesoAbierto(true)} testID="abrir-anotar-peso">
-        <Text style={estilos.botonCorregirTexto}>{T.peso.anotarPeso}</Text>
-      </Pressable>
+      <Fantasma testID="abrir-anotar-peso" texto={T.peso.anotarPeso} alinear="flex-start" alTocar={() => setPesoAbierto(true)} />
       <PesoHoja visible={pesoAbierto} unidad={unidad} alCerrar={() => setPesoAbierto(false)} alGuardar={alCambiar} />
       {/* EL OBJETIVO DE PESO, arriba de la lista: un número al que llegar. De él
           sale el color de cada cambio (acercarse/alejarse) y el momento de haber
@@ -243,7 +250,7 @@ export default function StatsGeneral({
           una mancha con un rótulo. */}
       {pasos && pasos.length >= 2 && (
         <>
-          <Text style={estilos.seccion}>{T.stats.pasosTendencia}</Text>
+          <Seccion>{T.stats.pasosTendencia}</Seccion>
           <PromedioDePasos pasos={pasos} meta={metaPasos} />
           <GraficoPasos pasos={pasos} claro={pal.claro} meta={metaPasos} alCambiarMeta={setMetaPasos} />
         </>
@@ -259,15 +266,17 @@ export default function StatsGeneral({
         claro={pal.claro}
       />
 
-      <Text style={estilos.seccion}>{T.stats.laEscalera}</Text>
+      <Seccion>{T.stats.laEscalera}</Seccion>
       <View style={estilos.tarjeta}>
         {RANGOS.map((r) => {
           const pasado = rangoActual.n > r.n;
           const esActual = rangoActual.n === r.n;
           return (
-            <View key={r.n} style={[estilos.filaRango, !esActual && !pasado && { opacity: 0.45 }]}>
-              <Insignia rango={r.n} />
-              <Text style={[estilos.nombreRango, pasado && { color: C.sub }]}>{r.nombre}</Text>
+            <View key={r.n} style={[estilos.filaRango, r.n < RANGOS.length && estilos.filaRangoLinea]}>
+              <View style={!esActual && !pasado && { opacity: 0.45 }}>
+                <Insignia rango={r.n} />
+              </View>
+              <Text style={[estilos.nombreRango, pasado && { color: C.sub }, !esActual && !pasado && { color: C.apagado }]}>{r.nombre}</Text>
               {esActual ? (
                 <Text style={[estilos.actual, { color: pal.claro }]}>{T.stats.acaEstas}</Text>
               ) : (
@@ -283,6 +292,7 @@ export default function StatsGeneral({
 
 /** Las duraciones de las sesiones. Pide lo suyo, como `SeccionSesiones` de la web. */
 function Sesiones() {
+  useTema();
   const [r, setR] = useState<ResumenSesiones | null>(null);
   const [dias, setDias] = useState<DiaConSesiones[]>([]);
 
@@ -318,7 +328,7 @@ function Sesiones() {
 
   return (
     <View>
-      <Text style={estilos.seccion}>{T.stats.sesiones}</Text>
+      <Seccion>{T.stats.sesiones}</Seccion>
       {r.validas > 0 ? (
         <View style={estilos.dosNumeros}>
           <View style={estilos.numero}>
@@ -337,7 +347,7 @@ function Sesiones() {
         <View key={d.fecha} style={estilos.diaSesion}>
           <Text style={[estilos.dato, { width: 70 }]}>{etiquetaDeDia(d.fecha)}</Text>
           <View style={estilos.barra}>
-            <View style={[estilos.relleno, { width: `${(d.segundos / techo) * 100}%` }]} />
+            <Relleno fraccion={d.segundos / techo} style={estilos.relleno} />
           </View>
           <Text style={[estilos.dato, { width: 70, textAlign: 'right' }]}>
             {d.segundos > 0 ? duracionLinda(d.segundos) : '—'}
@@ -352,6 +362,7 @@ function Sesiones() {
 
 /** EL PROMEDIO DIARIO DE LA SEMANA, bien a la vista y contra la meta (16/10, a pedido). */
 function PromedioDePasos({ pasos, meta }: { pasos: { fecha: string; valor: number }[]; meta: number }) {
+  useTema();
   const promedio = promedioDeLaSemana(pasos, hoyISO());
   if (promedio === null) return null;
   const miles = (n: number) => n.toLocaleString(T.general.locale);
@@ -368,62 +379,72 @@ function PromedioDePasos({ pasos, meta }: { pasos: { fecha: string; valor: numbe
   );
 }
 
-const estilos = StyleSheet.create({
+/** El año entra de izquierda a derecha, de a una columna. */
+function ColumnaDelAno({ indice, children }: { indice: number; children: ReactNode }) {
+  useTema();
+  const t = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    let vivo = true;
+    void sinMovimiento().then((quieto) => {
+      if (!vivo) return;
+      if (quieto) return t.setValue(1);
+      Animated.timing(t, { toValue: 1, duration: MS.entra, delay: indice * MS.columna, easing: LLEGA, useNativeDriver: true }).start();
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [indice, t]);
+  return <Animated.View style={[estilos.columna, { opacity: t }]}>{children}</Animated.View>;
+}
+
+const estilos = conTema(() => StyleSheet.create({
   promedioPasos: { marginBottom: 14 },
   promedioRotulo: { color: C.tinta, fontSize: 15 },
-  promedioNumero: { color: C.tinta, fontSize: 44, fontWeight: '300', fontVariant: ['tabular-nums'], marginTop: 2 },
+  promedioNumero: { color: C.tinta, fontSize: 44, fontWeight: '300', fontFamily: L.dato, marginTop: 2 },
   promedioFrente: { color: C.sub, fontSize: 14, marginTop: 2 },
   promedioLlega: { color: C.claro },
-  promedioCuando: { color: C.apagado, fontSize: 12, marginTop: 4 },
-  botonCorregir: { alignSelf: 'flex-start', borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 18, marginTop: 12 },
-  botonCorregirTexto: { color: C.tinta, fontSize: 14 },
-  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 28, marginBottom: 10 },
-  tarjeta: {
-    backgroundColor: 'rgba(11,13,19,0.72)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
-    borderRadius: 14,
-    padding: 12,
-  },
+  promedioCuando: { color: C.apagado, fontSize: 12, marginTop: 4, fontFamily: L.dato },
+  tarjeta: {},
   mapa: { flexDirection: 'row', gap: 2 },
   columna: { flex: 1, gap: 2 },
-  celdaAno: { aspectRatio: 1, borderRadius: 2, backgroundColor: C.linea },
+  celdaAno: { aspectRatio: 1, borderRadius: 1, backgroundColor: C.celdaVacia },
   vidas: { marginBottom: 16, gap: 6 },
-  et: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
+  et: { ...R.etiqueta },
   puntos: { flexDirection: 'row', gap: 8 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 6 },
+  nota: { ...R.nota, marginTop: 6  },
   dosNumeros: { flexDirection: 'row', gap: 12 },
   numero: { flex: 1 },
-  valor: { color: C.tinta, fontSize: 24 },
+  valor: { color: C.tinta, fontSize: 24, fontWeight: '300', fontFamily: L.dato, letterSpacing: -0.8 },
   etiqueta: { color: C.sub, fontSize: 12, marginTop: 2 },
   diaSesion: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
-  dato: { color: C.sub, fontSize: 12, fontVariant: ['tabular-nums'] },
-  barra: { flex: 1, height: 6, borderRadius: 3, backgroundColor: C.linea, overflow: 'hidden' },
-  relleno: { height: 6, borderRadius: 3, backgroundColor: C.principal },
-  pesoSolo: { color: C.tinta, fontSize: 32 },
+  dato: { color: C.sub, fontSize: 12, fontFamily: L.dato },
+  barra: { flex: 1, height: 6, borderRadius: 3, backgroundColor: C.barraPista, overflow: 'hidden' },
+  relleno: { height: 6, borderRadius: 3, backgroundColor: C.barraDentro },
+  pesoSolo: { color: C.tinta, fontSize: 30, fontWeight: '300', fontFamily: L.dato, letterSpacing: -1.2 },
   unidad: { color: C.sub, fontSize: 15 },
   anotar: { flexDirection: 'row', gap: 8, marginTop: 10 },
   campo: {
     flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 11,
     color: C.tinta,
     fontSize: 15,
   },
   botonFantasma: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingHorizontal: 18,
     justifyContent: 'center',
   },
   textoBoton: { color: C.tinta, fontSize: 14 },
   error: { color: C.error, fontSize: 13, marginTop: 6 },
-  filaRango: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
+  filaRango: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  filaRangoLinea: { borderBottomWidth: 1, borderBottomColor: C.linea },
   nombreRango: { flex: 1, color: C.tinta, fontSize: 15 },
   actual: { fontSize: 12, letterSpacing: 1 },
-  dias: { color: C.sub, fontSize: 12 },
-});
+  dias: { color: C.sub, fontSize: 12, fontFamily: L.dato },
+}));

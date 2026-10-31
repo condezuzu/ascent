@@ -39,6 +39,7 @@ function FondoEspacial(op: Pedido) {
     op.animar !== false,
     !!op.atmosfera,
     op.velo ?? null,
+    !!op.lecturaMedia,
   ]);
 
   useEffect(() => {

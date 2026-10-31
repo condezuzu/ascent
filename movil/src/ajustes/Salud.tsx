@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { plataforma } from '@plataforma';
 import { yaSePidio } from '../plataforma/salud';
 import { hoyISO } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
-import { C } from '../colores';
+import { C, conTema } from '../colores';
+import { useTema } from '../useTema';
+import { Text } from '../Texto';
+import { R } from '../roles';
+import Tocable from '../Tocable';
 
 /**
  * LA SALUD DEL TELÉFONO (§13c). La sección que en la web no puede existir.
@@ -30,6 +34,7 @@ import { C } from '../colores';
  * porque son la única forma de comprobar de un vistazo que esto quedó andando.
  */
 export default function Salud() {
+  useTema();
   const hay = plataforma.salud.disponible();
   const [pidiendo, setPidiendo] = useState(false);
   const [aviso, setAviso] = useState('');
@@ -75,11 +80,11 @@ export default function Salud() {
           la ventana una vez contestada, asi que dejarlo despues es un boton
           que no hace nada — que es como se reporto el 23/9. */}
       {conectado === false && (
-        <Pressable style={estilos.boton} onPress={conectar} disabled={pidiendo}>
+        <Tocable style={estilos.boton} onPress={conectar} disabled={pidiendo}>
           <Text style={estilos.botonTexto}>
             {pidiendo ? T.ajustes.saludConectando : T.ajustes.saludConectar}
           </Text>
-        </Pressable>
+        </Tocable>
       )}
 
       {conectado === true && <Text style={estilos.conectado}>{T.ajustes.saludConectado}</Text>}
@@ -99,19 +104,19 @@ export default function Salud() {
     </View>
   );
 }
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
   // El mismo rótulo que el resto de Ajustes: chico, en versalitas y apagado.
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
+  titulo: { ...R.etiqueta, marginBottom: 10  },
   boton: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingVertical: 13,
     alignItems: 'center',
     marginTop: 10,
   },
   botonTexto: { color: C.tinta, fontSize: 14 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
+  nota: { ...R.nota, marginTop: 8  },
   conectado: { color: C.sub, fontSize: 14, marginTop: 10 },
-});
+}));

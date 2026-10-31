@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { plataforma } from '@plataforma';
 import { miId } from '@compartido/quienSoy';
 import { traerNovedades } from '@compartido/novedades';
@@ -14,7 +14,11 @@ import { alLlegarAvisoRemoto } from './plataforma/avisos';
 import Avatar from './Avatar';
 import InvitacionQueLlega from './InvitacionQueLlega';
 import { fijarCartel } from './cartelVisible';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import FondoOctogonal from './FondoOctogonal';
+import Tocable from './Tocable';
 
 /** Cada cuánto se pregunta con la app adelante. El aviso push lo adelanta. */
 const CADA_MS = 30_000;
@@ -28,6 +32,7 @@ const SE_VA_SOLO_MS = 20_000;
  * adelante, cada treinta segundos y cuando llega un aviso push.
  */
 export default function CartelDeArriba() {
+  useTema();
   const [cartel, setCartel] = useState<{ uid: string; novedad: Novedad } | null>(null);
   const bajada = useRef(new Animated.Value(0)).current;
   const mostrando = useRef(false);
@@ -122,6 +127,7 @@ export default function CartelDeArriba() {
         { opacity: bajada, transform: [{ translateY: bajada.interpolate({ inputRange: [0, 1], outputRange: [-160, 0] }) }] },
       ]}
     >
+      <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={12} luz={C.claro} />
       <View style={estilos.quien}>
         <Avatar url={novedad.otro.avatar_url} nombre={novedad.otro.username} tam={40} />
         <View style={estilos.textos}>
@@ -134,19 +140,19 @@ export default function CartelDeArriba() {
         </View>
       </View>
       <View style={estilos.botones}>
-        <Pressable testID="cartel-no" style={estilos.borde} hitSlop={8} onPress={() => void contestar(false)}>
+        <Tocable testID="cartel-no" style={estilos.borde} hitSlop={8} onPress={() => void contestar(false)}>
           <Text style={estilos.bordeTexto}>{T.social.no}</Text>
-        </Pressable>
-        <Pressable testID="cartel-aceptar" style={estilos.solido} onPress={() => void contestar(true)}>
+        </Tocable>
+        <Tocable testID="cartel-aceptar" style={estilos.solido} onPress={() => void contestar(true)}>
           <Text style={estilos.solidoTexto}>{T.social.aceptar}</Text>
-        </Pressable>
+        </Tocable>
       </View>
     </Animated.View>
   );
 }
 
 // La misma tarjeta que el pedido de Inicio y el aviso de la rutina: el mismo lugar visual.
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   cartel: {
     position: 'absolute',
     top: 54,
@@ -154,24 +160,15 @@ const estilos = StyleSheet.create({
     right: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.lineaFuerte,
     // Opaco: encima de Inicio se transparentaba el botón de atrás.
-    backgroundColor: C.hoja,
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 12,
   },
   quien: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   textos: { flex: 1 },
   nombre: { color: C.tinta, fontSize: 16, fontWeight: '600' },
   que: { color: C.sub, fontSize: 14, marginTop: 2 },
   botones: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 12 },
-  borde: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 18 },
+  borde: { borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 18 },
   bordeTexto: { color: C.tinta, fontSize: 14 },
-  solido: { backgroundColor: C.tinta, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 18 },
+  solido: { backgroundColor: C.tinta, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 18 },
   solidoTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
-});
+}));

@@ -285,7 +285,7 @@ const ES = {
     // tiempo". Las series no: el bloque ya las cuenta mientras entrenas y, una
     // vez terminado el dia, el numero que queda diciendo algo es el rato que
     // estuviste.
-    minutosDeHoy: (n: number) => `${n} minutos hoy`,
+    minutosDeHoy: (n: number) => `${n} ${n === 1 ? 'minuto' : 'minutos'} hoy`,
     // EL MOMENTO DE LLEGAR SIN APRETAR NADA. Desde que el día entra por
     // ubicación, el mejor momento de la app pasa en el bolsillo: abrís y ya
     // está. Hasta ahora se veía EXACTAMENTE igual que si lo hubieras apretado

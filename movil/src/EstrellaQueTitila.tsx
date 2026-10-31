@@ -24,8 +24,8 @@ export default function EstrellaQueTitila({ modo, indice, tam = 16 }: { modo: Mo
         if (!vivo || quieto) return;
         vuelta = Animated.loop(
           Animated.sequence([
-            Animated.timing(t, { toValue: 1, duration: CICLO_MS / 2, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-            Animated.timing(t, { toValue: 0, duration: CICLO_MS / 2, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+            Animated.timing(t, { toValue: 1, duration: CICLO_MS / 2, easing: Easing.inOut(Easing.quad), useNativeDriver: true, isInteraction: false }),
+            Animated.timing(t, { toValue: 0, duration: CICLO_MS / 2, easing: Easing.inOut(Easing.quad), useNativeDriver: true, isInteraction: false }),
           ]),
         );
         espera = setTimeout(() => vuelta?.start(), indice * (CICLO_MS / 3));

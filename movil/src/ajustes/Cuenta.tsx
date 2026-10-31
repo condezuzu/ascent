@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { verLaGuiaDeNuevo as volverAVerLaGuia } from '@compartido/guia';
 import { plataforma } from '@plataforma';
 import { cerrarSesion, eliminarCuenta, limpiarAlSalir } from '@compartido/cuenta';
@@ -8,7 +8,12 @@ import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
 import { VUELTA } from '../enlace';
-import { C } from '../colores';
+import { C, conTema } from '../colores';
+import { useTema } from '../useTema';
+import { Text, TextInput } from '../Texto';
+import FondoOctogonal from '../FondoOctogonal';
+import { R } from '../roles';
+import Tocable from '../Tocable';
 
 /**
  * LO ÚLTIMO DE AJUSTES: cambiar la clave, salir, y darse de baja.
@@ -27,6 +32,7 @@ import { C } from '../colores';
  * app por el enlace (`enlace.ts`).
  */
 export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: () => void }) {
+  useTema();
   const [abierta, setAbierta] = useState(false);
   const [confirmacion, setConfirmacion] = useState('');
   const [borrando, setBorrando] = useState(false);
@@ -93,27 +99,28 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
           hasta que existiera el recorrido, y ahora existe. */}
       {/* UNA TARJETA CON FILAS (15/10): eran cuatro renglones de texto sueltos que no parecían tocables. */}
       <View style={estilos.tarjeta}>
-        <Pressable style={estilos.filaCuenta} onPress={() => verLaGuiaDeNuevo()} accessibilityRole="button">
+        <Tocable style={estilos.filaCuenta} onPress={() => verLaGuiaDeNuevo()} accessibilityRole="button">
           <Text style={estilos.enlace}>{T.ajustes.verGuia}</Text>
           <Text style={estilos.flecha}>›</Text>
-        </Pressable>
-        <Pressable style={[estilos.filaCuenta, estilos.conLinea]} onPress={() => cambiarClave()} accessibilityRole="button">
+        </Tocable>
+        <Tocable style={[estilos.filaCuenta, estilos.conLinea]} onPress={() => cambiarClave()} accessibilityRole="button">
           <Text style={estilos.enlace}>{T.ajustes.cambiarClave}</Text>
           <Text style={estilos.flecha}>›</Text>
-        </Pressable>
-        <Pressable style={[estilos.filaCuenta, estilos.conLinea]} onPress={() => salir()} accessibilityRole="button">
+        </Tocable>
+        <Tocable style={[estilos.filaCuenta, estilos.conLinea]} onPress={() => salir()} accessibilityRole="button">
           <Text style={estilos.enlace}>{T.ajustes.cerrarSesion}</Text>
           <Text style={estilos.flecha}>›</Text>
-        </Pressable>
+        </Tocable>
         {!abierta && (
-          <Pressable style={[estilos.filaCuenta, estilos.conLinea]} onPress={() => setAbierta(true)} accessibilityRole="button">
+          <Tocable style={[estilos.filaCuenta, estilos.conLinea]} onPress={() => setAbierta(true)} accessibilityRole="button">
             <Text style={estilos.peligro}>{T.ajustes.eliminarCuenta}</Text>
-          </Pressable>
+          </Tocable>
         )}
       </View>
 
       {!abierta ? null : (
         <View style={estilos.caja}>
+          <FondoOctogonal relleno={"none"} borde={C.error} corte={10} />
           <Text style={estilos.titulo}>{T.ajustes.eliminarCuenta}</Text>
           <Text style={estilos.que}>{T.ajustes.bajaQueSeElimina(perfil.racha_actual)}</Text>
           <Text style={estilos.nota}>
@@ -129,14 +136,14 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
             autoCorrect={false}
           />
           <View style={estilos.botones}>
-            <Pressable
-              style={[estilos.botonPeligro, confirmacion.trim() !== perfil.username && estilos.apagado]}
+            <Tocable
+              style={[estilos.botonPeligro, confirmacion.trim() !== perfil.username && estilos.peligroSinConfirmar]}
               onPress={() => borrar()}
               disabled={borrando || confirmacion.trim() !== perfil.username}
             >
-              <Text style={estilos.botonPeligroTexto}>{borrando ? T.ajustes.bajaEliminando : T.ajustes.bajaConfirmar}</Text>
-            </Pressable>
-            <Pressable
+              <Text style={[estilos.botonPeligroTexto, confirmacion.trim() !== perfil.username && estilos.peligroSinConfirmarTexto]}>{borrando ? T.ajustes.bajaEliminando : T.ajustes.bajaConfirmar}</Text>
+            </Tocable>
+            <Tocable
               style={estilos.boton}
               onPress={() => {
                 setAbierta(false);
@@ -146,7 +153,7 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
               disabled={borrando}
             >
               <Text style={estilos.botonTexto}>{T.ajustes.mejorNo}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         </View>
       )}
@@ -157,48 +164,46 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 34 },
   texto: { paddingVertical: 12 },
-  tarjeta: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 14, overflow: 'hidden' },
+  tarjeta: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.linea },
   filaCuenta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 16 },
-  conLinea: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.linea },
+  conLinea: { borderTopWidth: 1, borderTopColor: C.linea },
   flecha: { color: C.apagado, fontSize: 18 },
   enlace: { color: C.sub, fontSize: 15 },
   peligro: { color: C.error, fontSize: 15 },
   caja: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.error,
-    borderRadius: 12,
     padding: 14,
     marginTop: 6,
   },
   titulo: { color: C.tinta, fontSize: 16, marginBottom: 8 },
   que: { color: C.sub, fontSize: 14, lineHeight: 20, marginBottom: 12 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginBottom: 8 },
+  nota: { ...R.nota, marginBottom: 8  },
   fuerte: { color: C.tinta },
   campo: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 11,
     color: C.tinta,
     fontSize: 15,
   },
   botones: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  botonPeligro: { flex: 1, backgroundColor: C.error, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  botonPeligro: { flex: 1, backgroundColor: C.error, borderRadius: 999, paddingVertical: 12, alignItems: 'center' },
   botonPeligroTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
-  apagado: { opacity: 0.45 },
+  peligroSinConfirmar: { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.error },
+  peligroSinConfirmarTexto: { color: C.error },
   boton: {
     flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingVertical: 12,
     alignItems: 'center',
   },
   botonTexto: { color: C.tinta, fontSize: 14 },
   ok: { color: C.sub, fontSize: 13, marginTop: 10 },
   error: { color: C.error, fontSize: 13, marginTop: 10 },
-});
+}));

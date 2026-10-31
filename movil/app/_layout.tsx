@@ -41,6 +41,13 @@ import { anotarEntradaVista } from '@compartido/entradaVista';
 import { encenderTarjeta } from '@compartido/tarjeta';
 import { pedirFondo, soltarFondo } from '../src/pedidoDeFondo';
 import { cuerpoDe } from '@nucleo/rangos';
+import { C, conTema } from '../src/colores';
+import { useTema } from '../src/useTema';
+import { seguirElFondo } from '../src/paletaDelFondo';
+import { cargarFuentes } from '../src/fuentes';
+
+// En el módulo y no en un efecto: el primer pedido de fondo sale antes de que se pinte nada.
+seguirElFondo();
 
 const FONDO_DEL_ARRANQUE = 'arranque';
 
@@ -79,6 +86,7 @@ type Sesion = 'mirando' | 'con' | 'sin' | 'sin-nombre';
 const CON_DIAGNOSTICO = process.env.EXPO_PUBLIC_DIAGNOSTICO === '1';
 
 export default function Layout() {
+  useTema();
   const [sesion, setSesion] = useState<Sesion>('mirando');
   // OTRO IDIOMA, TODO DE NUEVO (14/10): los textos ya cambiaron en `T`; con la
   // llave nueva se vuelve a dibujar todo lo de abajo. La sesión vive acá arriba y no se pierde.
@@ -96,6 +104,11 @@ export default function Layout() {
   const [entrada, setEntrada] = useState<'logo' | 'abriendo' | 'fin'>('logo');
   const abierta = entrada === 'fin';
   const [datosListos, setDatosListos] = useState(false);
+  // La entrada espera a las letras: si no, el zoom termina y todo cambia de fuente a la vista.
+  const [letrasListas, setLetrasListas] = useState(false);
+  useEffect(() => {
+    void cargarFuentes().then(() => setLetrasListas(true));
+  }, []);
   const abrir = useCallback(() => setEntrada('abriendo'), []);
   const terminarEntrada = useCallback(() => setEntrada('fin'), []);
 
@@ -181,7 +194,7 @@ export default function Layout() {
         // pide, y el pedido de Inicio llegaba con Inicio, después del logo. Con la racha precargada
         // se pide lo mismo debajo del logo; Inicio lo pisa al montarse y este se suelta al final.
         if (vivo && d?.inicio.tipo === 'listo' && d.inicio.datos.perfil) {
-          pedirFondo(FONDO_DEL_ARRANQUE, { ...cuerpoDe(d.inicio.datos.perfil.racha_actual), esquina: 'abajo-derecha', atmosfera: true });
+          pedirFondo(FONDO_DEL_ARRANQUE, { ...cuerpoDe(d.inicio.datos.perfil.racha_actual), esquina: 'abajo-derecha', lecturaMedia: true, atmosfera: true });
         }
       })
       .catch(() => null)
@@ -345,7 +358,7 @@ export default function Layout() {
         <StatusBar style="light" />
         {abierta && sesion === 'mirando' && (
           <View style={estilos.centrado}>
-            <ActivityIndicator color="#8a93a8" />
+            <ActivityIndicator color={C.sub} />
           </View>
         )}
         {abierta && sesion === 'sin' && <EntradaYLogin alEntrar={mirar} />}
@@ -414,16 +427,16 @@ export default function Layout() {
       </View>
       {/* Fuera de la llave del idioma: cambiarlo en medio no la vuelve a empezar. */}
       {entrada !== 'fin' && (
-        <EntradaDeLaApp lista={sesion !== 'mirando' && (sesion !== 'con' || datosListos)} alAbrir={abrir} alTerminar={terminarEntrada} />
+        <EntradaDeLaApp lista={letrasListas && sesion !== 'mirando' && (sesion !== 'con' || datosListos)} alAbrir={abrir} alTerminar={terminarEntrada} />
       )}
       </ProveedorDeSesion>
     </Raiz>
   );
 }
 
-const estilos = StyleSheet.create({
-  todo: { flex: 1, backgroundColor: '#05060a' },
+const estilos = conTema(() => StyleSheet.create({
+  todo: { flex: 1, backgroundColor: C.fondo },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   // `display: none` y no desmontar: ver el comentario de arriba.
   escondido: { display: 'none' },
-});
+}));

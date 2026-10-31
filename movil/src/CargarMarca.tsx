@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
 import { guardarMarcaUnaVez } from '@compartido/guardarMarca';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { hoyISO, deISO, MESES } from '@nucleo/fechas';
 import { aKilos, deKilos, type Unidad } from '@nucleo/peso';
 import { redondear, unRM } from '@nucleo/fuerza';
@@ -14,7 +14,12 @@ import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
 import SelectorEjercicio from './SelectorEjercicio';
 import CampoPeso from './CampoPeso';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text, TextInput } from './Texto';
+import FondoOctogonal from './FondoOctogonal';
+import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * ANOTAR UNA MARCA (§16.4), la hoja del teléfono.
@@ -50,6 +55,7 @@ function CargarMarca({
   alCerrar: () => void;
   alGuardar: () => void;
 }) {
+  useTema();
   // SOLO LOS QUE LLEVAN PESO, como en la web: acá se podía anotar "Plancha 40 kg".
   const conPeso = ejercicios.filter((e) => e.admite_peso !== false);
   const [ejercicio, setEjercicio] = useState(inicial ?? conPeso[0]?.id ?? '');
@@ -109,16 +115,16 @@ function CargarMarca({
         <Text style={estilos.sub}>{T.marca.sub}</Text>
 
         <Text style={estilos.etiqueta}>{T.marca.ejercicio}</Text>
-        <Pressable style={estilos.selector} onPress={() => setEligiendo(true)}>
+        <Tocable style={estilos.selector} onPress={() => setEligiendo(true)}>
           <Text style={estilos.selectorTexto}>
             {elegido ? `${elegido.nombre} · ${nombreDeGrupo(elegido.grupo).toLowerCase()}` : ''}
           </Text>
-        </Pressable>
+        </Tocable>
 
         <Text style={estilos.etiqueta}>{T.marca.cuantasVeces}</Text>
         <View style={estilos.pastillas}>
           {[true, false].map((una) => (
-            <Pressable
+            <Tocable
               key={String(una)}
               style={[estilos.pastilla, unaVez === una && estilos.prendida]}
               onPress={() => setUnaVez(una)}
@@ -126,7 +132,7 @@ function CargarMarca({
               <Text style={[estilos.pastillaTexto, unaVez === una && estilos.prendidaTexto]}>
                 {una ? T.marca.deUna : T.marca.variasVeces}
               </Text>
-            </Pressable>
+            </Tocable>
           ))}
         </View>
 
@@ -167,12 +173,13 @@ function CargarMarca({
 
         {error !== '' && <Text style={estilos.error}>{error}</Text>}
 
-        <Pressable style={estilos.solido} onPress={() => guardar()} disabled={guardando}>
+        <Tocable style={estilos.solido} onPress={() => guardar()} disabled={guardando}>
+          <FondoOctogonal relleno={C.claro} luz={C.claro} />
           <Text style={estilos.solidoTexto}>{guardando ? T.sesion.guardando : T.marca.anotar}</Text>
-        </Pressable>
-        <Pressable style={estilos.texto} onPress={alCerrar} disabled={guardando}>
+        </Tocable>
+        <Tocable style={estilos.texto} onPress={alCerrar} disabled={guardando}>
           <Text style={estilos.enlace}>{T.general.cancelar}</Text>
-        </Pressable>
+        </Tocable>
 
       {/* EL SELECTOR VA ADENTRO DE LA HOJA (4/10), como en `ListaDeBloques`: en
           iOS un modal solo se presenta encima de otro si está dentro de su
@@ -195,14 +202,14 @@ function CargarMarca({
 
 export default nuevaEnCadaApertura(CargarMarca, (p) => p.visible);
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   titulo: { color: C.tinta, fontSize: 19, marginBottom: 4 },
   sub: { color: C.sub, fontSize: 13, lineHeight: 18, marginBottom: 18 },
-  etiqueta: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 16, marginBottom: 8 },
+  etiqueta: { ...R.etiqueta, marginTop: 16, marginBottom: 8  },
   selector: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 13,
   },
@@ -210,9 +217,9 @@ const estilos = StyleSheet.create({
   pastillas: { flexDirection: 'row', gap: 8 },
   pastilla: {
     flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingVertical: 11,
     alignItems: 'center',
   },
@@ -220,18 +227,18 @@ const estilos = StyleSheet.create({
   pastillaTexto: { color: C.tinta, fontSize: 14 },
   prendidaTexto: { color: C.fondo, fontWeight: '600' },
   campo: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 11,
     color: C.tinta,
     fontSize: 16,
   },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 12 },
+  nota: { ...R.nota, marginTop: 12  },
   error: { color: C.error, fontSize: 13, marginTop: 12 },
-  solido: { backgroundColor: C.tinta, borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
+  solido: { paddingVertical: 14, alignItems: 'center', marginTop: 20 },
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   texto: { paddingVertical: 12, alignItems: 'center' },
   enlace: { color: C.sub, fontSize: 14 },
-});
+}));
