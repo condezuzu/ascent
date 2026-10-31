@@ -349,6 +349,7 @@ export const EN: Textos = {
     sonidoPrendido: 'Sound when it ends ✓',
     sonidoAlTerminar: 'Sound when it ends',
     mostrarUltimaVez: 'Show last time',
+    muestraEjercicio: 'Bench press',
     mostrarUltimaVezNota: 'While training, under the exercise: what you did last time.',
     registrarReps: 'Log reps',
     registrarRepsNota: 'While training, next to the weight: how many you did in each set.',

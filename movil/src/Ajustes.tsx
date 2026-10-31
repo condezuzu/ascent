@@ -35,6 +35,7 @@ import { useTema } from './useTema';
 import { Text } from './Texto';
 import { R } from './roles';
 import Tocable from './Tocable';
+import AjusteQueSeMuestra from './AjusteQueSeMuestra';
 
 /**
  * AJUSTES — lo que se puede cambiar, en la app nativa.
@@ -186,13 +187,13 @@ export default function Ajustes({
             <Interruptor
               value={reps}
               accessibilityLabel={T.ajustes.registrarReps}
+              accessibilityHint={T.ajustes.registrarRepsNota}
               onValueChange={(nuevo) => {
                 setReps(nuevo);
                 void guardarRegistrarReps(nuevo);
               }}
             />
           </View>
-          <Text style={estilos.nota}>{T.ajustes.registrarRepsNota}</Text>
         </>
       )}
 
@@ -204,13 +205,15 @@ export default function Ajustes({
         <Interruptor
           value={ultimaVez}
           accessibilityLabel={T.ajustes.mostrarUltimaVez}
+          accessibilityHint={T.ajustes.mostrarUltimaVezNota}
           onValueChange={(nuevo) => {
             setUltimaVez(nuevo);
             void guardarMostrarUltimaVez(nuevo);
           }}
         />
       </View>
-      <Text style={estilos.nota}>{T.ajustes.mostrarUltimaVezNota}</Text>
+      {/* LO QUE HACEN LOS DOS, A LA VISTA (propuesta G): el bloque de entrenar, y lo que le aparece. */}
+      <AjusteQueSeMuestra ultimaVez={ultimaVez} reps={reps && disponible('repsPorSerie', version)} />
 
       {/* LOS CINCO PRESETS DE DURACIÓN SE FUERON (23/9, "Ajustes tiene
           demasiados botones"). No se perdió nada: la duración ya se elige

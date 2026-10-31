@@ -652,6 +652,7 @@ const ES = {
     sonidoAlTerminar: 'Sonido al terminar',
     // Al entrenar, debajo del ejercicio (20/10). Apagado de fábrica.
     mostrarUltimaVez: 'Mostrar la última vez',
+    muestraEjercicio: 'Press de banca',
     mostrarUltimaVezNota: 'Al entrenar, debajo del ejercicio: lo que hiciste la última vez.',
     // Al lado del peso, una por serie (21/10). Apagado de fábrica.
     registrarReps: 'Registrar repeticiones',
