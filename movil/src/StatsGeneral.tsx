@@ -34,6 +34,8 @@ import { Fantasma, Seccion, R } from './roles';
 import { LLEGA, MS, sinMovimiento } from './movimiento';
 import Relleno from './Relleno';
 import VidasExplicadas from './VidasExplicadas';
+import Candado from './Candado';
+import PesoSinDatos from './PesoSinDatos';
 
 /**
  * STATS → GENERAL, lo que va además de los cuatro números. Las mismas
@@ -221,7 +223,7 @@ export default function StatsGeneral({
       {/* Los tres casos de la web: con dos pesos o más, la tendencia; con uno,
           el número solo —decirle "anota tu peso" a quien acaba de anotarlo
           parece un error—; sin ninguno, la invitación. */}
-      <Seccion>{pesos.length >= 2 ? T.stats.pesoTendencia : T.stats.peso}</Seccion>
+      <Seccion derecha={<Candado />}>{pesos.length >= 2 ? T.stats.pesoTendencia : T.stats.peso}</Seccion>
       {pesos.length >= 2 && <GraficoPeso pesos={pesos} unidad={unidad} claro={pal.claro} />}
       {pesos.length === 1 && (
         <Text style={estilos.pesoSolo}>
@@ -229,8 +231,7 @@ export default function StatsGeneral({
           <Text style={estilos.unidad}> {unidad}</Text>
         </Text>
       )}
-      {pesos.length === 1 && <Text style={estilos.nota}>{T.stats.pesoUnoMas}</Text>}
-      {pesos.length === 0 && <Text style={estilos.nota}>{T.stats.pesoVacio}</Text>}
+      {pesos.length < 2 && <PesoSinDatos conUno={pesos.length === 1} />}
       {/* La pantalla de anotar el peso (20/10) es una hoja: la misma que se abre desde Inicio. */}
       <Fantasma testID="abrir-anotar-peso" texto={T.peso.anotarPeso} alinear="flex-start" alTocar={() => setPesoAbierto(true)} />
       <PesoHoja visible={pesoAbierto} unidad={unidad} alCerrar={() => setPesoAbierto(false)} alGuardar={alCambiar} />
