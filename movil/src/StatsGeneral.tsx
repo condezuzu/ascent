@@ -33,6 +33,7 @@ import { L } from './fuentes';
 import { Fantasma, Seccion, R } from './roles';
 import { LLEGA, MS, sinMovimiento } from './movimiento';
 import Relleno from './Relleno';
+import VidasExplicadas from './VidasExplicadas';
 
 /**
  * STATS → GENERAL, lo que va además de los cuatro números. Las mismas
@@ -58,25 +59,28 @@ import Relleno from './Relleno';
 export type Vidas = { quedan: number; total: number; tope?: number; vuelve: string | null; falta: number | null };
 export type PesoAnotado = { fecha: string; valor: number };
 
-export function LineaDeVidas({ vidas }: { vidas: Vidas }) {
+export function LineaDeVidas({ vidas, racha }: { vidas: Vidas; racha: number }) {
   useTema();
   // Con la 79 vuelven todas juntas; antes, de a una (y el texto dice cada cosa).
   const juntas = disponible('vidasDeUna', useVersionDelEsquema());
   const usadas = Math.max(0, vidas.total - vidas.quedan);
+  // Se dejó de leer, pero VoiceOver lo sigue diciendo: es lo que la demostración cuenta sin palabras.
+  const explicacion = [
+    `${vidas.quedan} de ${vidas.total}.`,
+    juntas ? T.impulso.notaJuntas : T.impulso.nota,
+    vidas.vuelve ? (juntas ? T.impulso.vuelvenJuntas(fechaLinda(vidas.vuelve), usadas) : T.impulso.vuelve(fechaLinda(vidas.vuelve))) : '',
+    vidas.falta !== null && vidas.falta > 0 ? T.impulso.seGanaEn(vidas.falta) : '',
+  ].filter(Boolean).join(' ');
+  // Lo que falta para la próxima, en días: ganarla, o que vuelvan.
+  const dias = vidas.falta !== null && vidas.falta > 0
+    ? vidas.falta
+    : vidas.vuelve
+      ? Math.max(0, Math.round((deISO(vidas.vuelve).getTime() - deISO(hoyISO()).getTime()) / 86400000))
+      : null;
   return (
     <View style={estilos.vidas}>
       <Text style={estilos.et}>{T.impulso.titulo}</Text>
-      {/* La misma estrella que Inicio y el aviso (21/10): llena la que queda, en contorno la usada. */}
-      <View style={estilos.puntos} accessibilityLabel={`${vidas.quedan} de ${vidas.total}`} testID="vidas-stats">
-        {modosDeLasVidas(vidas).map((modo, i) => (
-          <EstrellaQueTitila key={i} indice={i} modo={modo} />
-        ))}
-      </View>
-      <Text style={estilos.nota}>
-        {juntas ? T.impulso.notaJuntas : T.impulso.nota}
-        {vidas.vuelve ? ' ' + (juntas ? T.impulso.vuelvenJuntas(fechaLinda(vidas.vuelve), usadas) : T.impulso.vuelve(fechaLinda(vidas.vuelve))) : ''}
-        {vidas.falta !== null && vidas.falta > 0 ? ' ' + T.impulso.seGanaEn(vidas.falta) : ''}
-      </Text>
+      <VidasExplicadas vidas={vidas} racha={racha} dias={dias} explicacion={explicacion} />
     </View>
   );
 }

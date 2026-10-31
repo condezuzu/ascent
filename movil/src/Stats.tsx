@@ -308,7 +308,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
         <Estancamiento registradoHoy={entrenados.some((l) => l.fecha === hoy)} paleta={pal} />
       )}
 
-      {pestana === 'general' && datos.vidas && <LineaDeVidas vidas={datos.vidas} />}
+      {pestana === 'general' && datos.vidas && <LineaDeVidas vidas={datos.vidas} racha={racha} />}
 
       {pestana === 'general' && (
         <View style={estilos.grilla}>
