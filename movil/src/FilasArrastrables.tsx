@@ -161,7 +161,7 @@ const estilos = conTema(() => StyleSheet.create({
     zIndex: 10,
     elevation: 8,
     backgroundColor: C.hoja,
-    borderRadius: 12,
+    borderRadius: 1,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
     paddingHorizontal: 10,

@@ -19,6 +19,8 @@ import { numeroDeRango } from '@nucleo/rangos';
 import { paletaDe } from '@nucleo/paletas';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import FondoOctogonal from './FondoOctogonal';
+import { R } from './roles';
 
 /**
  * "ENTRENANDO CONTIGO", en Ranking (12/10/2026): con quién estoy unido y qué
@@ -72,6 +74,7 @@ export default function Juntos({
 
   return (
     <View testID="juntos" style={estilos.seccion}>
+      <FondoOctogonal relleno={conAlfa(C.hoja, 0.88)} borde={C.lineaFuerte} corte={12} />
       <Text style={estilos.rotulo}>{T.social.juntos}</Text>
       {uniones.map((u) => (
         <Aparece key={u.id}>
@@ -171,11 +174,11 @@ export default function Juntos({
 
 const estilos = conTema(() => StyleSheet.create({
   // ARRIBA DE TODO Y EN UNA TARJETA (28/10, aprobado en la galería): es lo que está pasando.
-  seccion: { marginTop: 14, borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 18, backgroundColor: conAlfa(C.hoja, 0.88), paddingVertical: 12, paddingHorizontal: 14 },
+  seccion: { marginTop: 14, paddingVertical: 12, paddingHorizontal: 14 },
   aro: { borderWidth: 2, borderRadius: 999, padding: 1 },
   invitar: { backgroundColor: C.claro, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 16 },
   invitarTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
-  rotulo: { color: C.apagado, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginBottom: 6 },
+  rotulo: { ...R.etiqueta, marginBottom: 6  },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   nombre: { flex: 1, color: C.tinta, fontSize: 14 },
   cabecera: { flexDirection: 'row', alignItems: 'center', gap: 10 },

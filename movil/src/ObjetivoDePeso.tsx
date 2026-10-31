@@ -168,7 +168,7 @@ const estilos = conTema(() => StyleSheet.create({
   campo: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
-    borderRadius: 8,
+    borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 7,
     color: C.tinta,

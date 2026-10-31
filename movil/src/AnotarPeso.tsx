@@ -10,6 +10,7 @@ import { supabase } from './supabase';
 import { FIJO } from './coloresFijos';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * ANOTAR EL PESO (20/10, la B de la galería): el número grande, − y + a los lados de una
@@ -120,6 +121,7 @@ export default function AnotarPeso({ unidad, alGuardar }: { unidad: Unidad; alGu
       </View>
       {ultimo && <Text style={estilos.ultima}>{T.peso.ultima(conComa(pesoInicial(ultimo.valor, unidad).toFixed(1)), unidad, fechaLinda(ultimo.fecha))}</Text>}
       <Pressable style={[estilos.anotar, guardando && estilos.apagado]} onPress={() => guardar()} disabled={guardando} accessibilityRole="button" testID="anotar-peso-anotar">
+        <FondoOctogonal relleno={FIJO.crema} />
         <Text style={estilos.anotarTexto}>{guardando ? '…' : T.peso.anotar}</Text>
       </Pressable>
       {!!error && <Text style={estilos.error}>{error}</Text>}
@@ -164,13 +166,13 @@ const estilos = StyleSheet.create({
   numero: { color: FIJO.tinta, fontSize: 64, fontWeight: '200', lineHeight: 84, fontFamily: L.dato, letterSpacing: -3 },
   unidad: { color: FIJO.sub, fontSize: 16 },
   fila: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', gap: 8 },
-  regla: { flex: 1, height: 54, borderRadius: 12, backgroundColor: FIJO.regla, borderWidth: 1, borderColor: FIJO.linea, overflow: 'hidden' },
+  regla: { flex: 1, height: 54, backgroundColor: FIJO.regla, borderWidth: 1, borderColor: FIJO.linea, overflow: 'hidden' },
   aguja: { position: 'absolute', left: '50%', top: 6, bottom: 6, width: 2, marginLeft: -1, borderRadius: 1, backgroundColor: FIJO.crema },
   redondo: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: FIJO.borde, backgroundColor: FIJO.negro, alignItems: 'center', justifyContent: 'center' },
   redondoApretado: { backgroundColor: FIJO.apretado },
   redondoTexto: { color: FIJO.tinta, fontSize: 20, fontWeight: '300', lineHeight: 24 },
   ultima: { color: FIJO.sub, fontSize: 12, fontFamily: L.dato },
-  anotar: { alignSelf: 'stretch', backgroundColor: FIJO.crema, borderRadius: 999, paddingVertical: 14, alignItems: 'center' },
+  anotar: { alignSelf: 'stretch', paddingVertical: 14, alignItems: 'center' },
   apagado: { opacity: FIJO.deshabilitado },
   anotarTexto: { color: FIJO.negro, fontSize: 15, fontWeight: '600' },
   error: { color: FIJO.error, fontSize: 13 },

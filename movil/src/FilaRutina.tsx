@@ -12,6 +12,7 @@ import { C } from './colores';
 import Aparece from './Aparece';
 import { filaPrecargada } from '@compartido/inicioAlArrancar';
 import { Text } from './Texto';
+import { R } from './roles';
 
 /**
  * LO QUE TOCA HOY, EN INICIO (15/10). Un renglón —"HOY  Pecho, hombro y brazo"— que
@@ -76,7 +77,7 @@ function FilaRutina() {
 const estilos = StyleSheet.create({
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, marginTop: 6 },
   tocada: { opacity: 0.6 },
-  rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500' },
+  rotulo: { ...R.etiqueta },
   texto: { flex: 1, color: C.tinta, fontSize: 15 },
   flecha: { color: C.sub, fontSize: 22 },
 });

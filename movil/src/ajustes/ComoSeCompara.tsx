@@ -4,6 +4,7 @@ import { COMO_SE_COMPARA, type Parte } from '@nucleo/comoSeCompara';
 import { T } from '@nucleo/textos';
 import { C } from '../colores';
 import { Text } from '../Texto';
+import { R } from '../roles';
 
 /**
  * CÓMO SE CALCULA EL RANKING DE FUERZA, abajo de todo en Ajustes.
@@ -74,7 +75,7 @@ function pintar(parte: Parte, i: number) {
 const estilos = StyleSheet.create({
   seccion: { marginTop: 30 },
   cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 },
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500' },
+  titulo: { ...R.etiqueta },
   signo: { color: C.sub, fontSize: 18 },
   subtitulo: { color: C.tinta, fontSize: 15, marginTop: 20, marginBottom: 6 },
   parrafo: { color: C.apagado, fontSize: 14, lineHeight: 21, marginTop: 10 },

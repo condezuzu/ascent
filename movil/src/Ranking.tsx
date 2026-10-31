@@ -50,6 +50,7 @@ import { useArriba } from './zonaSegura';
 import Tocable from './Tocable';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import { R } from './roles';
 
 /**
  * RANKING — tanda 4.
@@ -515,12 +516,6 @@ const estilos = conTema(() => StyleSheet.create({
   pantalla: { flexGrow: 1, padding: 24, paddingTop: 64, paddingBottom: 40 },
   titulo: { color: C.tinta, fontSize: 22, marginBottom: 20 },
   tarjeta: {
-    backgroundColor: C.tarjeta,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
     marginBottom: 16,
   },
   ranking: { position: 'relative', marginBottom: 16 },
@@ -559,7 +554,7 @@ const estilos = conTema(() => StyleSheet.create({
   vacio: { alignItems: 'center', paddingVertical: 36, gap: 6 },
   vacioTexto: { color: C.sub, fontSize: 14, textAlign: 'center' },
   seccion: { marginTop: 24 },
-  rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginBottom: 8 },
+  rotulo: { ...R.etiqueta, marginBottom: 8  },
   verMas: { paddingVertical: 10, alignItems: 'center' },
   verMasTexto: { color: C.sub, fontSize: 13 },
   flechaArriba: { transform: [{ rotate: '180deg' }] },
@@ -567,7 +562,7 @@ const estilos = conTema(() => StyleSheet.create({
   miniatura: {
     width: 38,
     height: 38,
-    borderRadius: 8,
+    borderRadius: 1,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.linea,
   },

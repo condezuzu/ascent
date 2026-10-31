@@ -17,6 +17,7 @@ import { fijarCartel } from './cartelVisible';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
+import FondoOctogonal from './FondoOctogonal';
 
 /** Cada cuánto se pregunta con la app adelante. El aviso push lo adelanta. */
 const CADA_MS = 30_000;
@@ -125,6 +126,7 @@ export default function CartelDeArriba() {
         { opacity: bajada, transform: [{ translateY: bajada.interpolate({ inputRange: [0, 1], outputRange: [-160, 0] }) }] },
       ]}
     >
+      <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={12} />
       <View style={estilos.quien}>
         <Avatar url={novedad.otro.avatar_url} nombre={novedad.otro.username} tam={40} />
         <View style={estilos.textos}>
@@ -157,11 +159,7 @@ const estilos = conTema(() => StyleSheet.create({
     right: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.lineaFuerte,
     // Opaco: encima de Inicio se transparentaba el botón de atrás.
-    backgroundColor: C.hoja,
     shadowColor: '#000',
     shadowOpacity: 0.4,
     shadowRadius: 18,
@@ -173,8 +171,8 @@ const estilos = conTema(() => StyleSheet.create({
   nombre: { color: C.tinta, fontSize: 16, fontWeight: '600' },
   que: { color: C.sub, fontSize: 14, marginTop: 2 },
   botones: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 12 },
-  borde: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 18 },
+  borde: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 18 },
   bordeTexto: { color: C.tinta, fontSize: 14 },
-  solido: { backgroundColor: C.tinta, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 18 },
+  solido: { backgroundColor: C.tinta, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 18 },
   solidoTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
 }));

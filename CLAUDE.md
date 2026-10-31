@@ -129,7 +129,7 @@ tandas sin que nadie los viera.
 | [spec/pantallas.md](spec/pantallas.md) | §9 pantallas · §10 onboarding · §11 estados vacíos | tocás una pantalla |
 | [spec/fuerza.md](spec/fuerza.md) | §16 módulo de fuerza (PRs, DOTS, ranking) | implementado y verificado |
 | [spec/cronometro.md](spec/cronometro.md) | §17 cronómetro de sesión · §18 descanso entre series | implementado |
-| [spec/estetica.md](spec/estetica.md) | §19 vuelta estética · §20 el cronómetro en Inicio | **propuesta, sin implementar** |
+| [spec/estetica.md](spec/estetica.md) | §19 vuelta estética (octágono o píldora, línea y aire) · §20 el cronómetro en Inicio | implementado |
 | [spec/etapa-nativa.md](spec/etapa-nativa.md) | §13z los huecos de `src/plataforma/` · §13 ubicación · §13b avisos | **antes de tocar algo del navegador** |
 
 Los números de sección (§3, §7…) siguen siendo los de siempre: los comentarios

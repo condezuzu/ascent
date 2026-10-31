@@ -4,6 +4,7 @@ import { T } from '@nucleo/textos';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * EL GLOBITO (15/10): un renglón que FLOTA encima de la pantalla y la tapa, sin
@@ -32,6 +33,7 @@ export default function Globito({ texto, alCerrar, testID }: { texto: string; al
   return (
     <View style={estilos.ancla} pointerEvents="box-none">
       <Animated.View style={[estilos.globo, { opacity: opacidad }]}>
+        <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={8} />
         <Pressable testID={testID} style={estilos.toque} onPress={cerrar} accessibilityRole="button" accessibilityHint={T.general.entendido}>
           {/* Dos renglones (21/10): el aviso de subir el peso dice el rango, y en uno se cortaba. */}
           <Text style={estilos.texto} numberOfLines={2}>
@@ -55,10 +57,6 @@ const estilos = conTema(() => StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.lineaFuerte,
-    backgroundColor: C.hoja,
     shadowColor: '#000',
     shadowOpacity: 0.45,
     shadowRadius: 12,

@@ -9,6 +9,7 @@ import { supabase } from '../supabase';
 import { C, DESHABILITADO, conTema } from '../colores';
 import { useTema } from '../useTema';
 import { Text } from '../Texto';
+import { R } from '../roles';
 
 /**
  * LLEVARSE TODO: el historial entero en un archivo.
@@ -65,16 +66,16 @@ export default function MisDatos({ perfil }: { perfil: Perfil }) {
 
 const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginBottom: 10 },
+  titulo: { ...R.etiqueta, marginBottom: 10  },
   boton: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingVertical: 13,
     alignItems: 'center',
   },
   apagado: { opacity: DESHABILITADO },
   botonTexto: { color: C.tinta, fontSize: 14 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
+  nota: { ...R.nota, marginTop: 8  },
   error: { color: C.error, fontSize: 13, marginTop: 8 },
 }));

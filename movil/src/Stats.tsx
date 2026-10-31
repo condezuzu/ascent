@@ -45,6 +45,7 @@ import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import { Caja, R, Seccion } from './roles';
 
 const SEMANAS = 8;
 
@@ -301,10 +302,10 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
             { v: String(mejor), e: T.stats.mejorRacha },
             ...celdaFaltados(datos.faltados),
           ].map((c) => (
-            <View key={c.e} style={estilos.celda}>
+            <Caja key={c.e} style={estilos.celda}>
               <Text testID="stats-cifra" style={estilos.valor}>{c.v}</Text>
               <Text style={estilos.etiqueta}>{c.e}</Text>
-            </View>
+            </Caja>
           ))}
         </View>
       )}
@@ -332,7 +333,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
           <MiRutina visible={pestana === 'entrenamiento'} abrirHoy alArrastrar={setArrastrando} />
           {/* Una fila por músculo, una barra por semana, en series: la misma
               pantalla que la web, con las mismas funciones del núcleo. */}
-          <Text style={estilos.seccion}>{T.volumen.titulo}</Text>
+          <Seccion>{T.volumen.titulo}</Seccion>
           {!hayAnotado ? (
             <Text style={estilos.nota}>{T.volumen.vacio}</Text>
           ) : (
@@ -423,7 +424,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
           {/* Todo el catálogo, en el orden del selector; lo nunca hecho con guion. */}
           {maximos.length > 0 && (
             <>
-              <Text style={estilos.seccion}>{T.volumen.maximos}</Text>
+              <Seccion>{T.volumen.maximos}</Seccion>
               <Text style={estilos.nota}>{T.volumen.maximosNota}</Text>
               {maximos.map((g) => {
                 const clave = g.grupo ?? 'dots';
@@ -501,7 +502,7 @@ const estilos = conTema(() => StyleSheet.create({
   raiz: { flex: 1 },
   pantalla: { flexGrow: 1, padding: 24, paddingTop: 64, paddingBottom: 40 },
   centrado: { flex: 1, backgroundColor: C.fondo, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 4, textTransform: 'uppercase', fontWeight: '500', marginBottom: 20 },
+  titulo: { ...R.etiqueta, marginBottom: 20  },
 
   selector: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   opcion: {
@@ -516,21 +517,13 @@ const estilos = conTema(() => StyleSheet.create({
   opcionTexto: { color: C.apagado, fontSize: 14 },
   opcionTextoActivo: { color: C.claro },
 
-  grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  celda: { width: '47%', paddingVertical: 14 },
-  valor: { color: C.claro, fontSize: 34, fontWeight: '300', fontFamily: L.dato, letterSpacing: -1.6 },
-  etiqueta: { color: C.apagado, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 4 },
+  grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  // Dos por fila: se reparten lo que queda después del hueco.
+  celda: { flexBasis: '47%', flexGrow: 1, padding: 14 },
+  valor: { ...R.cifra },
+  etiqueta: { ...R.etiqueta, marginTop: 4  },
 
-  seccion: {
-    color: C.sub,
-    fontSize: 11,
-    letterSpacing: 3,
-    textTransform: 'uppercase',
-    fontWeight: '500',
-    marginTop: 18,
-    marginBottom: 12,
-  },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginBottom: 6 },
+  nota: { ...R.nota, marginBottom: 6  },
 
   cuando: { color: C.sub, fontSize: 12, textAlign: 'right', marginBottom: 8 },
   filaMusculo: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginBottom: 10 },
@@ -542,11 +535,11 @@ const estilos = conTema(() => StyleSheet.create({
   semana: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginBottom: 14 },
   flecha: { color: C.sub, fontSize: 22, paddingHorizontal: 2 },
   // LA PISTA: fondo, franja de referencia, y el llenado encima.
-  pista: { flex: 1, height: 12, borderRadius: 6, backgroundColor: C.barraPista, overflow: 'hidden' },
+  pista: { flex: 1, height: 12, borderRadius: 999, backgroundColor: C.barraPista, overflow: 'hidden' },
   // La franja NO es un borde: es un bloque más claro, para que se lea como una
   // zona y no como dos líneas sueltas.
   franja: { position: 'absolute', top: 0, bottom: 0, backgroundColor: C.barraFranja },
-  llenado: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 6 },
+  llenado: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 999 },
   // POR DEBAJO, APAGADO; DENTRO, EL COLOR DE LA APP; POR ENCIMA, un tono más
   // caliente. Nada de rojo: pasarse no es un error.
   llenadoPoco: { backgroundColor: C.barraPoco },

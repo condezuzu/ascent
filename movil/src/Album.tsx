@@ -27,6 +27,7 @@ import { useArriba } from './zonaSegura';
 import GloboPrimeraVez from './GloboPrimeraVez';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import { R } from './roles';
 
 /**
  * ÁLBUM — tanda 4.
@@ -542,15 +543,15 @@ const estilos = conTema(() => StyleSheet.create({
   titulo: { color: C.tinta, fontSize: 22, marginBottom: 20 },
   error: { color: C.error, fontSize: 14, marginBottom: 12 },
   cabezaMes: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 },
-  rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500' },
+  rotulo: { ...R.etiqueta },
   cuentaMes: { color: C.apagado, fontSize: 11 },
   // LA COMPARACION: dos mitades iguales, con la fecha debajo de cada una.
   comparar: { flexDirection: 'row', gap: 4, marginBottom: 4 },
   mitad: { flex: 1 },
-  mitadFoto: { width: '100%', aspectRatio: 1, borderRadius: 6, backgroundColor: C.hoja },
+  mitadFoto: { width: '100%', aspectRatio: 1, borderRadius: 1, backgroundColor: C.hoja },
   mitadCuando: { color: C.apagado, fontSize: 10, marginTop: 4, textAlign: 'center' },
   grilla: { flexDirection: 'row', flexWrap: 'wrap' },
-  celda: { backgroundColor: C.hoja, borderRadius: 6, overflow: 'hidden' },
+  celda: { backgroundColor: C.hoja, borderRadius: 1, overflow: 'hidden' },
   punto: {
     position: 'absolute',
     right: 6,
@@ -560,13 +561,7 @@ const estilos = conTema(() => StyleSheet.create({
     borderRadius: 4,
     backgroundColor: C.claro,
   },
-  tarjeta: {
-    backgroundColor: C.tarjeta,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
-    borderRadius: 14,
-    padding: 14,
-  },
+  tarjeta: {},
   texto: { color: C.sub, fontSize: 14 },
   botonFantasma: {
     borderWidth: StyleSheet.hairlineWidth,
@@ -604,7 +599,7 @@ const estilos = conTema(() => StyleSheet.create({
   marco: {
     alignSelf: 'center',
     padding: 6,
-    borderRadius: 14,
+    borderRadius: 1,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.linea,
     backgroundColor: C.hoja,

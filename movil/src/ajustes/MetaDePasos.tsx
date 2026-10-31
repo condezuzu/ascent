@@ -12,6 +12,7 @@ import { C, conTema } from '../colores';
 import { useTema } from '../useTema';
 import { Text, TextInput } from '../Texto';
 import { L } from '../fuentes';
+import { R } from '../roles';
 
 /**
  * LA META DE PASOS DEL DÍA.
@@ -91,11 +92,11 @@ export default function MetaDePasos({ alCambiar }: { alCambiar?: (meta: number) 
 
 const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', fontWeight: '500', marginBottom: 12 },
+  titulo: { ...R.etiqueta, marginBottom: 12  },
   campo: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.linea,
-    borderRadius: 12,
+    borderRadius: 999,
     paddingVertical: 12,
     paddingHorizontal: 14,
     color: C.tinta,

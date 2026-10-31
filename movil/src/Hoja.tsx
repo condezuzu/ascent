@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleShee
 import { T } from '@nucleo/textos';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * UNA HOJA QUE SUBE DESDE ABAJO, con el fondo oscurecido que la cierra.
@@ -24,6 +25,7 @@ export default function Hoja({ visible, alCerrar, children }: { visible: boolean
             suelto puede encontrarse en una pantalla que no está. Esto le da a
             la sonda un lugar concreto donde buscar lo que la hoja pregunta. */}
         <View style={estilos.hoja} testID="hoja">
+          <FondoOctogonal relleno={C.hoja} borde={C.linea} corte={14} soloArriba />
           <ScrollView contentContainerStyle={estilos.contenido} keyboardShouldPersistTaps="handled">
             {children}
           </ScrollView>
@@ -38,11 +40,6 @@ const estilos = conTema(() => StyleSheet.create({
   fondo: { ...StyleSheet.absoluteFillObject, backgroundColor: C.veloHoja },
   hoja: {
     maxHeight: '86%',
-    backgroundColor: C.hoja,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderColor: C.lineaFuerte,
   },
   contenido: { padding: 22, paddingBottom: 40 },
 }));

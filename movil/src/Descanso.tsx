@@ -25,6 +25,8 @@ import Aparece from './Aparece';
 import Tocable from './Tocable';
 import { Text, TextInput } from './Texto';
 import { L } from './fuentes';
+import FondoOctogonal from './FondoOctogonal';
+import { Fantasma } from './roles';
 
 /**
  * EL DESCANSO ENTRE SERIES, en nativo (§18). La misma pantalla que la web:
@@ -217,29 +219,31 @@ export default function Descanso({
 
         {terminado ? (
           <View style={estilos.abajo}>
-            <Pressable style={[estilos.solido, { backgroundColor: acento, borderColor: acento }]} onPress={(e) => cuentaLaSerie(horaDelToque(e)) && alSumar()}>
+            <Pressable style={estilos.solido} onPress={(e) => cuentaLaSerie(horaDelToque(e)) && alSumar()}>
+              <FondoOctogonal relleno={C.claro} />
               <Text style={estilos.solidoTexto}>{T.descanso.serieHecha}</Text>
             </Pressable>
-            <Pressable
-              style={estilos.texto}
-              onPress={() => {
+            <Fantasma
+              enHoja
+              texto={T.descanso.seguir}
+              alTocar={() => {
                 void borrarDescanso();
                 alSaltar();
               }}
-            >
-              <Text style={estilos.textoBoton}>{T.descanso.seguir}</Text>
-            </Pressable>
+            />
           </View>
         ) : (
           <View style={estilos.abajo}>
             {/* "SERIE HECHA" ES UN BOTÓN, no un enlace: sumar la serie sin salir
                 es lo que más se hace desde acá. */}
             {sinEmpezar ? (
-              <Tocable testID="descanso-empezar" style={[estilos.solido, { backgroundColor: acento, borderColor: acento }]} onPress={sinEmpezar.alEmpezar}>
+              <Tocable testID="descanso-empezar" style={estilos.solido} onPress={sinEmpezar.alEmpezar}>
+                <FondoOctogonal relleno={C.claro} />
                 <Text style={estilos.solidoTexto}>{T.descanso.empezar}</Text>
               </Tocable>
             ) : (
               <Tocable style={estilos.borde} onPress={(e) => cuentaLaSerie(horaDelToque(e)) && alSumar()}>
+                <FondoOctogonal relleno="none" borde={C.claro} />
                 <Text style={estilos.bordeTexto}>{T.descanso.serieHecha}</Text>
               </Tocable>
             )}
@@ -305,9 +309,7 @@ export default function Descanso({
               </Aparece>
             )}
             {aMano !== null && aMano.trim() !== '' && descansoAMano(aMano) === null && <Aparece><Text style={estilos.aManoMal}>{T.descanso.aManoMal}</Text></Aparece>}
-            <Pressable style={estilos.texto} onPress={alOcultar}>
-              <Text style={estilos.textoBoton}>{quieto ? T.general.cancelar : T.descanso.saltar}</Text>
-            </Pressable>
+            <Fantasma enHoja texto={quieto ? T.general.cancelar : T.descanso.saltar} alTocar={alOcultar} />
           </View>
         )}
 
@@ -353,9 +355,9 @@ const estilos = conTema(() => StyleSheet.create({
   // En la esquina del cuadrado del arco, afuera del círculo.
   deMas: { position: 'absolute', right: 4, bottom: 4, color: C.sub, fontSize: 15, fontFamily: L.dato },
   abajo: { alignItems: 'stretch' },
-  solido: { borderWidth: 1, borderRadius: 4, paddingVertical: 16, alignItems: 'center' },
+  solido: { paddingVertical: 16, alignItems: 'center' },
   solidoTexto: { color: C.fondo, fontSize: 16, fontWeight: '600' },
-  borde: { borderWidth: 1, borderColor: C.sub, borderRadius: 4, paddingVertical: 16, alignItems: 'center' },
+  borde: { paddingVertical: 16, alignItems: 'center' },
   bordeTexto: { color: C.tinta, fontSize: 16 },
   presets: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 12 },
   aMano: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 },
@@ -365,6 +367,4 @@ const estilos = conTema(() => StyleSheet.create({
   presetActivo: { borderColor: C.sub },
   presetTexto: { color: C.apagado, fontSize: 11.5, letterSpacing: -0.3, fontFamily: L.dato },
   presetTextoActivo: { color: C.tinta },
-  texto: { paddingVertical: 9, alignItems: 'center' },
-  textoBoton: { color: C.sub, fontSize: 14 },
 }));

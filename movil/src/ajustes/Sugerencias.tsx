@@ -7,6 +7,7 @@ import CampoTexto from '../CampoTexto';
 import { C, DESHABILITADO, conTema } from '../colores';
 import { useTema } from '../useTema';
 import { Text } from '../Texto';
+import { R } from '../roles';
 
 /**
  * DECIR ALGO SIN SALIR DE LA APP.
@@ -70,11 +71,11 @@ const estilos = conTema(() => StyleSheet.create({
   // EL MISMO RÓTULO QUE EL RESTO DE AJUSTES: chico, en versalitas y apagado.
   // Estas secciones nacieron con título grande y quedaban como pegadas de otra
   // pantalla — dos estilos de título en una lista se leen como un error.
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginBottom: 10 },
+  titulo: { ...R.etiqueta, marginBottom: 10  },
   campo: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 1,
     paddingHorizontal: 14,
     paddingVertical: 11,
     color: C.tinta,
@@ -85,7 +86,7 @@ const estilos = conTema(() => StyleSheet.create({
   boton: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingVertical: 12,
     alignItems: 'center',
     marginTop: 8,

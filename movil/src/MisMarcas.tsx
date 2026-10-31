@@ -20,6 +20,8 @@ import { volverOInicio } from './volver';
 import { useArriba } from './zonaSegura';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import FondoOctogonal from './FondoOctogonal';
+import { R } from './roles';
 
 /**
  * MIS MARCAS (§16): donde se cargan, se miran y se borran.
@@ -230,6 +232,7 @@ export default function MisMarcas() {
         <Text style={estilos.titulo}>{T.fuerza.misMarcas}</Text>
 
         <Pressable style={estilos.solido} onPress={() => abrirHoja()}>
+          <FondoOctogonal relleno={C.claro} />
           <Text style={estilos.solidoTexto}>{T.fuerza.anotarMarca}</Text>
         </Pressable>
 
@@ -316,15 +319,12 @@ const estilos = conTema(() => StyleSheet.create({
   // `contenido`, para que el enlace no se corra al llegar los datos.
   volverSuelto: { paddingHorizontal: 20, paddingTop: 16 },
   titulo: { color: C.tinta, fontSize: 26, fontWeight: '300', marginTop: 10, marginBottom: 18 },
-  solido: { backgroundColor: C.tinta, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
+  solido: { paddingVertical: 14, alignItems: 'center' },
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
-  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 28, marginBottom: 10 },
+  seccion: { ...R.etiqueta, marginTop: 28, marginBottom: 10  },
   tarjeta: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
-    borderRadius: 12,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
+    borderTopWidth: 1,
+    borderTopColor: C.linea,
   },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 13 },
   nombre: { flex: 1, color: C.tinta, fontSize: 15 },

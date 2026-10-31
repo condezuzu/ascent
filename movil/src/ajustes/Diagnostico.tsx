@@ -21,6 +21,7 @@ import { medirCuadros, type Medicion } from '../medirCuadros';
 import { CLAVE_HUD, HUD_CAMBIO } from '../HudDiagnostico';
 import { eventos } from '@compartido/eventos';
 import { Text, TextInput } from '../Texto';
+import { R } from '../roles';
 
 /**
  * QUÉ ESTÁ VIENDO LA APP, Y QUÉ FUE HACIENDO.
@@ -424,7 +425,7 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
 const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 34 },
   plegable: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500' },
+  titulo: { ...R.etiqueta },
   signo: { color: C.sub, fontSize: 18 },
   fila: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 5 },
   que: { color: C.apagado, fontSize: 12 },
@@ -432,7 +433,7 @@ const estilos = conTema(() => StyleSheet.create({
   boton: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 1,
     paddingVertical: 12,
     alignItems: 'center',
     marginTop: 12,
@@ -444,7 +445,7 @@ const estilos = conTema(() => StyleSheet.create({
     marginTop: 14,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.linea,
-    borderRadius: 10,
+    borderRadius: 1,
     backgroundColor: C.hoja,
   },
   // Monoespaciada: son pares de dato y valor, y alineados se leen de un

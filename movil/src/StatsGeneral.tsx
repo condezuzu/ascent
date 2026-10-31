@@ -30,6 +30,7 @@ import EstrellaQueTitila from './EstrellaQueTitila';
 import { modosDeLasVidas } from '@nucleo/impulsos';
 import { Text, TextInput } from './Texto';
 import { L } from './fuentes';
+import { Fantasma, Seccion, R } from './roles';
 
 /**
  * STATS → GENERAL, lo que va además de los cuatro números. Las mismas
@@ -179,7 +180,7 @@ export default function StatsGeneral({
 
   return (
     <View>
-      <Text style={estilos.seccion}>{T.stats.elAno}</Text>
+      <Seccion>{T.stats.elAno}</Seccion>
       <View style={[estilos.tarjeta, estilos.mapa]}>
         {semanas.map((s, i) => (
           <View key={i} style={estilos.columna}>
@@ -201,9 +202,7 @@ export default function StatsGeneral({
       {/* CORREGIR DÍAS (15/10): un botón que se ve como botón y abre el calendario del mes acá mismo. */}
       {calendario && (
         <>
-          <Pressable testID="corregir-dias" style={estilos.botonCorregir} onPress={() => setCalendarioAbierto((v) => !v)} accessibilityRole="button" accessibilityState={{ expanded: calendarioAbierto }}>
-            <Text style={estilos.botonCorregirTexto}>{T.calendario.corregirDias}</Text>
-          </Pressable>
+          <Fantasma testID="corregir-dias" texto={T.calendario.corregirDias} alinear="flex-start" alTocar={() => setCalendarioAbierto((v) => !v)} accesibilidad={{ expanded: calendarioAbierto }} />
           {calendarioAbierto && calendario}
         </>
       )}
@@ -213,7 +212,7 @@ export default function StatsGeneral({
       {/* Los tres casos de la web: con dos pesos o más, la tendencia; con uno,
           el número solo —decirle "anota tu peso" a quien acaba de anotarlo
           parece un error—; sin ninguno, la invitación. */}
-      <Text style={estilos.seccion}>{pesos.length >= 2 ? T.stats.pesoTendencia : T.stats.peso}</Text>
+      <Seccion>{pesos.length >= 2 ? T.stats.pesoTendencia : T.stats.peso}</Seccion>
       {pesos.length >= 2 && <GraficoPeso pesos={pesos} unidad={unidad} claro={pal.claro} />}
       {pesos.length === 1 && (
         <Text style={estilos.pesoSolo}>
@@ -224,9 +223,7 @@ export default function StatsGeneral({
       {pesos.length === 1 && <Text style={estilos.nota}>{T.stats.pesoUnoMas}</Text>}
       {pesos.length === 0 && <Text style={estilos.nota}>{T.stats.pesoVacio}</Text>}
       {/* La pantalla de anotar el peso (20/10) es una hoja: la misma que se abre desde Inicio. */}
-      <Pressable style={estilos.botonCorregir} onPress={() => setPesoAbierto(true)} testID="abrir-anotar-peso">
-        <Text style={estilos.botonCorregirTexto}>{T.peso.anotarPeso}</Text>
-      </Pressable>
+      <Fantasma testID="abrir-anotar-peso" texto={T.peso.anotarPeso} alinear="flex-start" alTocar={() => setPesoAbierto(true)} />
       <PesoHoja visible={pesoAbierto} unidad={unidad} alCerrar={() => setPesoAbierto(false)} alGuardar={alCambiar} />
       {/* EL OBJETIVO DE PESO, arriba de la lista: un número al que llegar. De él
           sale el color de cada cambio (acercarse/alejarse) y el momento de haber
@@ -248,7 +245,7 @@ export default function StatsGeneral({
           una mancha con un rótulo. */}
       {pasos && pasos.length >= 2 && (
         <>
-          <Text style={estilos.seccion}>{T.stats.pasosTendencia}</Text>
+          <Seccion>{T.stats.pasosTendencia}</Seccion>
           <PromedioDePasos pasos={pasos} meta={metaPasos} />
           <GraficoPasos pasos={pasos} claro={pal.claro} meta={metaPasos} alCambiarMeta={setMetaPasos} />
         </>
@@ -264,13 +261,13 @@ export default function StatsGeneral({
         claro={pal.claro}
       />
 
-      <Text style={estilos.seccion}>{T.stats.laEscalera}</Text>
+      <Seccion>{T.stats.laEscalera}</Seccion>
       <View style={estilos.tarjeta}>
         {RANGOS.map((r) => {
           const pasado = rangoActual.n > r.n;
           const esActual = rangoActual.n === r.n;
           return (
-            <View key={r.n} style={estilos.filaRango}>
+            <View key={r.n} style={[estilos.filaRango, r.n < RANGOS.length && estilos.filaRangoLinea]}>
               <View style={!esActual && !pasado && { opacity: 0.45 }}>
                 <Insignia rango={r.n} />
               </View>
@@ -326,7 +323,7 @@ function Sesiones() {
 
   return (
     <View>
-      <Text style={estilos.seccion}>{T.stats.sesiones}</Text>
+      <Seccion>{T.stats.sesiones}</Seccion>
       {r.validas > 0 ? (
         <View style={estilos.dosNumeros}>
           <View style={estilos.numero}>
@@ -384,23 +381,14 @@ const estilos = conTema(() => StyleSheet.create({
   promedioFrente: { color: C.sub, fontSize: 14, marginTop: 2 },
   promedioLlega: { color: C.claro },
   promedioCuando: { color: C.apagado, fontSize: 12, marginTop: 4, fontFamily: L.dato },
-  botonCorregir: { alignSelf: 'flex-start', borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 18, marginTop: 12 },
-  botonCorregirTexto: { color: C.tinta, fontSize: 14 },
-  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 28, marginBottom: 10 },
-  tarjeta: {
-    backgroundColor: C.tarjeta,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
-    borderRadius: 14,
-    padding: 12,
-  },
+  tarjeta: {},
   mapa: { flexDirection: 'row', gap: 2 },
   columna: { flex: 1, gap: 2 },
-  celdaAno: { aspectRatio: 1, borderRadius: 2, backgroundColor: C.celdaVacia },
+  celdaAno: { aspectRatio: 1, borderRadius: 1, backgroundColor: C.celdaVacia },
   vidas: { marginBottom: 16, gap: 6 },
-  et: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500' },
+  et: { ...R.etiqueta },
   puntos: { flexDirection: 'row', gap: 8 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 6 },
+  nota: { ...R.nota, marginTop: 6  },
   dosNumeros: { flexDirection: 'row', gap: 12 },
   numero: { flex: 1 },
   valor: { color: C.tinta, fontSize: 24, fontWeight: '300', fontFamily: L.dato, letterSpacing: -0.8 },
@@ -416,7 +404,7 @@ const estilos = conTema(() => StyleSheet.create({
     flex: 1,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 11,
     color: C.tinta,
@@ -425,13 +413,14 @@ const estilos = conTema(() => StyleSheet.create({
   botonFantasma: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingHorizontal: 18,
     justifyContent: 'center',
   },
   textoBoton: { color: C.tinta, fontSize: 14 },
   error: { color: C.error, fontSize: 13, marginTop: 6 },
-  filaRango: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
+  filaRango: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  filaRangoLinea: { borderBottomWidth: 1, borderBottomColor: C.linea },
   nombreRango: { flex: 1, color: C.tinta, fontSize: 15 },
   actual: { fontSize: 12, letterSpacing: 1 },
   dias: { color: C.sub, fontSize: 12, fontFamily: L.dato },

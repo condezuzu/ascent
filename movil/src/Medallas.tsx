@@ -9,6 +9,7 @@ import { numeroDeRango } from '@nucleo/rangos';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * LAS MEDALLAS AL LADO DEL NOMBRE, y el globo al tocar una.
@@ -165,6 +166,7 @@ export default function Medallas({
               `GloboPrimeraVez`. */}
           <View style={[estilos.punta, { left: desdeX + idxGlobo * (tam + SEPARACION) + tam / 2 - 5 }]} />
           <View style={estilos.cuerpo}>
+            <FondoOctogonal relleno={C.hoja} borde={C.linea} corte={8} />
             <Text style={estilos.texto}>{fraseGlobo}</Text>
           </View>
         </Animated.View>
@@ -251,10 +253,6 @@ const estilos = conTema(() => StyleSheet.create({
   },
   cuerpo: {
     marginTop: 5,
-    backgroundColor: C.hoja,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
-    borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 13,
   },

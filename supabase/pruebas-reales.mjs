@@ -85,6 +85,8 @@
 //      abierta cambia la paleta sin remontar el motor ni perder la sesión; lo fijo sigue fijo (30/10).
 //  37. probar-letras — nada en la fuente del sistema en Inicio, entrenando, el descanso ni Stats; el número
 //      es Outfit, las cifras y el reloj son Geist Mono, y se dibujan de verdad (30/10), en la nativa.
+//  38. probar-forma — ningún radio del medio en ninguna pantalla; las cifras de Stats en caja cortada, la
+//      hoja con las esquinas de arriba cortadas y lo secundario subrayado (30/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -142,6 +144,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'el piso de contraste en los siete rangos', archivo: 'probar-contraste.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'toda la app sigue al rango', archivo: 'probar-rango.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'las letras de la nativa', archivo: 'probar-letras.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'octágono o píldora', archivo: 'probar-forma.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

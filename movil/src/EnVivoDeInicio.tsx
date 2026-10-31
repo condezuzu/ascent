@@ -12,6 +12,7 @@ import { tarjetasDeInicio } from '@nucleo/novedades';
 import { C, conAlfa, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * LA MITAD DE "ENTRENAR CON OTRO" QUE VIVE EN INICIO (12/10/2026).
@@ -73,6 +74,7 @@ function EnVivoDeInicio(visto: Visto) {
       {pedidos.map((u) => (
         <Aparece key={u.id}>
         <View testID="pedido-de-union" style={estilos.tarjeta} accessibilityRole="alert">
+          <FondoOctogonal relleno={conAlfa(C.hoja, 0.96)} borde={C.lineaFuerte} corte={10} />
           <Text style={estilos.texto}>{T.social.quiereUnirse(u.otro.username)}</Text>
           <View style={estilos.botones}>
             <Pressable
@@ -103,16 +105,12 @@ const estilos = conTema(() => StyleSheet.create({
     marginTop: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.lineaFuerte,
-    backgroundColor: conAlfa(C.hoja, 0.96),
   },
   texto: { color: C.tinta, fontSize: 15, lineHeight: 21 },
   botones: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 12 },
-  borde: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 18 },
+  borde: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 18 },
   bordeTexto: { color: C.tinta, fontSize: 14 },
-  solido: { backgroundColor: C.tinta, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 18 },
+  solido: { backgroundColor: C.tinta, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 18 },
   solidoTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
 }));
 

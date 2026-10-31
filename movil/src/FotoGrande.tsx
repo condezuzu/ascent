@@ -47,8 +47,8 @@ const estilos = conTema(() => StyleSheet.create({
   foto: { width: '100%', height: '78%' },
   cerrar: { color: C.sub, fontSize: 15, marginTop: 18 },
   botones: { flexDirection: 'row', gap: 12, marginTop: 18 },
-  solido: { backgroundColor: C.tinta, borderRadius: 10, paddingVertical: 11, paddingHorizontal: 22 },
+  solido: { backgroundColor: C.tinta, borderRadius: 999, paddingVertical: 11, paddingHorizontal: 22 },
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
-  borde: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 10, paddingVertical: 11, paddingHorizontal: 22 },
+  borde: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 11, paddingHorizontal: 22 },
   bordeTexto: { color: C.tinta, fontSize: 15 },
 }));

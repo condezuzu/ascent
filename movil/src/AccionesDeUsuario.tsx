@@ -133,7 +133,7 @@ const estilos = conTema(() => StyleSheet.create({
   item: { paddingVertical: 15, borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea },
   itemTexto: { color: C.tinta, fontSize: 16 },
   itemPeligro: { color: C.error, fontSize: 16 },
-  peligro: { backgroundColor: C.error, borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
+  peligro: { backgroundColor: C.error, borderRadius: 999, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
   peligroTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   cancelar: { paddingVertical: 15, alignItems: 'center', marginTop: 6 },
   cancelarTexto: { color: C.sub, fontSize: 15 },

@@ -630,7 +630,7 @@ const estilos = conTema(() => StyleSheet.create({
   carril: { position: 'absolute', top: 0, bottom: 0, left: 0 },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   noCargo: { color: C.sub, fontSize: 14, textAlign: 'center', paddingHorizontal: 32, marginBottom: 14 },
-  reintentar: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.sub, borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10 },
+  reintentar: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.sub, borderRadius: 999, paddingHorizontal: 18, paddingVertical: 10 },
   reintentarTexto: { color: C.tinta, fontSize: 14 },
   barra: {
     flexDirection: 'row',

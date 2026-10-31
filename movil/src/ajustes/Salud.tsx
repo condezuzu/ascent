@@ -7,6 +7,7 @@ import { T } from '@nucleo/textos';
 import { C, conTema } from '../colores';
 import { useTema } from '../useTema';
 import { Text } from '../Texto';
+import { R } from '../roles';
 
 /**
  * LA SALUD DEL TELÉFONO (§13c). La sección que en la web no puede existir.
@@ -105,16 +106,16 @@ export default function Salud() {
 const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
   // El mismo rótulo que el resto de Ajustes: chico, en versalitas y apagado.
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginBottom: 10 },
+  titulo: { ...R.etiqueta, marginBottom: 10  },
   boton: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingVertical: 13,
     alignItems: 'center',
     marginTop: 10,
   },
   botonTexto: { color: C.tinta, fontSize: 14 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
+  nota: { ...R.nota, marginTop: 8  },
   conectado: { color: C.sub, fontSize: 14, marginTop: 10 },
 }));

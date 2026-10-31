@@ -14,6 +14,7 @@ import { irAPestana, useRecargarAlVolver } from './irAPestana';
 import { C, conTema, conAlfa } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
+import FondoOctogonal from './FondoOctogonal';
 
 type Amigo = { id: string; username: string; avatar_url: string | null };
 // Dónde quedó la burbuja tocada, en la ventana: de ahí sale el globo.
@@ -158,6 +159,7 @@ function GloboDelAmigo({ tocada, alInvitar, alCerrar }: { tocada: Tocada; alInvi
         <Avatar url={amigo.avatar_url} nombre={amigo.username} tam={TOCADA - 4} />
       </View>
       <View testID="globo-amigo" accessibilityViewIsModal style={[estilos.globo, { top: arriba }]}>
+        <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={12} />
         <View style={[estilos.cola, { left: Math.min(Math.max(centro - MARGEN - 7, 18), width - 2 * MARGEN - 32) }]} />
         <Text style={estilos.quien} numberOfLines={1}>
           {amigo.username}
@@ -228,10 +230,6 @@ const estilos = conTema(() => StyleSheet.create({
     right: MARGEN,
     padding: 16,
     gap: 6,
-    borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.lineaFuerte,
-    backgroundColor: C.hoja,
     shadowColor: '#000',
     shadowOpacity: 0.5,
     shadowRadius: 18,

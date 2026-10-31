@@ -19,6 +19,7 @@ import { pesoEnLaLista } from '@nucleo/peso';
 import GloboPrimeraVez from './GloboPrimeraVez';
 import { Text, TextInput } from './Texto';
 import { L } from './fuentes';
+import { R } from './roles';
 
 /**
  * ELEGIR ENTRE CIEN EJERCICIOS, NAVEGANDO. El mismo árbol que la web
@@ -299,7 +300,7 @@ const estilos = conTema(() => StyleSheet.create({
   volver: { minWidth: 36, minHeight: 36, justifyContent: 'center' },
   volverTexto: { color: C.sub, fontSize: 20 },
   titulo: { color: C.tinta, fontSize: 20, fontWeight: '500' },
-  rotulo: { color: C.apagado, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 14, marginBottom: 2 },
+  rotulo: { ...R.etiqueta, marginTop: 14, marginBottom: 2  },
   separa: { height: 14 },
   fila: {
     flexDirection: 'row',
@@ -315,7 +316,7 @@ const estilos = conTema(() => StyleSheet.create({
   // Más claro que el nombre: el peso es lo que se viene a leer (10/10).
   extra: { color: C.tinta, fontSize: 15, fontFamily: L.dato },
   cancelar: { paddingVertical: 16, alignItems: 'center', marginTop: 8 },
-  buscador: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 10, paddingHorizontal: 12, marginBottom: 8 },
+  buscador: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingHorizontal: 12, marginBottom: 8 },
   lupa: { color: C.sub, fontSize: 18 },
   buscar: { flex: 1, color: C.tinta, fontSize: 16, paddingVertical: 10 },
   nota: { color: C.apagado, fontSize: 13, marginVertical: 8 },
@@ -323,7 +324,7 @@ const estilos = conTema(() => StyleSheet.create({
   chip: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
   chipElegido: { borderColor: C.tinta },
   chipTexto: { color: C.sub, fontSize: 14 },
-  crear: { alignSelf: 'flex-start', borderWidth: StyleSheet.hairlineWidth, borderColor: C.tinta, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 18, marginTop: 12 },
+  crear: { alignSelf: 'flex-start', borderWidth: StyleSheet.hairlineWidth, borderColor: C.tinta, borderRadius: 999, paddingVertical: 10, paddingHorizontal: 18, marginTop: 12 },
   crearTexto: { color: C.tinta, fontSize: 15 },
   yaEsta: { color: C.tinta, fontSize: 14, marginTop: 14 },
   crearIgual: { alignSelf: 'flex-start', paddingVertical: 10, marginTop: 6 },

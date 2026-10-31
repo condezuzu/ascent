@@ -48,6 +48,7 @@ import { cronoLindo } from '@nucleo/sesiones';
 import { cierraElBloque, cuentaLaSerie, horaDelToque, TOQUE_REPETIDO_MS } from './toques';
 import { Text, TextInput } from './Texto';
 import { L } from './fuentes';
+import { Fantasma, R } from './roles';
 
 /**
  * QUÉ ESTÁS HACIENDO, CUÁNTAS TE PROPUSISTE, CUÁNTAS VAN — en nativo.
@@ -631,33 +632,25 @@ export default function Bloque({
       )}
 
       {esTiempo && !corriendoCardio && estado.hechas > 0 && (
-        <Pressable
+        <Fantasma
           testID="cardio-terminar"
-          style={estilos.texto}
-          onPress={() => {
+          texto={T.sesion.cardioTerminar}
+          alTocar={() => {
             alSiguiente();
             setLista(true);
           }}
-        >
-          <Text style={estilos.textoBoton}>{T.sesion.cardioTerminar}</Text>
-        </Pressable>
+        />
       )}
       {/* Quien se olvidó del cronómetro anota los minutos a mano. */}
       {esTiempo && !corriendoCardio && estado.hechas === 0 && (
-        <Pressable testID="cardio-sin-cronometro" style={estilos.texto} onPress={sumar}>
-          <Text style={estilos.textoBoton}>{T.sesion.cardioSinCronometro}</Text>
-        </Pressable>
+        <Fantasma testID="cardio-sin-cronometro" texto={T.sesion.cardioSinCronometro} alTocar={sumar} />
       )}
       {/* Una segunda vuelta de cardio en el mismo bloque no suma minutos: se corrigen arriba. */}
       {cumplida && !esTiempo && (
-        <Pressable style={estilos.texto} onPress={sumar}>
-          <Text style={estilos.textoBoton}>{T.sesion.sumarOtra}</Text>
-        </Pressable>
+        <Fantasma texto={T.sesion.sumarOtra} alTocar={sumar} />
       )}
       {(estado.cerrados.length > 0 || estado.hechas > 0) && (
-        <Pressable style={estilos.texto} onPress={() => setLista(true)}>
-          <Text style={estilos.textoBoton}>{T.sesion.verLista}</Text>
-        </Pressable>
+        <Fantasma texto={T.sesion.verLista} alTocar={() => setLista(true)} />
       )}
 
       <SelectorEjercicio
@@ -802,7 +795,7 @@ const estilos = conTema(() => StyleSheet.create({
   // Quieto en 0:00 hasta que se arranca: el mismo reloj, más tenue.
   cardioQuieto: { color: C.sub },
   distancia: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 10 },
-  distanciaEtiqueta: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500' },
+  distanciaEtiqueta: { ...R.etiqueta },
   minutosPaso: { width: 44, height: 44, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, alignItems: 'center', justifyContent: 'center' },
   minutosPasoTexto: { color: C.tinta, fontSize: 22, fontWeight: '300' },
   minutosTexto: { color: C.tinta, fontSize: 22, fontFamily: L.dato, minWidth: 90, textAlign: 'center' },
@@ -858,8 +851,6 @@ const estilos = conTema(() => StyleSheet.create({
   menosApagado: { opacity: 0.35 },
   masAncho: { flex: 3, marginTop: 0 },
   cerrarTexto: { color: C.fondo, fontSize: 18, fontWeight: '600' },
-  texto: { paddingVertical: 12, alignItems: 'center' },
-  textoBoton: { color: C.sobreMotor, fontSize: 14, ...HALO },
   // "La próxima, más": un contorno, no un sólido. No compite con el `+`, que
   // es lo que se toca doce veces; este se toca una.
   subir: {

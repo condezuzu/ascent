@@ -17,6 +17,8 @@ import CampoPeso from './CampoPeso';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text, TextInput } from './Texto';
+import FondoOctogonal from './FondoOctogonal';
+import { R } from './roles';
 
 /**
  * ANOTAR UNA MARCA (§16.4), la hoja del teléfono.
@@ -171,6 +173,7 @@ function CargarMarca({
         {error !== '' && <Text style={estilos.error}>{error}</Text>}
 
         <Pressable style={estilos.solido} onPress={() => guardar()} disabled={guardando}>
+          <FondoOctogonal relleno={C.claro} />
           <Text style={estilos.solidoTexto}>{guardando ? T.sesion.guardando : T.marca.anotar}</Text>
         </Pressable>
         <Pressable style={estilos.texto} onPress={alCerrar} disabled={guardando}>
@@ -201,11 +204,11 @@ export default nuevaEnCadaApertura(CargarMarca, (p) => p.visible);
 const estilos = conTema(() => StyleSheet.create({
   titulo: { color: C.tinta, fontSize: 19, marginBottom: 4 },
   sub: { color: C.sub, fontSize: 13, lineHeight: 18, marginBottom: 18 },
-  etiqueta: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 16, marginBottom: 8 },
+  etiqueta: { ...R.etiqueta, marginTop: 16, marginBottom: 8  },
   selector: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 13,
   },
@@ -215,7 +218,7 @@ const estilos = conTema(() => StyleSheet.create({
     flex: 1,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingVertical: 11,
     alignItems: 'center',
   },
@@ -225,15 +228,15 @@ const estilos = conTema(() => StyleSheet.create({
   campo: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 11,
     color: C.tinta,
     fontSize: 16,
   },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 12 },
+  nota: { ...R.nota, marginTop: 12  },
   error: { color: C.error, fontSize: 13, marginTop: 12 },
-  solido: { backgroundColor: C.tinta, borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
+  solido: { paddingVertical: 14, alignItems: 'center', marginTop: 20 },
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   texto: { paddingVertical: 12, alignItems: 'center' },
   enlace: { color: C.sub, fontSize: 14 },

@@ -10,6 +10,7 @@ import { useTema } from './useTema';
 import { taparElFondo } from './desenfoqueDelFondo';
 import { Text, TextoAnimado } from './Texto';
 import { L } from './fuentes';
+import { R } from './roles';
 
 /**
  * SUBISTE DE RANGO. El premio de la app, que en el teléfono no existía.
@@ -241,7 +242,7 @@ const estilos = conTema(() => StyleSheet.create({
   todo: { flex: 1, backgroundColor: C.fondo },
   // El texto abajo y el objeto en el medio: la forma se mira primero.
   texto: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 28, paddingBottom: 64 },
-  rotulo: { color: C.sub, fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', fontWeight: '500', marginBottom: 10 },
+  rotulo: { ...R.etiqueta, marginBottom: 10  },
   nombre: { color: C.tinta, fontSize: 32, fontWeight: '300', letterSpacing: -0.4 },
   dia: { color: C.apagado, fontSize: 13, marginTop: 4, fontFamily: L.dato },
   seguir: { color: C.apagado, fontSize: 12, marginTop: 26 },

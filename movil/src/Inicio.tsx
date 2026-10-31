@@ -63,10 +63,12 @@ import { rutinaParaPreguntar, type PreguntaDeRutina } from './preguntarPorLaRuti
 import VentanaRutina from './VentanaRutina';
 import CadaSegundo from './CadaSegundo';
 import { useArriba } from './zonaSegura';
-import { C, DESHABILITADO, HALO, conTema } from './colores';
+import { C, DESHABILITADO, HALO, conAlfa, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import { Fantasma, R } from './roles';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -893,6 +895,10 @@ export default function Inicio({
               pedirResaltarGimnasio();
             }}
           >
+            <Svg width={14} height={17} viewBox="0 0 14 17" fill="none" stroke={C.sub} strokeWidth={1.4}>
+              <Path d="M7 16s6-5.4 6-10A6 6 0 0 0 1 6c0 4.6 6 10 6 10Z" />
+              <Circle cx={7} cy={6} r={2} />
+            </Svg>
             <Text style={estilos.globoTexto}>{T.inicio.gimnasioRecordatorioNativo}</Text>
           </Pressable>
         </Aparece>
@@ -1005,7 +1011,9 @@ export default function Inicio({
                   cargar();
                 }}
               >
-                <Text style={estilos.enlace}>{sesion.estado.ocupado ? T.sesion.guardando : T.sesion.terminar}</Text>
+                <View style={estilos.subrayado}>
+                  <Text style={estilos.enlace}>{sesion.estado.ocupado ? T.sesion.guardando : T.sesion.terminar}</Text>
+                </View>
               </Pressable>
             </>
           ) : (
@@ -1105,7 +1113,9 @@ export default function Inicio({
               hitSlop={8}
               style={estilos.verResumen}
             >
-              <Text style={estilos.verResumenTexto}>{T.inicio.verResumen}</Text>
+              <View style={estilos.subrayado}>
+                <Text style={estilos.verResumenTexto}>{T.inicio.verResumen}</Text>
+              </View>
             </Pressable>
           )}
           {/* Y ACÁ SE INSISTE CON EL PUNTO DEL GIMNASIO: pegado al día que se
@@ -1130,9 +1140,7 @@ export default function Inicio({
           {/* PEGADO AL PRINCIPAL, como en la web: el peso NO pasa por registrar
               el día —pesarse no es haber ido al gimnasio— pero tiene que poder
               anotarse cualquier día, entrenes o no. */}
-          <Pressable style={estilos.secundario} onPress={() => setPesoAbierto(true)}>
-            <Text style={estilos.enlace}>{T.peso.anotarPeso}</Text>
-          </Pressable>
+          <Fantasma texto={T.peso.anotarPeso} alTocar={() => setPesoAbierto(true)} />
         </>
       )}
 
@@ -1286,7 +1294,7 @@ const estilos = conTema(() => StyleSheet.create({
     marginBottom: 30,
   },
   usuario: { color: C.tinta, fontSize: 16, fontWeight: '600', letterSpacing: -0.1, flexShrink: 1 },
-  etiqueta: { color: C.sub, fontSize: 10, letterSpacing: 4, textTransform: 'uppercase', fontWeight: '500' },
+  etiqueta: { ...R.etiqueta },
   racha: { color: C.claro, fontSize: 92, fontWeight: '300', lineHeight: 100, fontFamily: L.racha, letterSpacing: -2 },
 
   // El renglón de pasos: tabular para que el número no baile, tenue y con aire
@@ -1320,17 +1328,20 @@ const estilos = conTema(() => StyleSheet.create({
   sinNada: { marginTop: 26, marginBottom: 10, gap: 6 },
   vacioTitulo: { color: C.tinta, fontSize: 20, fontWeight: '300' },
   vacioPie: { color: C.sub, fontSize: 14, lineHeight: 20 },
+  // Sin caja, pero con placa: en reposo pasa por encima del planeta.
   globoQuieto: {
     marginTop: 16,
-    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 4,
     paddingVertical: 11,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
+    borderTopWidth: 1,
+    borderTopColor: C.linea,
     backgroundColor: C.placa,
   },
-  globoTexto: { color: C.sub, fontSize: 13, lineHeight: 18 },
-  aviso: { color: C.sub, fontSize: 13, marginTop: 20, textAlign: 'center', lineHeight: 19, alignSelf: 'center', backgroundColor: C.placa, borderRadius: 12, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 4 },
+  globoTexto: { flex: 1, color: C.sub, fontSize: 13, lineHeight: 18 },
+  aviso: { color: C.sub, fontSize: 13, marginTop: 20, textAlign: 'center', lineHeight: 19, alignSelf: 'center', backgroundColor: C.placa, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 4 },
   error: { color: C.error, fontSize: 13, textAlign: 'center' },
   enlace: { color: C.sobreMotor, fontSize: 13, ...HALO },
 
@@ -1355,7 +1366,7 @@ const estilos = conTema(() => StyleSheet.create({
 
   sesion: { marginTop: 16 },
   crono: { color: C.tinta, fontSize: 44, fontWeight: '300', fontFamily: L.dato, marginTop: 4 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
+  nota: { ...R.nota, marginTop: 8  },
   pregunta: { color: C.sub, fontSize: 14, lineHeight: 20, marginTop: 24 },
   preguntaFuerte: { color: C.tinta, fontWeight: '600' },
   secundario: { paddingVertical: 14, alignItems: 'center' },
@@ -1366,8 +1377,7 @@ const estilos = conTema(() => StyleSheet.create({
   resumen: {
     marginTop: 18,
     paddingVertical: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 1,
     borderColor: C.linea,
   },
   resumenCabe: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -1377,6 +1387,7 @@ const estilos = conTema(() => StyleSheet.create({
   cifra: { alignItems: 'flex-start' },
   cifraNumero: { color: C.claro, fontSize: 26, fontWeight: '300', fontFamily: L.dato, letterSpacing: -1 },
   // "Ver lo que hiciste hoy": tenue, debajo de los botones de foto/peso.
-  verResumen: { paddingVertical: 10, marginTop: 2 },
+  verResumen: { paddingVertical: 10, marginTop: 2, alignSelf: 'flex-start' },
   verResumenTexto: { color: C.sobreMotor, fontSize: 13, ...HALO },
+  subrayado: { paddingBottom: 3, borderBottomWidth: 1, borderBottomColor: conAlfa(C.sobreMotor, 0.45) },
 }));

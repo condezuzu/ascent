@@ -33,6 +33,7 @@ import { useArriba } from './zonaSegura';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
+import { R } from './roles';
 
 /**
  * AJUSTES — lo que se puede cambiar, en la app nativa.
@@ -465,7 +466,7 @@ const estilos = conTema(() => StyleSheet.create({
     borderTopColor: C.linea,
     paddingTop: 18,
   },
-  avanzadoTitulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500' },
+  avanzadoTitulo: { ...R.etiqueta },
   avanzadoSigno: { color: C.sub, fontSize: 18 },
   fila: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   pastilla: {

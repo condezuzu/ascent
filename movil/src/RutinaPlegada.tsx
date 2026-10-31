@@ -156,5 +156,5 @@ const estilos = conTema(() => StyleSheet.create({
   ejercicio: { color: C.sub, fontSize: 14, flexShrink: 1 },
   cantidad: { color: C.apagado, fontSize: 13, fontFamily: L.dato },
   bloques: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 4, maxWidth: '55%' },
-  bloque: { width: 16, height: 12, borderRadius: 3, backgroundColor: C.cuadro },
+  bloque: { width: 16, height: 12, borderRadius: 1, backgroundColor: C.cuadro },
 }));

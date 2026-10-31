@@ -27,6 +27,7 @@ import { volverOInicio } from './volver';
 import { useArriba } from './zonaSegura';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import { R } from './roles';
 
 /**
  * EL PERFIL DE OTRO: su racha, su semana y lo que comparte.
@@ -325,13 +326,13 @@ const estilos = conTema(() => StyleSheet.create({
   vacio: { borderWidth: 1, borderColor: C.lineaFuerte },
   puntoHoy: { borderWidth: 1, borderColor: C.claro },
   letra: { color: C.apagado, fontSize: 11, fontFamily: L.dato },
-  rotulo: { color: C.apagado, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginBottom: 10 },
+  rotulo: { ...R.etiqueta, marginBottom: 10  },
   solido: { backgroundColor: C.claro, borderRadius: 2, paddingVertical: 15, alignItems: 'center', marginTop: 10 },
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   boton: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingVertical: 13,
     alignItems: 'center',
     marginTop: 10,

@@ -4,6 +4,7 @@ import { T } from '@nucleo/textos';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * EL GLOBO DE CÓMIC (15/10, aprobado en la galería): el globito de siempre, del
@@ -66,6 +67,7 @@ export default function GloboComic({
           accessibilityRole="button"
           accessibilityHint={T.general.entendido}
         >
+          <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={8} />
           <Text style={estilos.texto} numberOfLines={1}>
             {texto}
           </Text>
@@ -93,10 +95,6 @@ const estilos = conTema(() => StyleSheet.create({
     gap: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.lineaFuerte,
-    backgroundColor: C.hoja,
     shadowColor: '#000',
     shadowOpacity: 0.45,
     shadowRadius: 12,

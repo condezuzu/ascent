@@ -13,6 +13,7 @@ import { C, DESHABILITADO, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import { R } from './roles';
 
 /**
  * LA RUTINA DE ALGUIEN, PARA MIRARLA (14/10): la tuya en tu perfil, la de un
@@ -183,10 +184,10 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
 
 const estilos = conTema(() => StyleSheet.create({
   caja: { marginTop: 8 },
-  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 26, marginBottom: 10 },
+  seccion: { ...R.etiqueta, marginTop: 26, marginBottom: 10  },
   nombre: { color: C.apagado, fontSize: 12, marginBottom: 4 },
   filaNombre: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 6 },
+  nota: { ...R.nota, marginTop: 6  },
   indicacion: { color: C.sub, fontSize: 13, marginBottom: 6 },
   diaElegible: { flexDirection: 'row', gap: 12, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.linea },
   tocado: { opacity: 0.6 },

@@ -10,6 +10,7 @@ import { C, conAlfa, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import { R } from './roles';
 
 /**
  * EL CALENDARIO DE STATS, en la app nativa: uno solo, y se toca para MIRAR.
@@ -210,7 +211,7 @@ const estilos = conTema(() => StyleSheet.create({
   // 44 pt: el mínimo con el que un pulgar acierta.
   flecha: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   flechaTexto: { color: C.sub, fontSize: 20 },
-  mes: { color: C.sub, fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', fontWeight: '500', fontFamily: L.dato },
+  mes: { ...R.etiqueta, fontFamily: L.dato  },
   grilla: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 10 },
   casilla: { width: `${100 / 7}%`, alignItems: 'center' },
   nombreDia: { color: C.apagado, fontSize: 10, textAlign: 'center', fontFamily: L.dato },
@@ -230,15 +231,15 @@ const estilos = conTema(() => StyleSheet.create({
     bottom: -2,
     width: 5,
     height: 5,
-    borderRadius: 2.5,
+    borderRadius: 999,
     borderWidth: 1.5,
     borderColor: C.fondo,
   },
   leyenda: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 18, rowGap: 6, marginTop: 22 },
   referencia: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   muestra: { width: 12, height: 12, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  referenciaTexto: { color: C.apagado, fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase', fontWeight: '500' },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 12 },
+  referenciaTexto: { ...R.etiqueta },
+  nota: { ...R.nota, marginTop: 12  },
   botonTexto: { color: C.claro, fontSize: 14 },
   aviso: { color: C.sub, fontSize: 13, marginTop: 8 },
 }));

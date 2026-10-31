@@ -9,6 +9,7 @@ import RutinaPlegada from './RutinaPlegada';
 import { supabase } from './supabase';
 import { guardarDiaDeRutina, rutinaReemplazada, type PreguntaDeRutina } from './preguntarPorLaRutina';
 import { Text } from './Texto';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * LA VENTANA AL TERMINAR (19/10, aprobada en la galería): con el estilo de la app, en
@@ -51,6 +52,7 @@ export default function VentanaRutina({ pregunta, alCerrar }: { pregunta: Pregun
       <View style={estilos.fondo}>
         <Pressable style={StyleSheet.absoluteFill} onPress={alCerrar} disabled={guardando} accessibilityRole="button" accessibilityLabel={T.general.cerrar} />
         <View testID="ventana-rutina" style={estilos.caja}>
+          <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={14} />
           <View style={estilos.marca}>
             <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.claro} strokeWidth={1.8} strokeLinecap="round">
               <Path d="M4 12a8 8 0 0 1 13.7-5.6M20 12a8 8 0 0 1-13.7 5.6" />
@@ -116,10 +118,6 @@ const estilos = conTema(() => StyleSheet.create({
   caja: {
     width: '100%',
     maxWidth: 340,
-    backgroundColor: C.hoja,
-    borderWidth: 1,
-    borderColor: C.lineaFuerte,
-    borderRadius: 22,
     paddingTop: 22,
     paddingHorizontal: 18,
     paddingBottom: 16,

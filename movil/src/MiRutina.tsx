@@ -42,6 +42,7 @@ import GloboPrimeraVez from './GloboPrimeraVez';
 import { copiarDiaAlPortapapeles, useDiaCopiado } from './portapapelesDeDia';
 import { Text, TextInput } from './Texto';
 import { L } from './fuentes';
+import { Fantasma, R } from './roles';
 
 /**
  * TU RUTINA, EN STATS (14/10). Se mira, se edita, se copia y se pega antes de ir
@@ -413,16 +414,14 @@ export default function MiRutina({
                 <Text style={estilos.chicoTexto}>{T.rutina.usarEsta}</Text>
               </Pressable>
             )}
-            <Pressable
+            <Fantasma
               testID="rutina-editar"
-              style={estilos.chico}
-              onPress={() => {
+              texto={editando ? T.rutina.listo : T.rutina.editar}
+              alTocar={() => {
                 if (editando) guardarNombre();
                 setEditando(!editando);
               }}
-            >
-              <Text style={estilos.chicoTexto}>{editando ? T.rutina.listo : T.rutina.editar}</Text>
-            </Pressable>
+            />
           </View>
           {/* EL GLOBITO DE LA RUTINA (15/10), saliendo del nombre del entrenamiento
               ("Entrenamiento 1" por defecto), la primera vez que se edita. */}
@@ -514,8 +513,8 @@ export default function MiRutina({
 const ALTO_FILA = 44;
 
 const estilos = conTema(() => StyleSheet.create({
-  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 34, marginBottom: 10 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginBottom: 8 },
+  seccion: { ...R.etiqueta, marginTop: 34, marginBottom: 10  },
+  nota: { ...R.nota, marginBottom: 8  },
   error: { color: C.error, fontSize: 13, marginTop: 8 },
   acciones: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 6 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
@@ -526,7 +525,7 @@ const estilos = conTema(() => StyleSheet.create({
   barra: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, marginBottom: 4 },
   estado: { flex: 1, color: C.apagado, fontSize: 12 },
   nombre: { flex: 1, color: C.tinta, fontSize: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.lineaFuerte, paddingVertical: 4 },
-  chico: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10 },
+  chico: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 10 },
   chicoActivo: { borderColor: C.tinta },
   chicoTexto: { color: C.tinta, fontSize: 13 },
   editor: { paddingBottom: 12 },

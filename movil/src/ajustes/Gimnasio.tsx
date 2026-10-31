@@ -10,6 +10,8 @@ import { C, conAlfa, conTema } from '../colores';
 import { useTema } from '../useTema';
 import PinGimnasio from '../PinGimnasio';
 import { Text } from '../Texto';
+import FondoOctogonal from '../FondoOctogonal';
+import { R } from '../roles';
 
 /**
  * LLEVAR A MARCAR EL GIMNASIO (15/10): "Deja que se marque solo" en Inicio cambia
@@ -131,6 +133,7 @@ export default function Gimnasio({
       {/* UNA SOLA CAJA, como los controles de Ajustes (Kilos | Libras): radio 12,
           borde fino, y el borrar debajo del marcar con un separador (15/10). */}
       <View style={estilos.caja}>
+        <FondoOctogonal relleno={"none"} borde={C.lineaFuerte} corte={10} />
         <Pressable testID="gimnasio-marcar" style={estilos.renglon} onPress={marcar} disabled={estado === 'buscando'}>
           <PinGimnasio tam={16} color={C.tinta} />
           <Text style={estilos.botonTexto}>
@@ -142,7 +145,9 @@ export default function Gimnasio({
             <Text style={estilos.botonTexto}>{T.ajustes.gimnasioBorrar}</Text>
           </Pressable>
         )}
-        <Animated.View testID="gimnasio-luz" pointerEvents="none" style={[estilos.luz, { opacity: luz }]} />
+        <Animated.View testID="gimnasio-luz" pointerEvents="none" style={[estilos.luz, { opacity: luz }]}>
+              <FondoOctogonal relleno={conAlfa(C.claro, 0.08)} borde={C.claro} corte={10} />
+            </Animated.View>
       </View>
       {/* Que se sepa que hay que estar AHÍ: un punto marcado desde casa registra días que no ocurrieron. */}
       <Text style={estilos.estandoAhi}>{T.ajustes.gimnasioEstandoAhi}</Text>
@@ -158,13 +163,13 @@ const estilos = conTema(() => StyleSheet.create({
   // EL MISMO RÓTULO QUE EL RESTO DE AJUSTES: chico, en versalitas y apagado.
   // Estas secciones nacieron con título grande y quedaban como pegadas de otra
   // pantalla — dos estilos de título en una lista se leen como un error.
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginBottom: 10 },
-  caja: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 12, overflow: 'hidden', marginTop: 10 },
+  titulo: { ...R.etiqueta, marginBottom: 10  },
+  caja: { marginTop: 10 },
   renglon: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, paddingVertical: 11, paddingHorizontal: 6 },
   separado: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.lineaFuerte },
-  luz: { ...StyleSheet.absoluteFillObject, borderRadius: 12, borderWidth: 1, borderColor: C.claro, backgroundColor: conAlfa(C.claro, 0.08) },
+  luz: { ...StyleSheet.absoluteFillObject },
   botonTexto: { color: C.tinta, fontSize: 14 },
   estandoAhi: { color: C.apagado, fontSize: 12, marginTop: 6 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
+  nota: { ...R.nota, marginTop: 8  },
   error: { color: C.error },
 }));

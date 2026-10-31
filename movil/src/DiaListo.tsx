@@ -4,6 +4,7 @@ import { T } from '@nucleo/textos';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
+import { R } from './roles';
 
 /**
  * EL DÍA YA ESTÁ: lo que queda es sumarle la foto o el peso.
@@ -110,7 +111,7 @@ function IconoPeso() {
 const estilos = conTema(() => StyleSheet.create({
   fila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 10, paddingBottom: 4 },
   cuando: { flexShrink: 1, gap: 3 },
-  cartel: { color: C.sub, fontSize: 11, letterSpacing: 2.4, textTransform: 'uppercase', fontWeight: '500' },
+  cartel: { ...R.etiqueta },
   minutos: { color: C.tinta, fontSize: 15 },
   acciones: { flexDirection: 'row', gap: 8 },
   pildora: {
@@ -127,5 +128,5 @@ const estilos = conTema(() => StyleSheet.create({
   },
   hundida: { transform: [{ scale: 0.96 }], borderColor: C.lineaFuerte },
   redondo: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
-  rotulo: { color: C.sub, fontSize: 10, letterSpacing: 1.6, textTransform: 'uppercase', fontWeight: '500' },
+  rotulo: { ...R.etiqueta },
 }));

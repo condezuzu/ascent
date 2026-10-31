@@ -29,6 +29,7 @@ import InvitarConLink from './InvitarConLink';
 import { useArriba } from './zonaSegura';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import { R } from './roles';
 
 /**
  * TU PERFIL: quién sos acá adentro, cómo te ven tus amigos, y quiénes son.
@@ -285,11 +286,11 @@ const estilos = StyleSheet.create({
   metaTexto: { color: C.sub, fontSize: 13 },
   dots: { color: C.sub, fontSize: 12, marginTop: 4, fontFamily: L.dato },
   dotsNumero: { color: C.tinta, fontSize: 15, fontFamily: L.dato },
-  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 34, marginBottom: 10 },
+  seccion: { ...R.etiqueta, marginTop: 34, marginBottom: 10  },
   amigo: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   amigoTocable: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   amigoNombre: { color: C.tinta, fontSize: 15, flex: 1 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 10 },
+  nota: { ...R.nota, marginTop: 10  },
   enlace: { color: C.sub, fontSize: 15 },
   apagada: { color: C.apagado, fontSize: 13 },
   peligro: { color: C.error, fontSize: 13 },

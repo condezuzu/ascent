@@ -10,6 +10,7 @@ import Estrella from './Estrella';
 import PuntoDelDia, { type EstadoDelDia, type FrioDelDia } from './PuntoDelDia';
 import { Text, TextoAnimado } from './Texto';
 import { L } from './fuentes';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * EL AVISO DE LA VIDA, en nativo (rehecho el 19/10, con lo aprobado en la galería).
@@ -237,6 +238,7 @@ export default function RachaSalvada({
               </View>
 
               <Animated.View style={[estilos.caja, { opacity: caja }]} testID="vida-cuadro" pointerEvents={fase === 'aviso' ? 'auto' : 'none'}>
+                <FondoOctogonal relleno={C.hoja} borde={FIJO.raya} corte={14} />
                 {cola && tira && <View pointerEvents="none" style={[estilos.cola, { left: cola.x - tira.x - 7 }]} />}
                 <View style={estilos.emblema} pointerEvents="none" testID="vida-emblema">
                   <Estrella tam={18} />
@@ -268,6 +270,7 @@ export default function RachaSalvada({
 
               {fase === 'helada' && cola && (
                 <Animated.View testID="vida-globito" style={[estilos.globito, { top: (tira?.y ?? 0) + PUNTO + 30, opacity: globito }]}>
+                  <FondoOctogonal relleno={C.globo} borde={C.bordeGlobo} corte={10} />
                   <View style={[estilos.globitoCola, { left: Math.max(14, cola.x - 6) }]} />
                   <Text style={estilos.globitoTexto}>{T.impulso.salvada.vidaGastada}</Text>
                 </Animated.View>
@@ -315,7 +318,7 @@ const estilos = StyleSheet.create({
   tira: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
   letra: { color: C.apagado, fontSize: 11, fontFamily: L.dato },
   estallido: { position: 'absolute', left: 0, top: 0, width: PUNTO, height: PUNTO, borderRadius: PUNTO / 2, borderWidth: 2, borderColor: C.crema },
-  caja: { marginTop: 30, paddingTop: 24, paddingHorizontal: 16, paddingBottom: 12, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: FIJO.raya, backgroundColor: C.hoja, ...sombra },
+  caja: { marginTop: 30, paddingTop: 24, paddingHorizontal: 16, paddingBottom: 12, ...sombra },
   cola: { position: 'absolute', top: -7, width: 13, height: 13, backgroundColor: C.hoja, borderTopWidth: StyleSheet.hairlineWidth, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: FIJO.raya, transform: [{ rotate: '45deg' }] },
   emblema: { position: 'absolute', alignSelf: 'center', top: -17, width: 34, height: 34, borderRadius: 17, backgroundColor: C.hoja, borderWidth: StyleSheet.hairlineWidth, borderColor: FIJO.raya, alignItems: 'center', justifyContent: 'center' },
   texto: { color: C.tinta, fontSize: 17, lineHeight: 24, textAlign: 'center' },
@@ -331,7 +334,7 @@ const estilos = StyleSheet.create({
   link: { alignSelf: 'center', marginTop: 12, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 999, backgroundColor: conAlfa(C.link, 0.08) },
   linkTocado: { backgroundColor: conAlfa(C.link, 0.16) },
   linkTexto: { color: C.link, fontSize: 13, textDecorationLine: 'underline' },
-  globito: { position: 'absolute', left: 0, right: 0, backgroundColor: C.globo, borderWidth: StyleSheet.hairlineWidth, borderColor: C.bordeGlobo, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 14, ...sombra },
+  globito: { position: 'absolute', left: 0, right: 0, paddingVertical: 12, paddingHorizontal: 14, ...sombra },
   globitoCola: { position: 'absolute', top: -7, width: 12, height: 12, backgroundColor: C.globo, borderTopWidth: StyleSheet.hairlineWidth, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: C.bordeGlobo, transform: [{ rotate: '45deg' }] },
   globitoTexto: { color: C.tinta, fontSize: 15, lineHeight: 21 },
   volador: { position: 'absolute', left: 0, top: 0, zIndex: 20, width: 24, height: 24 },

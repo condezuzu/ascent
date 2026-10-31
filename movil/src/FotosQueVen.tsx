@@ -66,7 +66,7 @@ function Cuadrito({ foto, lado }: { foto: FotoDePerfil; lado: number }) {
 
 const estilos = conTema(() => StyleSheet.create({
   grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: HUECO, marginTop: 6 },
-  sombra: { borderRadius: 14, backgroundColor: C.linea, shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
-  cuadrito: { borderRadius: 14, overflow: 'hidden' },
+  sombra: { borderRadius: 1, backgroundColor: C.linea, shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  cuadrito: { borderRadius: 1, overflow: 'hidden' },
   cuando: { color: C.apagado, fontSize: 10, marginTop: 4 },
 }));

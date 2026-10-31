@@ -16,6 +16,7 @@ import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import { R } from './roles';
 
 /**
  * LO QUE LLEVÁS HOY, Y CÓMO CORREGIRLO. La misma hoja que la web: cada bloque
@@ -230,7 +231,7 @@ const estilos = conTema(() => StyleSheet.create({
   pasoTexto: { color: C.sub, fontSize: 20 },
   quitar: { color: C.apagado, fontSize: 14 },
   cuantas: { color: C.tinta, fontSize: 16, minWidth: 22, textAlign: 'center', fontFamily: L.dato },
-  rotulo: { color: C.apagado, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginLeft: 8 },
+  rotulo: { ...R.etiqueta, marginLeft: 8  },
   pregunta: { color: C.sub, fontSize: 13, marginRight: 6 },
   boton: { minHeight: 40, paddingHorizontal: 10, justifyContent: 'center' },
   botonTexto: { color: C.tinta, fontSize: 14 },

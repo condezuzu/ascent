@@ -47,7 +47,7 @@ const estilos = conTema(() => StyleSheet.create({
     flexDirection: 'row',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
-    borderRadius: 12,
+    borderRadius: 999,
     overflow: 'hidden',
   },
   parte: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 11, paddingHorizontal: 6 },

@@ -15,6 +15,8 @@ import { C, conTema, conAlfa } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import FondoOctogonal from './FondoOctogonal';
+import { Caja, Seccion, R } from './roles';
 
 /**
  * LA FUERZA DENTRO DE STATS (§16.6), en la app nativa: acá se mira y se
@@ -84,13 +86,13 @@ export default function SeccionFuerza({
 
   return (
     <View>
-      <Text style={estilos.seccion}>{T.fuerza.titulo}</Text>
+      <Seccion>{T.fuerza.titulo}</Seccion>
 
       {mia.marcas.length === 0 ? (
         <Text style={estilos.sub}>{T.fuerza.sinNada}</Text>
       ) : (
         <>
-          <View style={estilos.contenida}>
+          <Caja style={estilos.contenida}>
             {mia.dots !== null ? (
               <>
                 <Text style={estilos.dots}>{redondear(mia.dots)}</Text>
@@ -118,7 +120,7 @@ export default function SeccionFuerza({
                 )}
               </Text>
             )}
-          </View>
+          </Caja>
 
           {esSexoEstandar(sexo) && pesoCorporal !== null && (
             <DondeEstoy sexo={sexo} pesoCorporal={pesoCorporal} marcas={mia.marcas} unidad={unidad} claro={claro} />
@@ -139,7 +141,7 @@ export default function SeccionFuerza({
 
           {ranking.length > 1 && (
             <>
-              <Text style={[estilos.seccion, { marginTop: 22 }]}>{T.fuerza.entreAmigos}</Text>
+              <Seccion arriba={22}>{T.fuerza.entreAmigos}</Seccion>
               <View style={estilos.tarjeta}>
                 {ranking.map((f, i) => {
                   const desplegado = abierto === f.id;
@@ -181,6 +183,7 @@ export default function SeccionFuerza({
           un botón de escribir arriba de todo invita a tocarlo por error en
           la pantalla que más se mira. */}
       <Pressable style={estilos.puerta} onPress={() => router.push('/marcas')}>
+        <FondoOctogonal relleno={C.superficie} borde={C.bordeOcto} />
         <Text style={estilos.puertaTexto}>
           {mia.marcas.length === 0 ? T.fuerza.anotarMarca : T.fuerza.misMarcas}
         </Text>
@@ -254,44 +257,28 @@ function DondeEstoy({
 }
 
 const estilos = conTema(() => StyleSheet.create({
-  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginTop: 28, marginBottom: 10 },
   sub: { color: C.sub, fontSize: 14, lineHeight: 21 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
+  nota: { ...R.nota, marginTop: 8  },
   apagado: { color: C.apagado, fontSize: 13 },
   nombre: { color: C.tinta, fontSize: 14 },
   dato: { color: C.sub, fontSize: 13, fontFamily: L.dato },
-  contenida: {
-    backgroundColor: C.superficie,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
-    borderRadius: 2,
-    padding: 16,
-  },
+  contenida: { padding: 16 },
   puerta: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.lineaFuerte,
-    borderRadius: 10,
     paddingVertical: 13,
     alignItems: 'center',
     marginTop: 22,
   },
   puertaTexto: { color: C.tinta, fontSize: 14 },
   dots: { color: C.tinta, fontSize: 46, fontWeight: '300', letterSpacing: -1.4, fontFamily: L.dato },
-  dotsPie: { color: C.sub, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: '500', marginTop: 8 },
+  dotsPie: { ...R.etiqueta, marginTop: 8  },
   tira: { gap: 2, marginTop: 12 },
   tiraItem: { flexDirection: 'row', alignItems: 'baseline', gap: 10, paddingVertical: 5, paddingHorizontal: 2 },
-  tarjeta: {
-    backgroundColor: C.tarjeta,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
-    borderRadius: 14,
-    padding: 4,
-  },
+  tarjeta: {},
   separada: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea },
   rankCabecera: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 12 },
   rankDetalle: { paddingLeft: 50, paddingRight: 12, paddingBottom: 10 },
   donde: { marginTop: 16, paddingTop: 14, borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea },
-  dondeTitulo: { color: C.sub, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: '500' },
+  dondeTitulo: { ...R.etiqueta },
   dondeDatos: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginBottom: 6 },
   pct: { minWidth: 34, textAlign: 'right', color: C.apagado, fontSize: 12, fontFamily: L.dato },
   escala: { height: 3, backgroundColor: conAlfa(C.principal, 0.14), marginTop: 14 },

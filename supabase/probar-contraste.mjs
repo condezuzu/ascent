@@ -4,8 +4,9 @@
 // verdad detrás: una captura con el texto transparente, motor incluido, y de esa caja el píxel
 // que peor le queda (percentil 90 si el texto es más claro que su fondo, 10 si es más oscuro).
 //
-// Inicio en reposo (en el rango 4, con los diez planetas), Stats General y Entrenamiento, entrenando
-// con una serie hecha («Ver lista» sobre el planeta), el resumen al terminar y el día listo.
+// Inicio en reposo (en el rango 4, con los diez planetas), Stats General y Entrenamiento, Social,
+// Álbum y Ajustes, entrenando con una serie hecha («Ver lista» sobre el planeta), el descanso, el
+// resumen al terminar y el día listo.
 //
 // Lo que NO mide: el iPhone. Es la vista web de la nativa; el motor es el mismo, pero el color
 // exacto que da el GL de Windows no es el de la pantalla del teléfono.
@@ -21,7 +22,7 @@ import { mkdirSync } from 'node:fs';
 import sharp from 'sharp';
 import { pasarLaEntradaNativa, borrarCuentaDePrueba, limiteDeSonda } from './utiles.mjs';
 
-limiteDeSonda(14);
+limiteDeSonda(20);
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const { TEXTOS_ES: TX } = await import(pathToFileURL(join(AQUI, '..', 'nucleo', 'textos.ts')).href);
@@ -217,6 +218,12 @@ try {
     await texto(TX.stats.pestanaEntrenamiento).click({ timeout: 20000 }).catch(() => {});
     await page.waitForTimeout(1800);
     await medir(page, r, 'stats-entrenamiento');
+    // Las que se quedaron sin caja (30/10): lo que se lee va directo sobre el fondo.
+    for (const [nombre, pestana] of [['social', TX.nav.social], ['album', TX.nav.album], ['ajustes', TX.nav.ajustes]]) {
+      await texto(pestana).click({ timeout: 30000 });
+      await page.waitForTimeout(1500);
+      await medir(page, r, nombre);
+    }
     await texto(TX.nav.inicio).click({ timeout: 30000 });
     await page.waitForTimeout(1200);
 
@@ -230,6 +237,12 @@ try {
     await mas.click();
     await page.waitForTimeout(1600);
     await medir(page, r, 'una-serie');
+    await page.getByTestId('pildora-descanso').first().click({ timeout: 20000 });
+    await page.getByTestId('descanso-reloj').first().waitFor({ timeout: 20000 });
+    await page.waitForTimeout(900);
+    await medir(page, r, 'descanso');
+    await page.getByText(TX.descanso.saltar, { exact: true }).last().click({ timeout: 8000 });
+    await page.waitForTimeout(900);
     await texto(TX.sesion.terminar).click({ timeout: 20000 });
     await page.waitForTimeout(1000);
     await texto(TX.sesion.terminar).click({ timeout: 20000 });

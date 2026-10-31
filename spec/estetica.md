@@ -32,12 +32,17 @@ tomadas cuatro veces.
 
 ### 19.1 Las cuatro reglas que propongo
 
-**1 · El radio es 0 o es 999. Nada en el medio.**
+**1 · Octágono o píldora. Nada en el medio.** (30/10: antes decía «el radio es
+0 o es 999»; con los octágonos de la app eso quedó corto.)
 
-Los bloques estructurales pasan a **esquina viva**: tarjetas, hojas, campos.
-El radio de píldora (`999px`) se reserva para lo que **se elige**: presets,
-selectores, el botón de descansar. Así la forma dice qué hace la cosa —lo
-cuadrado se lee, lo redondo se toca— y desaparece el 14px de fábrica.
+Lo que tiene que sentirse contenido y la acción principal son un **octágono**:
+esquinas cortadas en diagonal, no redondeadas (`FondoOctogonal`, `Caja`). El
+radio de píldora (`999px`) se reserva para lo que **se elige** o se toca al
+paso: presets, selectores, el botón de descansar. Lo demás no lleva radio:
+filas, celdas y fotos van rectas (hasta 2 px), y lo que es redondo por su medida
+—un círculo, una barra— sigue siéndolo. Así la forma dice qué hace la cosa, y
+desaparece el 14px de fábrica. Lo pinean la sección 325 de `test:db` y
+`probar-forma`, que le pregunta el radio a cada elemento de cada pantalla.
 
 **2 · La caja se cambia por una línea y aire.**
 
@@ -47,8 +52,9 @@ con el doble de aire abajo. Es la gramática de una revista, no la de un panel
 de control.
 
 La caja queda **solo** donde algo tiene que sentirse contenido: el número de
-DOTS, la zona de eliminar cuenta, el descanso corriendo. Tres lugares, y por
-eso significan algo.
+DOTS, la zona de eliminar cuenta, el descanso corriendo y **las cuatro cifras de
+Stats, en caja cortada** (30/10: corte 10, relleno 14, de a dos por fila).
+Cuatro lugares, y por eso significan algo.
 
 **3 · Una sola medida fuera de grilla, repetida.**
 

@@ -21,6 +21,7 @@ import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
+import { R } from './roles';
 
 /**
  * UN DÍA, ABIERTO: qué hiciste, y corregirlo si está mal. La misma hoja que la
@@ -200,8 +201,8 @@ export default function HojaDelDia({
                         width: `${(v.series / maxSeries) * 100}%`,
                         height: '100%',
                         backgroundColor: principal,
-                        borderTopRightRadius: 4,
-                        borderBottomRightRadius: 4,
+                        borderTopRightRadius: 1,
+                        borderBottomRightRadius: 1,
                       }}
                     />
                   </View>
@@ -299,9 +300,9 @@ const estilos = conTema(() => StyleSheet.create({
   titulo: { color: C.tinta, fontSize: 20, marginBottom: 14 },
   estado: { color: C.tinta, fontSize: 15, marginBottom: 16 },
   sub: { color: C.sub, fontSize: 13 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginBottom: 12 },
+  nota: { ...R.nota, marginBottom: 12  },
   bloque: { marginBottom: 14 },
-  rotulo: { color: C.apagado, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500', marginBottom: 10 },
+  rotulo: { ...R.etiqueta, marginBottom: 10  },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
   nombre: { color: C.tinta, fontSize: 14 },
   pesos: { color: C.apagado, fontSize: 12, marginTop: 2, fontFamily: L.dato },
@@ -320,7 +321,7 @@ const estilos = conTema(() => StyleSheet.create({
     borderColor: C.linea,
   },
   acciones: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  foto: { width: '100%', aspectRatio: 1, maxHeight: 360, marginTop: 4, marginBottom: 18, borderRadius: 4 },
+  foto: { width: '100%', aspectRatio: 1, maxHeight: 360, marginTop: 4, marginBottom: 18, borderRadius: 1},
   selector: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   opcion: {
     flex: 1,

@@ -19638,11 +19638,11 @@ console.log('\n271. Las fotos del perfil no llevan "me gusta"; la grilla queda d
     /🔥|fueg/i.test(fg + fq + am),
     /foto/i.test(mg271) || /me_gusta_fotos/.test(deBug('supabase', 'schema.sql')),
   ], [false, false, false]);
-  chequear('las fotos: tres por fila del ancho medido, redondeadas y con sombra', [
+  chequear('las fotos: tres por fila del ancho medido, rectas y con sombra', [
     /onLayout=\{\(e\) => setAncho\(e\.nativeEvent\.layout\.width\)\}/.test(fq),
     /const lado = Math\.floor\(\(\(ancho \|\| width - 48\) - HUECO \* 2\) \/ 3\)/.test(fq),
-    /sombra: \{ borderRadius: 14,[^}]*shadowOpacity/.test(fq),
-    /cuadrito: \{ borderRadius: 14, overflow: 'hidden' \}/.test(fq),
+    /sombra: \{ borderRadius: 1,[^}]*shadowOpacity/.test(fq),
+    /cuadrito: \{ borderRadius: 1, overflow: 'hidden' \}/.test(fq),
   ], [true, true, true, true]);
 }
 console.log('\n272. El descanso al terminar: el reloj grande queda en 0:00 y lo de más va chico abajo a la derecha, sin cambiar de pantalla (19/10)');
@@ -19687,8 +19687,8 @@ console.log('\n273. La ventana al terminar: los textos pedidos, con el estilo de
     /Alert/.test(sinComentarios(pr) + sinComentarios(v)),
     /\{preguntaRutina && <VentanaRutina pregunta=\{preguntaRutina\} alCerrar=\{\(\) => setPreguntaRutina\(null\)\} \/>\}/.test(ini),
   ], [false, true]);
-  chequear('con el estilo de la app: tarjeta redondeada, título, texto y dos píldoras (crema y con borde)', [
-    /caja: \{[^}]*borderRadius: 22,/.test(v),
+  chequear('con el estilo de la app: caja cortada, título, texto y dos píldoras (crema y con borde)', [
+    /<FondoOctogonal relleno=\{C\.hoja\} borde=\{C\.lineaFuerte\} corte=\{14\} \/>/.test(v),
     /pildora: \{ borderRadius: 999,/.test(v),
     /crema: \{ backgroundColor: C\.claro \}/.test(v) && /borde: \{ borderWidth: 1, borderColor: C\.bordeBoton \}/.test(v),
     v.indexOf('estilos.titulo') < v.indexOf('estilos.texto') && v.indexOf('estilos.texto') < v.indexOf('estilos.acciones'),
@@ -20045,8 +20045,8 @@ console.log('\n285. Anotar el peso: el número grande, − y + y la regla (20/10
 console.log('\n286. Registrar el día con foto: el mismo estilo que anotar el peso (20/10)');
 {
   const rd = sinComentarios(deBug('movil', 'src', 'RegistrarDia.tsx'));
-  chequear('colores fijos, la foto en una tarjeta redondeada y los botones redondos de la hoja del peso', [
-    /from '\.\/colores'|usePaleta/.test(rd), /from '\.\/coloresFijos'/.test(rd), /tarjeta: \{[^}]*borderRadius: 22/.test(rd), /redondo: \{[^}]*borderRadius: 29/.test(rd), /solido: \{[^}]*borderRadius: 999/.test(rd),
+  chequear('colores fijos, la foto en una caja cortada y los botones redondos de la hoja del peso', [
+    /from '\.\/colores'|usePaleta/.test(rd), /from '\.\/coloresFijos'/.test(rd), /<FondoOctogonal relleno="none" borde=\{FIJO\.linea\} corte=\{14\} tapar=\{FIJO\.regla\} \/>/.test(rd), /redondo: \{[^}]*borderRadius: 29/.test(rd), /<FondoOctogonal relleno=\{FIJO\.crema\} \/>/.test(rd),
   ], [false, true, true, true, true]);
   chequear('las dos puertas siguen siendo cámara y galería, con los textos de siempre (la batería toca «Elegir de la galería»)', [
     /<Puerta icono="camara" texto=\{T\.registrar\.sacarFoto\} alTocar=\{\(\) => elegir\('camara'\)\} \/>/.test(rd),
@@ -21218,7 +21218,7 @@ console.log('\n324. Las letras de la nativa: Inter, Outfit solo para la racha, G
   const conTextoDeRN = fuentes324.filter((r) => !RN324.test(r) && /import \{[^}]*(?<![\w ]type )(?<![A-Za-z0-9_])Text(Input)?(?![A-Za-z0-9_])[^}]*\} from 'react-native'/.test(leer324(r, 'utf8')));
   chequear('nadie usa el Text de React Native: pasaría por la fuente del sistema', conTextoDeRN.map((r) => r.slice(raiz324.length + 1)), []);
   chequear('ni Animated.Text', fuentes324.filter((r) => !RN324.test(r) && /Animated\.Text(?![A-Za-z0-9_])/.test(leer324(r, 'utf8'))).map((r) => r.slice(raiz324.length + 1)), []);
-  const conRacha = fuentes324.filter((r) => /L\.racha/.test(leer324(r, 'utf8'))).map((r) => r.split(/[\\/]/).pop()).sort();
+  const conRacha = fuentes324.filter((r) => /L\.racha/.test(leer324(r, 'utf8')) && !/Texto\.tsx$/.test(r)).map((r) => r.split(/[\\/]/).pop()).sort();
   chequear('Outfit es solo el número de la racha', conRacha, ['Inicio.tsx', 'RachaConRotulo.tsx']);
 
   const fu324 = leer324(join(raiz324, 'movil', 'src', 'fuentes.ts'), 'utf8');
@@ -21237,6 +21237,45 @@ console.log('\n324. Las letras de la nativa: Inter, Outfit solo para la racha, G
   ], [true, true]);
   const lay324 = leer324(join(raiz324, 'movil', 'app', '_layout.tsx'), 'utf8');
   chequear('la entrada espera a las letras, y las letras tienen tope', [/lista=\{letrasListas &&/.test(lay324), /Promise\.race\(\[carga,/.test(fu324)], [true, true]);
+}
+console.log('\n325. La forma de la nativa: octágono o píldora (30/10)');
+{
+  const { readFileSync: leer325, readdirSync: dir325 } = await import('node:fs');
+  const raiz325 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const fuentes325 = ['movil/src', 'movil/app'].flatMap((d) => dir325(join(raiz325, d), { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && /\.tsx$/.test(e.name) && !e.parentPath.includes('node_modules') && !e.parentPath.includes('bienvenida'))
+    .map((e) => join(e.parentPath, e.name)));
+  // Lo que se permite: recto (hasta 2), píldora (999) y lo que es redondo por su medida: círculo o barra.
+  const FUERA325 = /(Minimo|Raiz|HudDiagnostico)\.tsx$/;
+  const delMedio325 = [];
+  for (const r of fuentes325) {
+    if (FUERA325.test(r)) continue;
+    const lineas = leer325(r, 'utf8').split('\n');
+    lineas.forEach((l, i) => {
+      if (/^\s*(\/\/|\*)/.test(l)) return;
+      const m = l.match(/border(?:Top|Bottom)?(?:Left|Right)?Radius: ([\d.]+)/);
+      if (!m) return;
+      const n = Number(m[1]);
+      if (n <= 2 || n >= 999) return;
+      const ctx = /\{/.test(l) && /\}/.test(l) ? l : lineas.slice(Math.max(0, i - 6), i + 6).join(' ');
+      const w = ctx.match(/width: ([\d.]+)/), h = ctx.match(/height: ([\d.]+)/);
+      if (h && Math.abs(Number(h[1]) / 2 - n) < 1.01) return;
+      if (w && Math.abs(Number(w[1]) / 2 - n) < 1.01) return;
+      delMedio325.push(r.slice(raiz325.length + 1).replace(/\\/g, '/') + ':' + (i + 1) + ' ' + n);
+    });
+  }
+  // Los dibujos: la gota que cae del hielo, y lo que rellena un círculo ya medido afuera de la línea.
+  const DIBUJOS325 = ['PuntoDelDia.tsx', 'Bloque.tsx'];
+  chequear('ningún radio del medio', delMedio325.filter((d) => !DIBUJOS325.some((f) => d.includes('/' + f + ':'))), []);
+  const stats325 = leer325(join(raiz325, 'movil', 'src', 'Stats.tsx'), 'utf8');
+  chequear('las cuatro cifras de Stats van en caja cortada', [/<Caja key=\{c\.e\} style=\{estilos\.celda\}>/.test(stats325), /valor: \{ \.\.\.R\.cifra \}/.test(stats325)], [true, true]);
+  const spec325 = leer325(join(raiz325, 'spec', 'estetica.md'), 'utf8');
+  chequear('la spec dice las dos decisiones', [/octágono o píldora/i.test(spec325), /caja cortada/i.test(spec325)], [true, true]);
+  // Los roles se dicen una vez: una etiqueta copiada a mano es lo que esta técnica vino a sacar.
+  const copias325 = fuentes325.filter((r) => !FUERA325.test(r) && !/roles\.tsx$/.test(r) && !/RachaConRotulo\.tsx$/.test(r))
+    .filter((r) => /color: C\.(sub|apagado), fontSize: (9|10|10\.5|11), letterSpacing: [\d.]+, textTransform: 'uppercase'/.test(leer325(r, 'utf8')))
+    .map((r) => r.slice(raiz325.length + 1).replace(/\\/g, '/'));
+  chequear('las etiquetas cuelgan de R.etiqueta', copias325, []);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

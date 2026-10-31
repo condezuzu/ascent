@@ -11,6 +11,8 @@ import { VUELTA } from '../enlace';
 import { C, conTema } from '../colores';
 import { useTema } from '../useTema';
 import { Text, TextInput } from '../Texto';
+import FondoOctogonal from '../FondoOctogonal';
+import { R } from '../roles';
 
 /**
  * LO ÚLTIMO DE AJUSTES: cambiar la clave, salir, y darse de baja.
@@ -117,6 +119,7 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
 
       {!abierta ? null : (
         <View style={estilos.caja}>
+          <FondoOctogonal relleno={"none"} borde={C.error} corte={10} />
           <Text style={estilos.titulo}>{T.ajustes.eliminarCuenta}</Text>
           <Text style={estilos.que}>{T.ajustes.bajaQueSeElimina(perfil.racha_actual)}</Text>
           <Text style={estilos.nota}>
@@ -163,34 +166,31 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
 const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 34 },
   texto: { paddingVertical: 12 },
-  tarjeta: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 14, overflow: 'hidden' },
+  tarjeta: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.linea },
   filaCuenta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 16 },
   conLinea: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.linea },
   flecha: { color: C.apagado, fontSize: 18 },
   enlace: { color: C.sub, fontSize: 15 },
   peligro: { color: C.error, fontSize: 15 },
   caja: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.error,
-    borderRadius: 12,
     padding: 14,
     marginTop: 6,
   },
   titulo: { color: C.tinta, fontSize: 16, marginBottom: 8 },
   que: { color: C.sub, fontSize: 14, lineHeight: 20, marginBottom: 12 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginBottom: 8 },
+  nota: { ...R.nota, marginBottom: 8  },
   fuerte: { color: C.tinta },
   campo: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 11,
     color: C.tinta,
     fontSize: 15,
   },
   botones: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  botonPeligro: { flex: 1, backgroundColor: C.error, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  botonPeligro: { flex: 1, backgroundColor: C.error, borderRadius: 999, paddingVertical: 12, alignItems: 'center' },
   botonPeligroTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
   peligroSinConfirmar: { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.error },
   peligroSinConfirmarTexto: { color: C.error },
@@ -198,7 +198,7 @@ const estilos = conTema(() => StyleSheet.create({
     flex: 1,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingVertical: 12,
     alignItems: 'center',
   },
