@@ -153,6 +153,6 @@ const estilos = StyleSheet.create({
     padding: 0,
   },
   inputCompacto: { fontSize: 14, width: 44 },
-  unidad: { color: C.apagado, fontSize: 12 },
+  unidad: { color: C.sub, fontSize: 12 },
   unidadCompacta: { fontSize: 10 },
 });

@@ -14,6 +14,7 @@ import { supabase } from './supabase';
 import { VUELTA } from './enlace';
 import { mensajeDeAuth } from '@nucleo/errores';
 import { T } from '@nucleo/textos';
+import { C, DESHABILITADO } from './colores';
 
 /**
  * ENTRAR — TANDA 2, y la primera pantalla de verdad de la app nativa.
@@ -125,7 +126,7 @@ export default function Login({ alEntrar, modoInicial = 'entrar' }: { alEntrar: 
           autoCorrect={false}
           keyboardType="email-address"
           textContentType="emailAddress"
-          placeholderTextColor="#4a5163"
+          placeholderTextColor={C.apagado}
           placeholder={T.entrar.correoEjemplo}
         />
 
@@ -151,7 +152,7 @@ export default function Login({ alEntrar, modoInicial = 'entrar' }: { alEntrar: 
           disabled={cargando}
         >
           {cargando ? (
-            <ActivityIndicator color="#05060a" />
+            <ActivityIndicator color={C.fondo} />
           ) : (
             <Text style={estilos.textoSolido}>{titulo}</Text>
           )}
@@ -187,10 +188,10 @@ export default function Login({ alEntrar, modoInicial = 'entrar' }: { alEntrar: 
 // esa pantalla todavía no existe acá; cuando llegue, esto se va a leer de un
 // solo lado.
 const estilos = StyleSheet.create({
-  todo: { flex: 1, backgroundColor: '#05060a' },
+  todo: { flex: 1, backgroundColor: C.fondo },
   centro: { flexGrow: 1, justifyContent: 'center', padding: 24, maxWidth: 420, width: '100%', alignSelf: 'center' },
   marca: {
-    color: '#8a93a8',
+    color: C.sub,
     fontSize: 13,
     letterSpacing: 6,
     textTransform: 'uppercase',
@@ -198,7 +199,7 @@ const estilos = StyleSheet.create({
     marginBottom: 44,
   },
   queEs: {
-    color: '#8a93a8',
+    color: C.sub,
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
@@ -206,31 +207,31 @@ const estilos = StyleSheet.create({
     marginBottom: 32,
   },
   etiqueta: {
-    color: '#8a93a8',
+    color: C.sub,
     fontSize: 12,
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom: 6,
   },
   campo: {
-    borderBottomColor: '#2a3040',
+    borderBottomColor: C.lineaFuerte,
     borderBottomWidth: 1,
-    color: '#e8ecf6',
+    color: C.tinta,
     fontSize: 16,
     paddingVertical: 10,
     marginBottom: 20,
   },
   solido: {
-    backgroundColor: '#c4c2ba',
+    backgroundColor: C.claro,
     borderRadius: 2,
     paddingVertical: 15,
     alignItems: 'center',
     marginTop: 8,
   },
-  apagado: { opacity: 0.6 },
-  textoSolido: { color: '#05060a', fontSize: 15, fontWeight: '600' },
-  error: { color: '#e8705f', fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },
-  aviso: { color: '#8a93a8', fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },
+  apagado: { opacity: DESHABILITADO },
+  textoSolido: { color: C.fondo, fontSize: 15, fontWeight: '600' },
+  error: { color: C.error, fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },
+  aviso: { color: C.sub, fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },
   secundarios: { marginTop: 26, gap: 14, alignItems: 'center' },
-  enlace: { color: '#8a93a8', fontSize: 13 },
+  enlace: { color: C.sub, fontSize: 13 },
 });

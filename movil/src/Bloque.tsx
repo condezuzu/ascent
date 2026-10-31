@@ -38,7 +38,7 @@ const MINUTOS_DE_ARRANQUE = 20;
 import EtiquetaDeCarga from './EtiquetaDeCarga';
 import Globito from './Globito';
 import { esPropio, nombreVisible } from '@nucleo/propios';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, DESHABILITADO, HALO } from './colores';
 import { leerRecordados, marcarSubida } from '@compartido/pesosRecordados';
 import { claveDeSubida, loQueSePuedeSubir, type Subida } from '@nucleo/subir';
 import { pasoDelCampo } from '@nucleo/campoPeso';
@@ -762,7 +762,7 @@ const estilos = StyleSheet.create({
   apagadoTexto: { color: C.apagado },
   // FANTASMA (sugerido sin confirmar): tenue y en cursiva, distinto del confirmado.
   fantasmaTexto: { color: C.sub, fontStyle: 'italic' },
-  fantasmaPeso: { opacity: 0.5 },
+  fantasmaPeso: { opacity: DESHABILITADO },
   // La etiqueta "sugerido": una píldora chica al lado del ejercicio, imposible
   // de confundir con un bloque ya cargado.
   badgeSugerido: {
@@ -798,7 +798,7 @@ const estilos = StyleSheet.create({
   minutosPaso: { width: 44, height: 44, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, alignItems: 'center', justifyContent: 'center' },
   minutosPasoTexto: { color: C.tinta, fontSize: 22, fontWeight: '300' },
   minutosTexto: { color: C.tinta, fontSize: 22, fontVariant: ['tabular-nums'], minWidth: 90, textAlign: 'center' },
-  total: { width: '100%', color: C.apagado, fontSize: 12, marginTop: -2, paddingLeft: 44 },
+  total: { width: '100%', color: C.sub, fontSize: 12, marginTop: -2, paddingLeft: 44 },
   pregunta: { borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 2, padding: 12, marginTop: 12 },
   preguntaTexto: { color: C.sub, fontSize: 13, marginBottom: 10 },
   opciones: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -844,14 +844,14 @@ const estilos = StyleSheet.create({
   },
   masTexto: { color: C.claro, fontSize: 28, fontWeight: '200' },
   masCerrar: { flex: 3, marginTop: 0 },
-  masEnPausa: { opacity: 0.35 },
+  masEnPausa: { opacity: DESHABILITADO },
   // Un cuarto del ancho contra tres: doce sumas contra una resta.
   menos: { flex: 1, marginTop: 0 },
   menosApagado: { opacity: 0.35 },
   masAncho: { flex: 3, marginTop: 0 },
   cerrarTexto: { color: C.fondo, fontSize: 18, fontWeight: '600' },
   texto: { paddingVertical: 12, alignItems: 'center' },
-  textoBoton: { color: C.sub, fontSize: 14 },
+  textoBoton: { color: C.sobreMotor, fontSize: 14, ...HALO },
   // "La próxima, más": un contorno, no un sólido. No compite con el `+`, que
   // es lo que se toca doce veces; este se toca una.
   subir: {

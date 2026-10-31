@@ -6,7 +6,7 @@ import type { Perfil, Sexo as SexoValor } from '@nucleo/tipos';
 import { nombreValido } from '@nucleo/usuario';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
-import { C } from '../colores';
+import { C, DESHABILITADO } from '../colores';
 
 /**
  * LOS TRES DATOS DE LA CUENTA que faltaban en nativo: el nombre de usuario,
@@ -158,7 +158,7 @@ const estilos = StyleSheet.create({
     paddingHorizontal: 18,
     justifyContent: 'center',
   },
-  apagado: { opacity: 0.45 },
+  apagado: { opacity: DESHABILITADO },
   botonTexto: { color: C.tinta, fontSize: 14 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
   ok: { color: C.sub, fontSize: 13, marginTop: 8 },

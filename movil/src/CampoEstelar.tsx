@@ -89,6 +89,7 @@ function Astro({ indice, rango, racha, maxRacha }: { indice: number; rango: numb
       duration: 3500,
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: true,
+      isInteraction: false,
     };
     const vaiven = Animated.loop(
       Animated.sequence([Animated.timing(y, { toValue: -8, ...medio }), Animated.timing(y, { toValue: 0, ...medio })])

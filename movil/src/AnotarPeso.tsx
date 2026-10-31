@@ -169,7 +169,7 @@ const estilos = StyleSheet.create({
   redondoTexto: { color: FIJO.tinta, fontSize: 20, fontWeight: '300', lineHeight: 24 },
   ultima: { color: FIJO.sub, fontSize: 12, fontVariant: ['tabular-nums'] },
   anotar: { alignSelf: 'stretch', backgroundColor: FIJO.crema, borderRadius: 999, paddingVertical: 14, alignItems: 'center' },
-  apagado: { opacity: 0.6 },
+  apagado: { opacity: FIJO.deshabilitado },
   anotarTexto: { color: FIJO.negro, fontSize: 15, fontWeight: '600' },
   error: { color: FIJO.error, fontSize: 13 },
 });

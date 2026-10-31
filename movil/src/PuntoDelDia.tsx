@@ -32,8 +32,8 @@ export default function PuntoDelDia({ estado, esHoy, frio = null }: { estado: Es
     if (frio !== 'helado') return;
     const vuelta = Animated.loop(
       Animated.sequence([
-        Animated.timing(titila, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(titila, { toValue: 0, duration: 800, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(titila, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.quad), useNativeDriver: true, isInteraction: false }),
+        Animated.timing(titila, { toValue: 0, duration: 800, easing: Easing.inOut(Easing.quad), useNativeDriver: true, isInteraction: false }),
       ])
     );
     vuelta.start();
@@ -97,11 +97,11 @@ export default function PuntoDelDia({ estado, esHoy, frio = null }: { estado: Es
 
 const estilos = StyleSheet.create({
   punto: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  lleno: { backgroundColor: '#7e8ca8' },
-  vacio: { borderWidth: 1, borderColor: '#2a3040' },
+  lleno: { backgroundColor: C.principal },
+  vacio: { borderWidth: 1, borderColor: C.lineaFuerte },
   futuro: { borderWidth: 1, borderColor: '#171c26' },
-  puntoHoy: { borderWidth: 1, borderColor: '#c4c2ba' },
-  guion: { width: 10, height: 2, borderRadius: 1, backgroundColor: '#4a5163' },
+  puntoHoy: { borderWidth: 1, borderColor: C.claro },
+  guion: { width: 10, height: 2, borderRadius: 1, backgroundColor: C.tenue },
   cubierto: { borderWidth: 1, borderColor: C.claro },
   helado: { borderColor: '#bfe0fb', shadowColor: C.hielo, shadowOpacity: 0.8, shadowRadius: 8, shadowOffset: { width: 0, height: 0 } },
   cristal: { position: 'absolute' },

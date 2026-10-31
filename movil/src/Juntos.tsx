@@ -167,7 +167,7 @@ export default function Juntos({
 
 const estilos = StyleSheet.create({
   // ARRIBA DE TODO Y EN UNA TARJETA (28/10, aprobado en la galería): es lo que está pasando.
-  seccion: { marginTop: 14, borderWidth: 1, borderColor: '#2e3548', borderRadius: 18, backgroundColor: 'rgba(9,10,16,0.88)', paddingVertical: 12, paddingHorizontal: 14 },
+  seccion: { marginTop: 14, borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 18, backgroundColor: 'rgba(9,10,16,0.88)', paddingVertical: 12, paddingHorizontal: 14 },
   aro: { borderWidth: 2, borderRadius: 999, padding: 1 },
   invitar: { backgroundColor: C.claro, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 16 },
   invitarTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },

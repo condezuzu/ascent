@@ -6,7 +6,7 @@ import { juntarMisDatos } from '@compartido/cuenta';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
-import { C } from '../colores';
+import { C, DESHABILITADO } from '../colores';
 
 /**
  * LLEVARSE TODO: el historial entero en un archivo.
@@ -70,7 +70,7 @@ const estilos = StyleSheet.create({
     paddingVertical: 13,
     alignItems: 'center',
   },
-  apagado: { opacity: 0.45 },
+  apagado: { opacity: DESHABILITADO },
   botonTexto: { color: C.tinta, fontSize: 14 },
   nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
   error: { color: C.error, fontSize: 13, marginTop: 8 },

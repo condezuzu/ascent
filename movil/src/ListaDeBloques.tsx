@@ -175,7 +175,7 @@ function ListaDeBloques({
           })}
 
           {estado.hechas > 0 && (
-            <View style={[estilos.fila, estilos.ahora]}>
+            <View style={estilos.fila}>
               <View style={estilos.filaArriba}>
                 <Text style={estilos.nombre}>{nombre(estado.ejercicio)}</Text>
                 <View style={estilos.controles}>
@@ -219,7 +219,6 @@ const estilos = StyleSheet.create({
   titulo: { color: C.tinta, fontSize: 20, fontWeight: '500', marginBottom: 12 },
   vacio: { color: C.sub, fontSize: 14, marginVertical: 12 },
   fila: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.linea },
-  ahora: { opacity: 0.85 },
   filaArriba: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   nombre: { color: C.tinta, fontSize: 15, flexShrink: 1 },
   controles: { flexDirection: 'row', alignItems: 'center', gap: 2 },

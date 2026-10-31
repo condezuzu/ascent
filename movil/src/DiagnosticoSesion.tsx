@@ -9,6 +9,7 @@ import * as Updates from 'expo-updates';
 import { aplicar, buscarYTraer, hayCanal, queEstoyCorriendo } from './actualizaciones';
 import { loVisible } from './loVisible';
 import { supabase } from './supabase';
+import { C } from './colores';
 
 /**
  * LAS TRES FUENTES DE LA SESIÓN, ADENTRO DEL DIAGNÓSTICO (22/9).
@@ -205,15 +206,15 @@ function textoDe(l: Lectura | null): string {
 // Los mismos colores escritos a mano que el resto del diagnóstico: vive al
 // lado de la caja negra y no puede depender de la paleta de la app.
 const estilos = StyleSheet.create({
-  caja: { borderWidth: StyleSheet.hairlineWidth, borderColor: '#2a3040', padding: 12, marginBottom: 14 },
-  titulo: { color: '#e8ecf6', fontSize: 15, marginBottom: 2 },
-  nota: { color: '#8a93a8', fontSize: 12, lineHeight: 17, marginBottom: 10 },
+  caja: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, padding: 12, marginBottom: 14 },
+  titulo: { color: C.tinta, fontSize: 15, marginBottom: 2 },
+  nota: { color: C.sub, fontSize: 12, lineHeight: 17, marginBottom: 10 },
   fila: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6, gap: 10 },
-  rotulo: { color: '#4a5163', fontSize: 11, width: 92, paddingTop: 2 },
+  rotulo: { color: C.apagado, fontSize: 11, width: 92, paddingTop: 2 },
   valores: { flex: 1 },
-  valor: { color: '#c4c2ba', fontSize: 13, fontFamily: 'Menlo' },
-  detalle: { color: '#8a93a8', fontSize: 11, fontFamily: 'Menlo', marginTop: 1 },
-  cola: { color: '#8a93a8', fontSize: 12, marginTop: 8 },
-  releer: { color: '#8a93a8', fontSize: 12, textDecorationLine: 'underline', marginTop: 8 },
-  actualizar: { marginTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#2a3040', paddingTop: 10 },
+  valor: { color: C.claro, fontSize: 13, fontFamily: 'Menlo' },
+  detalle: { color: C.sub, fontSize: 11, fontFamily: 'Menlo', marginTop: 1 },
+  cola: { color: C.sub, fontSize: 12, marginTop: 8 },
+  releer: { color: C.sub, fontSize: 12, textDecorationLine: 'underline', marginTop: 8 },
+  actualizar: { marginTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, paddingTop: 10 },
 });

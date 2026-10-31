@@ -41,8 +41,8 @@ function VidaQueTitila({ viva, indice }: { viva: boolean; indice: number }) {
     if (!viva) return;
     const vuelta = Animated.loop(
       Animated.sequence([
-        Animated.timing(t, { toValue: 1, duration: CICLO_TITILEO_MS / 2, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(t, { toValue: 0, duration: CICLO_TITILEO_MS / 2, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(t, { toValue: 1, duration: CICLO_TITILEO_MS / 2, easing: Easing.inOut(Easing.quad), useNativeDriver: true, isInteraction: false }),
+        Animated.timing(t, { toValue: 0, duration: CICLO_TITILEO_MS / 2, easing: Easing.inOut(Easing.quad), useNativeDriver: true, isInteraction: false }),
       ])
     );
     const espera = setTimeout(() => vuelta.start(), indice * (CICLO_TITILEO_MS / 3));

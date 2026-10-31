@@ -115,7 +115,7 @@ const estilos = StyleSheet.create({
     maxWidth: 340,
     backgroundColor: '#10131c',
     borderWidth: 1,
-    borderColor: '#2e3548',
+    borderColor: C.lineaFuerte,
     borderRadius: 22,
     paddingTop: 22,
     paddingHorizontal: 18,

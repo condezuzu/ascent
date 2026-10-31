@@ -64,6 +64,7 @@ import { rutinaParaPreguntar, type PreguntaDeRutina } from './preguntarPorLaRuti
 import VentanaRutina from './VentanaRutina';
 import CadaSegundo from './CadaSegundo';
 import { useArriba } from './zonaSegura';
+import { C, DESHABILITADO, HALO } from './colores';
 
 /**
  * INICIO — TANDA 2. La racha, la semana y el botón que registra el día.
@@ -572,7 +573,7 @@ export default function Inicio({
   if (estado.tipo === 'cargando') {
     return (
       <View style={estilos.centrado} testID="pantalla-inicio">
-        <ActivityIndicator color="#8a93a8" />
+        <ActivityIndicator color={C.sub} />
       </View>
     );
   }
@@ -662,6 +663,7 @@ export default function Inicio({
         esquina="abajo-derecha"
         // Como en la web: Inicio es la única pantalla con atmósfera.
         atmosfera
+        lecturaMedia={!sesion.estado.corriendo && !cierre}
       />
     <ScrollView
       ref={scroll}
@@ -977,7 +979,7 @@ export default function Inicio({
               {/* "Seguir" se queda con el botón sólido: el que llegó acá sin
                   querer toca donde ya estaba tocando y no pasa nada. */}
               <Pressable style={estilos.solido} onPress={() => setTerminando(false)}>
-                <FondoOctogonal relleno="#c4c2ba" />
+                <FondoOctogonal relleno={C.claro} />
                 <Text style={estilos.textoSolido}>{T.sesion.seguir}</Text>
               </Pressable>
               <Pressable
@@ -1005,7 +1007,7 @@ export default function Inicio({
             </>
           ) : (
             <Tocable style={estilos.solido} hundir={0.97} onPress={() => setTerminando(true)}>
-              <FondoOctogonal relleno="#c4c2ba" />
+              <FondoOctogonal relleno={C.claro} />
               <Text style={estilos.textoSolido}>{T.sesion.terminar}</Text>
             </Tocable>
           )}
@@ -1119,7 +1121,7 @@ export default function Inicio({
       ) : (
         <>
           <Tocable style={estilos.solido} hundir={0.97} onPress={() => setRegistrarAbierto(true)}>
-            <FondoOctogonal relleno="#c4c2ba" />
+            <FondoOctogonal relleno={C.claro} />
             <Text style={estilos.textoSolido}>{sinNada ? T.inicio.registrarPrimerDia : T.inicio.registrarDia}</Text>
           </Tocable>
           {/* PEGADO AL PRINCIPAL, como en la web: el peso NO pasa por registrar
@@ -1270,7 +1272,7 @@ const estilos = StyleSheet.create({
   raiz: { flex: 1 },
   // Transparente: detrás está el fondo, que ya pinta el color de base.
   pantalla: { flexGrow: 1, padding: 24, paddingTop: 64 },
-  centrado: { flex: 1, backgroundColor: '#05060a', alignItems: 'center', justifyContent: 'center', gap: 16 },
+  centrado: { flex: 1, backgroundColor: C.fondo, alignItems: 'center', justifyContent: 'center', gap: 16 },
   // FLEXIBLE Y CON MINIMO: cede el nombre, nunca la fila entera. Ver el
   // comentario de la cabecera.
   yo: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1, minWidth: 96 },
@@ -1280,22 +1282,22 @@ const estilos = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 30,
   },
-  usuario: { color: '#e8ecf6', fontSize: 16, fontWeight: '600', flexShrink: 1 },
-  etiqueta: { color: '#8a93a8', fontSize: 10, letterSpacing: 4, textTransform: 'uppercase' },
-  racha: { color: '#c4c2ba', fontSize: 92, fontWeight: '300', lineHeight: 100 },
+  usuario: { color: C.tinta, fontSize: 16, fontWeight: '600', flexShrink: 1 },
+  etiqueta: { color: C.sub, fontSize: 10, letterSpacing: 4, textTransform: 'uppercase' },
+  racha: { color: C.claro, fontSize: 92, fontWeight: '300', lineHeight: 100 },
 
   // El renglón de pasos: tabular para que el número no baile, tenue y con aire
   // arriba (bajo el número de la racha) y abajo (antes de la semana).
-  pasos: { color: '#6a7286', fontSize: 13, marginTop: 14, fontVariant: ['tabular-nums'] },
+  pasos: { color: C.apagado, fontSize: 13, marginTop: 14, fontVariant: ['tabular-nums'] },
 
   tira: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 34 },
   // Pegada a las vidas, como en el aviso: se leen juntas.
   tiraBajoVidas: { marginTop: 18 },
-  letra: { color: '#4a5163', fontSize: 11 },
+  letra: { color: C.apagado, fontSize: 11 },
 
   impulsos: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 26 },
   impulsosEt: {
-    color: '#4a5163',
+    color: C.apagado,
     fontSize: 10,
     letterSpacing: 2,
     textTransform: 'uppercase',
@@ -1308,48 +1310,49 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     marginTop: 34,
   },
-  apagado: { opacity: 0.6 },
-  textoSolido: { color: '#05060a', fontSize: 15, fontWeight: '600' },
+  apagado: { opacity: DESHABILITADO },
+  textoSolido: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   // `vacio` ya era el punto apagado de la tira de la semana: este es otro.
   sinNada: { marginTop: 26, marginBottom: 10, gap: 6 },
-  vacioTitulo: { color: '#e8ecf6', fontSize: 20, fontWeight: '300' },
-  vacioPie: { color: '#8a93a8', fontSize: 14, lineHeight: 20 },
+  vacioTitulo: { color: C.tinta, fontSize: 20, fontWeight: '300' },
+  vacioPie: { color: C.sub, fontSize: 14, lineHeight: 20 },
   globoQuieto: {
     marginTop: 16,
     paddingHorizontal: 14,
     paddingVertical: 11,
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#1d2230',
+    borderColor: C.linea,
+    backgroundColor: C.placa,
   },
-  globoTexto: { color: '#8a93a8', fontSize: 13, lineHeight: 18 },
-  aviso: { color: '#8a93a8', fontSize: 13, marginTop: 20, textAlign: 'center', lineHeight: 19 },
-  error: { color: '#e8705f', fontSize: 13, textAlign: 'center' },
-  enlace: { color: '#8a93a8', fontSize: 13 },
+  globoTexto: { color: C.sub, fontSize: 13, lineHeight: 18 },
+  aviso: { color: C.sub, fontSize: 13, marginTop: 20, textAlign: 'center', lineHeight: 19, alignSelf: 'center', backgroundColor: C.placa, borderRadius: 12, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 4 },
+  error: { color: C.error, fontSize: 13, textAlign: 'center' },
+  enlace: { color: C.sobreMotor, fontSize: 13, ...HALO },
 
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
     borderWidth: 1,
-    borderColor: '#2a3040',
+    borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 7,
     paddingHorizontal: 12,
     minHeight: 36,
   },
-  chipTexto: { color: '#c4c2ba', fontSize: 13, fontVariant: ['tabular-nums'] },
-  latido: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#7e8ca8' },
+  chipTexto: { color: C.claro, fontSize: 13, fontVariant: ['tabular-nums'] },
+  latido: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.principal },
   // No se achica: los dos chips son numeros y un numero cortado no se lee.
   sesionViva: { flexDirection: 'row', gap: 8, flexShrink: 0 },
-  chipListo: { backgroundColor: '#c4c2ba', borderColor: '#c4c2ba' },
-  chipTextoListo: { color: '#05060a' },
+  chipListo: { backgroundColor: C.claro, borderColor: C.claro },
+  chipTextoListo: { color: C.fondo },
 
   sesion: { marginTop: 16 },
-  crono: { color: '#e8ecf6', fontSize: 44, fontWeight: '300', fontVariant: ['tabular-nums'], marginTop: 4 },
-  nota: { color: '#4a5163', fontSize: 12, lineHeight: 17, marginTop: 8 },
-  pregunta: { color: '#8a93a8', fontSize: 14, lineHeight: 20, marginTop: 24 },
-  preguntaFuerte: { color: '#e8ecf6', fontWeight: '600' },
+  crono: { color: C.tinta, fontSize: 44, fontWeight: '300', fontVariant: ['tabular-nums'], marginTop: 4 },
+  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
+  pregunta: { color: C.sub, fontSize: 14, lineHeight: 20, marginTop: 24 },
+  preguntaFuerte: { color: C.tinta, fontWeight: '600' },
   secundario: { paddingVertical: 14, alignItems: 'center' },
 
   // MAS CHICO QUE ANTES (25/9): era marginTop 34 y 22 de alto con el numero
@@ -1360,15 +1363,15 @@ const estilos = StyleSheet.create({
     paddingVertical: 14,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: '#1d2230',
+    borderColor: C.linea,
   },
   resumenCabe: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  resumenTitulo: { color: '#e8ecf6', fontSize: 14, fontWeight: '500' },
-  resumenCerrar: { color: '#8a93a8', fontSize: 16, paddingHorizontal: 4 },
+  resumenTitulo: { color: C.tinta, fontSize: 14, fontWeight: '500' },
+  resumenCerrar: { color: C.sub, fontSize: 16, paddingHorizontal: 4 },
   cifras: { flexDirection: 'row', gap: 28, marginTop: 8 },
   cifra: { alignItems: 'flex-start' },
-  cifraNumero: { color: '#c4c2ba', fontSize: 26, fontWeight: '300', fontVariant: ['tabular-nums'] },
+  cifraNumero: { color: C.claro, fontSize: 26, fontWeight: '300', fontVariant: ['tabular-nums'] },
   // "Ver lo que hiciste hoy": tenue, debajo de los botones de foto/peso.
   verResumen: { paddingVertical: 10, marginTop: 2 },
-  verResumenTexto: { color: '#8a93a8', fontSize: 13 },
+  verResumenTexto: { color: C.sobreMotor, fontSize: 13, ...HALO },
 });

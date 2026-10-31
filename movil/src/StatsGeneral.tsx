@@ -265,9 +265,11 @@ export default function StatsGeneral({
           const pasado = rangoActual.n > r.n;
           const esActual = rangoActual.n === r.n;
           return (
-            <View key={r.n} style={[estilos.filaRango, !esActual && !pasado && { opacity: 0.45 }]}>
-              <Insignia rango={r.n} />
-              <Text style={[estilos.nombreRango, pasado && { color: C.sub }]}>{r.nombre}</Text>
+            <View key={r.n} style={estilos.filaRango}>
+              <View style={!esActual && !pasado && { opacity: 0.45 }}>
+                <Insignia rango={r.n} />
+              </View>
+              <Text style={[estilos.nombreRango, pasado && { color: C.sub }, !esActual && !pasado && { color: C.apagado }]}>{r.nombre}</Text>
               {esActual ? (
                 <Text style={[estilos.actual, { color: pal.claro }]}>{T.stats.acaEstas}</Text>
               ) : (

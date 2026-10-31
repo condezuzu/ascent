@@ -4,7 +4,7 @@ import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
 import { versionCompleta } from '../reporteDeErrores';
 import CampoTexto from '../CampoTexto';
-import { C } from '../colores';
+import { C, DESHABILITADO } from '../colores';
 
 /**
  * DECIR ALGO SIN SALIR DE LA APP.
@@ -87,7 +87,7 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
-  apagado: { opacity: 0.45 },
+  apagado: { opacity: DESHABILITADO },
   botonTexto: { color: C.tinta, fontSize: 14 },
   ok: { color: C.sub, fontSize: 13, marginTop: 8 },
   error: { color: C.error, fontSize: 13, marginTop: 8 },

@@ -130,11 +130,11 @@ export default function Cuenta({ perfil, alSalir }: { perfil: Perfil; alSalir: (
           />
           <View style={estilos.botones}>
             <Pressable
-              style={[estilos.botonPeligro, confirmacion.trim() !== perfil.username && estilos.apagado]}
+              style={[estilos.botonPeligro, confirmacion.trim() !== perfil.username && estilos.peligroSinConfirmar]}
               onPress={() => borrar()}
               disabled={borrando || confirmacion.trim() !== perfil.username}
             >
-              <Text style={estilos.botonPeligroTexto}>{borrando ? T.ajustes.bajaEliminando : T.ajustes.bajaConfirmar}</Text>
+              <Text style={[estilos.botonPeligroTexto, confirmacion.trim() !== perfil.username && estilos.peligroSinConfirmarTexto]}>{borrando ? T.ajustes.bajaEliminando : T.ajustes.bajaConfirmar}</Text>
             </Pressable>
             <Pressable
               style={estilos.boton}
@@ -189,7 +189,8 @@ const estilos = StyleSheet.create({
   botones: { flexDirection: 'row', gap: 8, marginTop: 12 },
   botonPeligro: { flex: 1, backgroundColor: C.error, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
   botonPeligroTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
-  apagado: { opacity: 0.45 },
+  peligroSinConfirmar: { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.error },
+  peligroSinConfirmarTexto: { color: C.error },
   boton: {
     flex: 1,
     borderWidth: StyleSheet.hairlineWidth,

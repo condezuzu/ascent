@@ -117,8 +117,9 @@ const estilos = StyleSheet.create({
     borderWidth: 1,
     borderColor: C.linea,
     borderRadius: 999,
+    backgroundColor: C.placa,
   },
   hundida: { transform: [{ scale: 0.96 }], borderColor: C.lineaFuerte },
   redondo: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
-  rotulo: { color: C.apagado, fontSize: 10, letterSpacing: 1.6, textTransform: 'uppercase' },
+  rotulo: { color: C.sub, fontSize: 10, letterSpacing: 1.6, textTransform: 'uppercase' },
 });

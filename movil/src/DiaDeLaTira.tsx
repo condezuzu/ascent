@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Animated, Easing, StyleSheet, Text, type StyleProp, type TextStyle } from 'react-native';
 import { paletaDe } from '@nucleo/paletas';
+import { C } from './colores';
 
 /**
  * UN DÍA DE LA TIRA DE LUNES A DOMINGO, con la animación aprobada en la galería
@@ -27,7 +28,7 @@ function mezclar(a: string, b: string, cuanto: number) {
 export function colorDelDiaRegistrado(rango: number) {
   const p = paletaDe(rango);
   if (rango === 7) return { relleno: mezclar(p.claro, '#05050A', 0.25), halo: p.principal };
-  return { relleno: mezclar('#e8ecf6', p.claro, 0.3), halo: p.claro };
+  return { relleno: mezclar(C.tinta, p.claro, 0.3), halo: p.claro };
 }
 
 export default function DiaDeLaTira({

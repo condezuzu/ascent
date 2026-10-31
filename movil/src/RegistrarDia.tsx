@@ -281,7 +281,7 @@ const estilos = StyleSheet.create({
   chipTexto: { color: FIJO.tinta, fontSize: 13 },
   chipApagado: { color: FIJO.sub, fontSize: 13 },
   solido: { backgroundColor: FIJO.crema, borderRadius: 999, paddingVertical: 14, alignItems: 'center', marginTop: 18 },
-  apagado: { opacity: 0.5 },
+  apagado: { opacity: FIJO.deshabilitado },
   solidoTexto: { color: FIJO.negro, fontSize: 15, fontWeight: '600' },
   aviso: { color: FIJO.sub, fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },
   // El aviso de subida de rango va encendido: es un premio, no un aviso más.

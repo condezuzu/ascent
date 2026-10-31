@@ -8,13 +8,22 @@
  *
  * TODAVÍA NO SIGUE EL RANGO: la paleta por rango que tiñe la web entra con el
  * motor. Hasta entonces, la del primero.
+ *
+ * PISO DE 4,5:1 (30/10): todo lo que se lee llega ahí sobre el fondo y sobre la hoja, y lo
+ * pinea la sección 321 de test:db. Lo que no se lee, y va atrás a propósito, es `tenue`.
  */
 export const C = {
   fondo: '#05060a',
   hoja: '#0b0d13',
   tinta: '#e8ecf6',
-  sub: '#8a93a8',
-  apagado: '#4a5163',
+  sub: '#aab2c4',
+  apagado: '#9098ab',
+  tenue: '#4a5163',
+  // El texto que se apoya directo sobre el motor, sin caja: con `HALO`.
+  sobreMotor: '#c2c9d8',
+  // Lo que Inicio deja leer con el planeta detrás, en reposo. El anillo del agujero negro pasa de
+  // 150 en cada canal: el velo a la mitad no alcanza, y entero taparía el planeta.
+  placa: 'rgba(5, 6, 10, 0.66)',
   linea: '#1d2230',
   lineaFuerte: '#2a3040',
   principal: '#7e8ca8',
@@ -38,6 +47,16 @@ export const C = {
   chispa: '#fff3d6',
   // El reflejo que cruza «Aceptar».
   brillo: '#ffffff',
+};
+
+/** Un botón que no se puede tocar. Más bajo y su texto pierde el piso de 4,5:1. */
+export const DESHABILITADO = 0.7;
+
+/** Lo que separa un texto del motor cuando el planeta le pasa por detrás. */
+export const HALO = {
+  textShadowColor: 'rgba(5, 6, 10, 0.95)',
+  textShadowOffset: { width: 0, height: 0 },
+  textShadowRadius: 7,
 };
 
 /**

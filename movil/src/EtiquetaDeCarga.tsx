@@ -68,7 +68,7 @@ const estilos = StyleSheet.create({
   etiquetaChica: { minHeight: 30 },
   texto: { color: C.sub, fontSize: 13 },
   textoChico: { fontSize: 12 },
-  flecha: { color: C.apagado, fontSize: 10 },
+  flecha: { color: C.sub, fontSize: 10 },
   opciones: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginVertical: 4 },
   opcion: {
     borderWidth: 1,

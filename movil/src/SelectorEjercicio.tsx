@@ -9,7 +9,7 @@ import { yaEsta } from '@nucleo/yaEsta';
 import { T } from '@nucleo/textos';
 import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
-import { C } from './colores';
+import { C, DESHABILITADO } from './colores';
 import { supabase } from './supabase';
 import { leerRecordados, recordadosAlDia, type Recordados } from '@compartido/pesosRecordados';
 import { leerPerfilCache } from '@compartido/cache';
@@ -323,6 +323,6 @@ const estilos = StyleSheet.create({
   yaEsta: { color: C.tinta, fontSize: 14, marginTop: 14 },
   crearIgual: { alignSelf: 'flex-start', paddingVertical: 10, marginTop: 6 },
   crearIgualTexto: { color: C.sub, fontSize: 14 },
-  apagado: { opacity: 0.4 },
+  apagado: { opacity: DESHABILITADO },
   cancelarTexto: { color: C.sub, fontSize: 14 },
 });

@@ -11562,11 +11562,14 @@ console.log('\n157. La pantalla de bloqueo: el timer que se caia y la campana');
   // Un target de Apple no puede importar TypeScript, asi que estan copiados.
   // Esto compara los dos lados: si alguien cambia la paleta, se canta en vez de
   // quedar de otro color para siempre en la pantalla que nadie mira dos veces.
+  //
+  // DESDE EL 30/10 EL WIDGET VA CON LOS FIJOS: la paleta de la app sigue al rango y sube de
+  // contraste por OTA, y lo de la pantalla bloqueada necesita build.
   const cfg157 = de157('movil', 'targets', 'descanso', 'expo-target.config.js');
-  const col157 = de157('movil', 'src', 'colores.ts');
-  for (const [nombre, hex] of [['fondo', '#05060a'], ['tinta', '#e8ecf6'], ['sub', '#8a93a8'], ['claro', '#c4c2ba']]) {
-    chequear('el widget y la app comparten ' + nombre,
-      cfg157.includes(nombre + ": '" + hex + "'") && col157.includes(nombre + ": '" + hex + "'"), true);
+  const col157 = de157('movil', 'src', 'coloresFijos.ts');
+  for (const [nombre, fijo, hex] of [['fondo', 'negro', '#05060a'], ['tinta', 'tinta', '#e8ecf6'], ['sub', 'sub', '#8a93a8'], ['claro', 'crema', '#c4c2ba']]) {
+    chequear('el widget y los colores fijos comparten ' + nombre,
+      cfg157.includes(nombre + ": '" + hex + "'") && col157.includes(fijo + ": '" + hex + "'"), true);
   }
 }
 
@@ -21047,6 +21050,70 @@ console.log('\n320. Moss y Ascent son dos cuentas: borrar la de Ascent no toca M
     globales318('await supabase.auth.signOut();'), globales318("await supabase.auth.signOut({ scope: 'global' });"),
     globales318("await supabase.auth.signOut({ scope: 'local' });"),
   ], [1, 1, 0]);
+}
+console.log('\n321. El piso de 4,5:1 de la nativa: los colores y lo que los atenúa (30/10)');
+{
+  const { contraste: contraste321 } = await import('../nucleo/contraste.ts');
+  const { C: C321, DESHABILITADO: DES321 } = await import('../movil/src/colores.ts');
+  const { FIJO: FIJO321 } = await import('../movil/src/coloresFijos.ts');
+  const { FONDO_RANGO_7: F7321 } = await import('../nucleo/paletas.ts');
+  const { readFileSync: leer321, readdirSync: dir321 } = await import('node:fs');
+  const raiz321 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const mezcla321 = (a, fondo, alfa) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(a.slice(i, i + 2), 16) * alfa + parseInt(fondo.slice(i, i + 2), 16) * (1 - alfa)).toString(16).padStart(2, '0')).join('');
+  const fondos321 = [C321.fondo, C321.hoja, F7321];
+  for (const token of ['tinta', 'sub', 'apagado', 'sobreMotor', 'error']) {
+    chequear(`${token} llega a 4,5:1 sobre el fondo, la hoja y el fondo del rango 7`, fondos321.every((f) => contraste321(C321[token], f) >= 4.5), true);
+  }
+  chequear('tenue no es para leer: si llegara, sobraría', contraste321(C321.tenue, C321.fondo) < 4.5, true);
+  for (const token of ['tinta', 'sub']) {
+    chequear(`un botón deshabilitado con texto ${token} sigue en 4,5:1`, contraste321(mezcla321(C321[token], C321.fondo, DES321), C321.fondo) >= 4.5, true);
+  }
+  // En las hojas fijas lo que se deshabilita es el botón crema con texto negro.
+  chequear('lo mismo en las hojas de colores fijos', [FIJO321.deshabilitado === DES321, contraste321(mezcla321(FIJO321.crema, FIJO321.regla, FIJO321.deshabilitado), FIJO321.negro) >= 4.5], [true, true]);
+
+  // Lo que baja la opacidad de un contenedor baja la de su texto. Cada opacidad fija de la nativa
+  // está en esta lista con su razón: si aparece una nueva, se canta en vez de bajar el contraste callada.
+  const SIN_TEXTO321 = new Map([
+    ['Espacio.tsx', 'velo de la bienvenida'], ['Objetos.tsx', 'dibujo de la bienvenida'],
+    ['Bloque.tsx', 'el − de un control sin nada que restar'], ['CalendarioDias.tsx', 'la flecha de un mes al que no se puede ir'],
+    ['CampoEstelar.tsx', 'estrellas'], ['CampoPeso.tsx', 'el − y el + sin peso'],
+    ['FilaRutina.tsx', 'el dedo encima: un instante'], ['GraficoPasos.tsx', 'la línea de la meta'],
+    ['Ranking.tsx', 'el dedo encima: un instante'], ['RutinaDe.tsx', 'el dedo encima: un instante'],
+    ['RutinaPlegada.tsx', 'el dedo encima: un instante'], ['StatsGeneral.tsx', 'la insignia de un rango y el día de descanso'],
+  ]);
+  const fuentes321 = dir321(join(raiz321, 'movil'), { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && /\.tsx$/.test(e.name) && !e.parentPath.includes('node_modules') && !e.parentPath.includes('targets'))
+    .map((e) => join(e.parentPath, e.name));
+  const nuevas321 = [];
+  for (const r of fuentes321) {
+    const nombre = r.split(/[\\/]/).pop();
+    const lineas = leer321(r, 'utf8').split('\n');
+    for (const l of lineas) {
+      if (/^\s*(\/\/|\*)/.test(l)) continue;
+      if (/opacity: 0?\.\d/.test(l) && !/shadowOpacity|interpolate|toValue/.test(l) && !SIN_TEXTO321.has(nombre)) nuevas321.push(nombre + ': ' + l.trim().slice(0, 60));
+    }
+  }
+  chequear('ninguna opacidad fija nueva sobre lo que se lee', nuevas321, []);
+
+  // El velo vive con el fondo: cubre a todas las pantallas, y solo Inicio en reposo lo lleva a la mitad.
+  const inicio321 = leer321(join(raiz321, 'movil', 'src', 'Inicio.tsx'), 'utf8');
+  const velo321 = leer321(join(raiz321, 'movil', 'src', 'VeloDeLectura.tsx'), 'utf8');
+  const raizF321 = leer321(join(raiz321, 'movil', 'src', 'FondoRaiz.tsx'), 'utf8');
+  chequear('el velo de lectura está en la raíz del fondo, y a la mitad solo en Inicio en reposo', [
+    /<VeloDeLectura entero=\{!op\.lecturaMedia\} \/>/.test(raizF321),
+    /lecturaMedia=\{!sesion\.estado\.corriendo && !cierre\}/.test(inicio321),
+    /toValue: entero \? 1 : 0\.5/.test(velo321),
+  ], [true, true, true]);
+  // Sin esto, en la vista web el motor no arranca y test:real mide el texto contra el vacío: fue así del 28/10 al 30/10.
+  for (const f of ['EstrellaQueTitila.tsx', 'PuntoDelDia.tsx', 'RachaSalvada.tsx', 'CampoEstelar.tsx']) {
+    chequear(`el bucle de adorno de ${f} no retiene el arranque del motor`, /isInteraction: false/.test(leer321(join(raiz321, 'movil', 'src', f), 'utf8')), true);
+  }
+}
+console.log('\n322. Un minuto es uno: «1 minutos hoy» (30/10)');
+{
+  const { TEXTOS_ES: es322 } = await import('../nucleo/textos.ts');
+  const { EN: en322 } = await import('../nucleo/textos-en.ts');
+  chequear('el singular y el plural, en los dos idiomas', [es322.inicio.minutosDeHoy(1), es322.inicio.minutosDeHoy(2), en322.inicio.minutosDeHoy(1), en322.inicio.minutosDeHoy(2)], ['1 minuto hoy', '2 minutos hoy', '1 minute today', '2 minutes today']);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

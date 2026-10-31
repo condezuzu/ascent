@@ -5,7 +5,7 @@ import { claveNuevaInvalida, porQueNoCambio } from '@nucleo/clave';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { supabase } from './supabase';
 import CampoTexto from './CampoTexto';
-import { C } from './colores';
+import { C, DESHABILITADO } from './colores';
 
 /**
  * ELEGIR LA CONTRASEÑA NUEVA, después de tocar el enlace del correo (4/10).
@@ -103,7 +103,7 @@ const estilos = StyleSheet.create({
   },
   solido: { backgroundColor: C.claro, borderRadius: 2, paddingVertical: 15, alignItems: 'center', marginTop: 8 },
   solidoTexto: { color: C.fondo, fontSize: 15, letterSpacing: 1 },
-  apagado: { opacity: 0.5 },
+  apagado: { opacity: DESHABILITADO },
   error: { color: C.error, fontSize: 14, marginTop: 14, textAlign: 'center' },
   aviso: { color: C.tinta, fontSize: 15, textAlign: 'center' },
   despues: { marginTop: 26, alignSelf: 'center' },

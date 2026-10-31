@@ -3,6 +3,7 @@ import { Animated, Easing, StyleSheet } from 'react-native';
 import { anotarEntradaVista, vioLaEntrada } from '@compartido/entradaVista';
 import Bienvenida from './Bienvenida';
 import Login from './Login';
+import { C } from './colores';
 
 /**
  * LA ENTRADA: primero la bienvenida, después el login.
@@ -63,5 +64,5 @@ export default function EntradaYLogin({ alEntrar }: { alEntrar: () => void }) {
 }
 
 const estilos = StyleSheet.create({
-  todo: { flex: 1, backgroundColor: '#05060a' },
+  todo: { flex: 1, backgroundColor: C.fondo },
 });

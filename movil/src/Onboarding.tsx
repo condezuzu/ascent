@@ -14,6 +14,7 @@ import { quienSoy } from '@compartido/quienSoy';
 import { nombreValido } from '@nucleo/usuario';
 import { T } from '@nucleo/textos';
 import { reiniciarGuia } from '@compartido/guia';
+import { C, DESHABILITADO } from './colores';
 
 /**
  * ELEGIR EL NOMBRE — lo que falta para que una cuenta nueva sirva.
@@ -99,7 +100,7 @@ export default function Onboarding({ alElegir }: { alElegir: () => void }) {
           autoCorrect={false}
           maxLength={20}
           placeholder={T.ajustes.nombrePlaceholder}
-          placeholderTextColor="#4a5163"
+          placeholderTextColor={C.apagado}
         />
 
         <Pressable
@@ -108,7 +109,7 @@ export default function Onboarding({ alElegir }: { alElegir: () => void }) {
           disabled={cargando}
         >
           {cargando ? (
-            <ActivityIndicator color="#05060a" />
+            <ActivityIndicator color={C.fondo} />
           ) : (
             <Text style={estilos.textoSolido}>{T.entrar.empezar}</Text>
           )}
@@ -135,7 +136,7 @@ export default function Onboarding({ alElegir }: { alElegir: () => void }) {
 }
 
 const estilos = StyleSheet.create({
-  todo: { flex: 1, backgroundColor: '#05060a' },
+  todo: { flex: 1, backgroundColor: C.fondo },
   centro: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -145,28 +146,28 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
   },
   marca: {
-    color: '#8a93a8',
+    color: C.sub,
     fontSize: 13,
     letterSpacing: 6,
     textTransform: 'uppercase',
     textAlign: 'center',
     marginBottom: 44,
   },
-  titulo: { color: '#e8ecf6', fontSize: 22, marginBottom: 6 },
-  sub: { color: '#8a93a8', fontSize: 14, marginBottom: 22 },
+  titulo: { color: C.tinta, fontSize: 22, marginBottom: 6 },
+  sub: { color: C.sub, fontSize: 14, marginBottom: 22 },
   campo: {
-    borderBottomColor: '#2a3040',
+    borderBottomColor: C.lineaFuerte,
     borderBottomWidth: 1,
-    color: '#e8ecf6',
+    color: C.tinta,
     fontSize: 16,
     paddingVertical: 10,
     marginBottom: 20,
   },
-  solido: { backgroundColor: '#c4c2ba', borderRadius: 2, paddingVertical: 15, alignItems: 'center' },
-  apagado: { opacity: 0.6 },
-  textoSolido: { color: '#05060a', fontSize: 15, fontWeight: '600' },
-  error: { color: '#e8705f', fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },
+  solido: { backgroundColor: C.claro, borderRadius: 2, paddingVertical: 15, alignItems: 'center' },
+  apagado: { opacity: DESHABILITADO },
+  textoSolido: { color: C.fondo, fontSize: 15, fontWeight: '600' },
+  error: { color: C.error, fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },
   // Discreta y abajo: es la salida de emergencia, no una de las dos opciones.
   salir: { marginTop: 28, alignItems: 'center', paddingVertical: 10 },
-  salirTexto: { color: '#8a93a8', fontSize: 14 },
+  salirTexto: { color: C.sub, fontSize: 14 },
 });

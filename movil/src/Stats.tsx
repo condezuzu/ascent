@@ -41,6 +41,7 @@ import { eventos } from '@compartido/eventos';
 import { ABRIR_ENTRENAMIENTO, seAcabaDePedir } from './abrirEntrenamiento';
 import { paletaDe } from '@nucleo/paletas';
 import { useArriba } from './zonaSegura';
+import { C } from './colores';
 
 const SEMANAS = 8;
 
@@ -226,7 +227,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   if (!datos) {
     return (
       <View style={estilos.centrado}>
-        <ActivityIndicator color="#8a93a8" />
+        <ActivityIndicator color={C.sub} />
       </View>
     );
   }
@@ -495,46 +496,46 @@ const estilos = StyleSheet.create({
   // Transparente: el fondo lo dibuja `FondoRaiz`.
   raiz: { flex: 1 },
   pantalla: { flexGrow: 1, padding: 24, paddingTop: 64, paddingBottom: 40 },
-  centrado: { flex: 1, backgroundColor: '#05060a', alignItems: 'center', justifyContent: 'center', gap: 16 },
-  titulo: { color: '#8a93a8', fontSize: 11, letterSpacing: 4, textTransform: 'uppercase', marginBottom: 20 },
+  centrado: { flex: 1, backgroundColor: C.fondo, alignItems: 'center', justifyContent: 'center', gap: 16 },
+  titulo: { color: C.sub, fontSize: 11, letterSpacing: 4, textTransform: 'uppercase', marginBottom: 20 },
 
   selector: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   opcion: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#1d2230',
+    borderColor: C.linea,
     borderRadius: 999,
     paddingVertical: 10,
     alignItems: 'center',
   },
-  opcionActiva: { borderColor: '#8a93a8' },
-  opcionTexto: { color: '#4a5163', fontSize: 14 },
-  opcionTextoActivo: { color: '#e8ecf6' },
+  opcionActiva: { borderColor: C.sub },
+  opcionTexto: { color: C.apagado, fontSize: 14 },
+  opcionTextoActivo: { color: C.tinta },
 
   grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   celda: { width: '47%', paddingVertical: 14 },
-  valor: { color: '#c4c2ba', fontSize: 34, fontWeight: '300' },
-  etiqueta: { color: '#4a5163', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 },
+  valor: { color: C.claro, fontSize: 34, fontWeight: '300' },
+  etiqueta: { color: C.apagado, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 },
 
   seccion: {
-    color: '#8a93a8',
+    color: C.sub,
     fontSize: 11,
     letterSpacing: 3,
     textTransform: 'uppercase',
     marginTop: 18,
     marginBottom: 12,
   },
-  nota: { color: '#4a5163', fontSize: 12, lineHeight: 17, marginBottom: 6 },
+  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginBottom: 6 },
 
-  cuando: { color: '#8a93a8', fontSize: 12, textAlign: 'right', marginBottom: 8 },
+  cuando: { color: C.sub, fontSize: 12, textAlign: 'right', marginBottom: 8 },
   filaMusculo: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginBottom: 10 },
   rotulo: { width: 90 },
-  dejado: { color: '#4a5163', fontSize: 11, marginTop: 1 },
+  dejado: { color: C.apagado, fontSize: 11, marginTop: 1 },
   // LA SEMANA QUE SE LEE, con las flechas a los costados. Reemplazan a las ocho
   // barras: eran ellas las que dejaban elegir semana, y eran ellas las que no
   // comunicaban nada.
   semana: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginBottom: 14 },
-  flecha: { color: '#8a93a8', fontSize: 22, paddingHorizontal: 2 },
+  flecha: { color: C.sub, fontSize: 22, paddingHorizontal: 2 },
   // LA PISTA: fondo, franja de referencia, y el llenado encima.
   pista: { flex: 1, height: 12, borderRadius: 6, backgroundColor: '#161b26', overflow: 'hidden' },
   // La franja NO es un borde: es un bloque más claro, para que se lea como una
@@ -543,10 +544,10 @@ const estilos = StyleSheet.create({
   llenado: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 6 },
   // POR DEBAJO, APAGADO; DENTRO, EL COLOR DE LA APP; POR ENCIMA, un tono más
   // caliente. Nada de rojo: pasarse no es un error.
-  llenadoPoco: { backgroundColor: '#4a5163' },
-  llenadoDentro: { backgroundColor: '#7e8ca8' },
-  llenadoMucho: { backgroundColor: '#c4c2ba' },
-  valorFila: { width: 58, color: '#e8ecf6', fontSize: 14, textAlign: 'right' },
+  llenadoPoco: { backgroundColor: C.tenue },
+  llenadoDentro: { backgroundColor: C.principal },
+  llenadoMucho: { backgroundColor: C.claro },
+  valorFila: { width: 58, color: C.tinta, fontSize: 14, textAlign: 'right' },
 
   fila: {
     flexDirection: 'row',
@@ -554,28 +555,28 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#1d2230',
+    borderBottomColor: C.linea,
     gap: 12,
   },
   filaNombre: { flex: 1 },
-  nombre: { color: '#e8ecf6', fontSize: 15 },
-  fecha: { color: '#4a5163', fontSize: 12, marginTop: 2 },
-  peso: { color: '#8a93a8', fontSize: 13 },
+  nombre: { color: C.tinta, fontSize: 15 },
+  fecha: { color: C.apagado, fontSize: 12, marginTop: 2 },
+  peso: { color: C.sub, fontSize: 13 },
   filaDeGrupo: { paddingLeft: 12 },
   otros: { paddingLeft: 12, paddingVertical: 10 },
-  otrosTexto: { color: '#8a93a8', fontSize: 13 },
-  sinMaximo: { color: '#4a5163' },
+  otrosTexto: { color: C.sub, fontSize: 13 },
+  sinMaximo: { color: C.apagado },
   cabeza: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#2a3040',
+    borderBottomColor: C.lineaFuerte,
   },
-  cabezaTexto: { color: '#e8ecf6', fontSize: 14 },
-  cabezaCuenta: { color: '#4a5163', fontSize: 12 },
+  cabezaTexto: { color: C.tinta, fontSize: 14 },
+  cabezaCuenta: { color: C.apagado, fontSize: 12 },
 
-  error: { color: '#e8705f', fontSize: 13, textAlign: 'center' },
-  enlace: { color: '#8a93a8', fontSize: 13 },
+  error: { color: C.error, fontSize: 13, textAlign: 'center' },
+  enlace: { color: C.sub, fontSize: 13 },
 });

@@ -20,6 +20,7 @@ import IconoDePestana from './IconoDePestana';
 import { ContextoVisible } from './pedidoDeFondo';
 import { deslizarPestanasBloqueado } from './gestoDePestanas';
 import CartelDeArriba from './CartelDeArriba';
+import { C } from './colores';
 
 /**
  * LA BARRA DE ABAJO, con las pantallas que ya existen en nativo.
@@ -476,7 +477,7 @@ export default function Pestanas({
       </View>
     ) : (
       <View style={estilos.centrado}>
-        <ActivityIndicator color="#8a93a8" />
+        <ActivityIndicator color={C.sub} />
       </View>
     );
   };
@@ -581,9 +582,9 @@ export default function Pestanas({
               {/* EL ICONO ARRIBA Y LA PALABRA CHICA ABAJO (28/10). El icono se enciende igual
                   que el rótulo: uno apagado y otro encendido encima, con la luz de la tira. */}
               <View style={estilos.icono}>
-                <IconoDePestana cual={p} color="#4a5163" />
+                <IconoDePestana cual={p} color={C.apagado} />
                 <Animated.View style={[StyleSheet.absoluteFill, { opacity: luces[i] }]} pointerEvents="none">
-                  <IconoDePestana cual={p} color="#e8ecf6" />
+                  <IconoDePestana cual={p} color={C.tinta} />
                 </Animated.View>
                 {avisa && <View style={estilos.punto} />}
               </View>
@@ -625,22 +626,22 @@ const estilos = StyleSheet.create({
   // veía el fondo del motor en vez de la pantalla que asoma (visto a :8092).
   carril: { position: 'absolute', top: 0, bottom: 0, left: 0 },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  noCargo: { color: '#8a93a8', fontSize: 14, textAlign: 'center', paddingHorizontal: 32, marginBottom: 14 },
-  reintentar: { borderWidth: StyleSheet.hairlineWidth, borderColor: '#8a93a8', borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10 },
-  reintentarTexto: { color: '#e8ebf2', fontSize: 14 },
+  noCargo: { color: C.sub, fontSize: 14, textAlign: 'center', paddingHorizontal: 32, marginBottom: 14 },
+  reintentar: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.sub, borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10 },
+  reintentarTexto: { color: C.tinta, fontSize: 14 },
   barra: {
     flexDirection: 'row',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#1d2230',
+    borderTopColor: C.linea,
     paddingBottom: 20,
     paddingTop: 6,
-    backgroundColor: '#05060a',
+    backgroundColor: C.fondo,
   },
   boton: { flex: 1, alignItems: 'center', paddingVertical: 4, minHeight: 44, justifyContent: 'center', gap: 3 },
   icono: { width: 22, height: 22 },
-  texto: { color: '#4a5163', fontSize: 10, letterSpacing: 0.3 },
+  texto: { color: C.apagado, fontSize: 10, letterSpacing: 0.3 },
   // Encima del rótulo apagado, calzado: mismo texto, mismo tamaño, otro color.
-  luz: { position: 'absolute', left: 0, top: 0, color: '#e8ecf6' },
+  luz: { position: 'absolute', left: 0, top: 0, color: C.tinta },
   // El puntito de aviso, arriba a la derecha del icono de la pestaña.
   punto: {
     position: 'absolute',
@@ -649,6 +650,6 @@ const estilos = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 999,
-    backgroundColor: '#e8705f',
+    backgroundColor: C.error,
   },
 });

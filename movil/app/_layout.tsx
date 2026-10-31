@@ -40,6 +40,7 @@ import { trasElAviso, trasMirar } from '@nucleo/veredicto';
 import { anotarEntradaVista } from '@compartido/entradaVista';
 import { pedirFondo, soltarFondo } from '../src/pedidoDeFondo';
 import { cuerpoDe } from '@nucleo/rangos';
+import { C } from '../src/colores';
 
 const FONDO_DEL_ARRANQUE = 'arranque';
 
@@ -180,7 +181,7 @@ export default function Layout() {
         // pide, y el pedido de Inicio llegaba con Inicio, después del logo. Con la racha precargada
         // se pide lo mismo debajo del logo; Inicio lo pisa al montarse y este se suelta al final.
         if (vivo && d?.inicio.tipo === 'listo' && d.inicio.datos.perfil) {
-          pedirFondo(FONDO_DEL_ARRANQUE, { ...cuerpoDe(d.inicio.datos.perfil.racha_actual), esquina: 'abajo-derecha', atmosfera: true });
+          pedirFondo(FONDO_DEL_ARRANQUE, { ...cuerpoDe(d.inicio.datos.perfil.racha_actual), esquina: 'abajo-derecha', lecturaMedia: true, atmosfera: true });
         }
       })
       .catch(() => null)
@@ -336,7 +337,7 @@ export default function Layout() {
         <StatusBar style="light" />
         {abierta && sesion === 'mirando' && (
           <View style={estilos.centrado}>
-            <ActivityIndicator color="#8a93a8" />
+            <ActivityIndicator color={C.sub} />
           </View>
         )}
         {abierta && sesion === 'sin' && <EntradaYLogin alEntrar={mirar} />}
@@ -413,7 +414,7 @@ export default function Layout() {
 }
 
 const estilos = StyleSheet.create({
-  todo: { flex: 1, backgroundColor: '#05060a' },
+  todo: { flex: 1, backgroundColor: C.fondo },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   // `display: none` y no desmontar: ver el comentario de arriba.
   escondido: { display: 'none' },

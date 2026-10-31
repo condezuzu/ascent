@@ -51,5 +51,5 @@ const estilos = StyleSheet.create({
   },
   // Ancho fijo, por lo mismo que el peso: en web un campo sin ancho ocupa la fila entera.
   input: { color: C.tinta, fontSize: 22, width: 44, textAlign: 'right', fontVariant: ['tabular-nums'], padding: 0 },
-  unidad: { color: C.apagado, fontSize: 12 },
+  unidad: { color: C.sub, fontSize: 12 },
 });

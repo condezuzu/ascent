@@ -4,7 +4,7 @@ import { numeroDeRango, progresoEnRango, siguienteRango } from '@nucleo/rangos';
 import { paletaDe } from '@nucleo/paletas';
 import { T } from '@nucleo/textos';
 import NumeroQueCuenta from './NumeroQueCuenta';
-import { conAlfa } from './colores';
+import { C, conAlfa } from './colores';
 
 /**
  * EL NÚMERO DE RACHA, CON LA PALABRA AL COSTADO Y LA BARRA DEBAJO.
@@ -101,7 +101,7 @@ const estilos = StyleSheet.create({
   rotulo: { paddingBottom: 14, alignItems: 'center' },
   // `lineHeight` chico y `letterSpacing` en cero: acá la separación entre
   // letras es la separación entre FILAS, que es lo que hace el efecto.
-  letra: { color: '#8a93a8', fontSize: 10, lineHeight: 14, textTransform: 'uppercase' },
+  letra: { color: C.sub, fontSize: 10, lineHeight: 14, textTransform: 'uppercase' },
   numero: { fontSize: 92, fontWeight: '300', lineHeight: 100 },
   barra: { height: 3, width: '62%', borderRadius: 2, overflow: 'hidden', marginTop: 20, marginBottom: 8 },
   llena: { height: '100%', borderRadius: 2 },

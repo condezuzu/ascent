@@ -9,7 +9,7 @@ import { plataforma } from '@plataforma';
 import { supabase } from './supabase';
 import RutinaPlegada from './RutinaPlegada';
 import Corazon from './Corazon';
-import { C } from './colores';
+import { C, DESHABILITADO } from './colores';
 
 /**
  * LA RUTINA DE ALGUIEN, PARA MIRARLA (14/10): la tuya en tu perfil, la de un
@@ -200,6 +200,6 @@ const estilos = StyleSheet.create({
   pildoraBordeTexto: { color: C.tinta, fontSize: 14 },
   pildoraCrema: { backgroundColor: C.claro },
   pildoraCremaTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
-  apagada: { opacity: 0.4 },
+  apagada: { opacity: DESHABILITADO },
   copiar: { flex: 0, alignSelf: 'stretch', marginTop: 14 },
 });
