@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, ScrollView, Share, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
 import { DIAS_SEMANA, deISO, hoyISO, restarDias } from '@nucleo/fechas';
@@ -32,7 +32,6 @@ import { CLAVE_VIDA_HELADA, CLAVE_VIDA_VISTA, diasDeLaTira, frioDelDia, hastaDon
 import { CLAVE_META_PASOS, META_PASOS_POR_OMISION, leerMeta } from '@nucleo/pasos';
 import SugerenciasDeMarca from './SugerenciasDeMarca';
 import MarcaEnElMomento from './MarcaEnElMomento';
-import { paletaDe } from '@nucleo/paletas';
 import { cuentaAtras, restante } from '@compartido/descanso';
 import FondoEspacial from './FondoEspacial';
 import { mostrando } from './loVisible';
@@ -64,6 +63,15 @@ import { rutinaParaPreguntar, type PreguntaDeRutina } from './preguntarPorLaRuti
 import VentanaRutina from './VentanaRutina';
 import CadaSegundo from './CadaSegundo';
 import { useArriba } from './zonaSegura';
+import { C, DESHABILITADO, HALO, conAlfa, conTema, luz } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import { Fantasma, R } from './roles';
+import Svg, { Circle, Path } from 'react-native-svg';
+import Cruce from './Cruce';
+import { MS } from './movimiento';
+import Surgir from './Surgir';
 import { fijarExtras } from '@compartido/tarjeta';
 
 /**
@@ -149,6 +157,7 @@ export default function Inicio({
   /** Cuenta nueva sin nombre: la pantalla de elegirlo es de App. */
   alFaltarNombre: () => void;
 }) {
+  useTema();
   const router = useRouter();
   const arriba = useArriba(64);
   // Dónde está la píldora del descanso, para que su globito salga de ella.
@@ -575,7 +584,7 @@ export default function Inicio({
   if (estado.tipo === 'cargando') {
     return (
       <View style={estilos.centrado} testID="pantalla-inicio">
-        <ActivityIndicator color="#8a93a8" />
+        <ActivityIndicator color={C.sub} />
       </View>
     );
   }
@@ -584,9 +593,9 @@ export default function Inicio({
     return (
       <View style={estilos.centrado}>
         <Text style={estilos.error}>{estado.que}</Text>
-        <Pressable onPress={cargar}>
+        <Tocable onPress={cargar}>
           <Text style={estilos.enlace}>{T.inicio.reintentar}</Text>
-        </Pressable>
+        </Tocable>
       </View>
     );
   }
@@ -650,7 +659,7 @@ export default function Inicio({
   const semana = conEstado(diasDeLaTira(hoy, [...(vidaUsada?.dias ?? []), ...(helada?.fechas ?? [])]));
   // EL COLOR DEL ARCO del descanso se decide ACÁ, en una línea: hoy, el del rango. Lo usan las
   // dos pantallas grandes (la que corre y la de antes de empezar, 21/10).
-  const acentoDelDescanso = paletaDe(numeroDeRango(racha), null).principal;
+  const acentoDelDescanso = C.principal;
 
   return (
     <View style={estilos.raiz} testID="pantalla-inicio">
@@ -665,6 +674,7 @@ export default function Inicio({
         esquina="abajo-derecha"
         // Como en la web: Inicio es la única pantalla con atmósfera.
         atmosfera
+        lecturaMedia={!sesion.estado.corriendo && !cierre}
       />
     <ScrollView
       ref={scroll}
@@ -692,7 +702,7 @@ export default function Inicio({
             era una franja de pocos píxeles, cuando quedaba alguna. Sin sesión
             hay un solo chip, entra todo, y por eso el perfil se abría bien.
             `flexShrink` es lo que hace que ceda el nombre en vez de la fila. */}
-        <Pressable
+        <Tocable
           style={estilos.yo}
           onPress={() => router.push('/yo')}
           accessibilityRole="button"
@@ -707,9 +717,10 @@ export default function Inicio({
               botón que lleva al perfil, y una medalla que se abriera sola
               competiría con ese toque. Se ven; para saber qué son, se entra. */}
           <FilaDeMedallas medallas={medallas} />
-        </Pressable>
+        </Tocable>
         {/* El chip de la sesión, arriba a la derecha como en la web: sin
             sesión la inicia; con sesión, es el reloj. */}
+        <Cruce clave={sesion.estado.corriendo && sesion.estado.inicio ? 'reloj' : 'iniciar'} style={estilos.lugarDelChip}>
         {sesion.estado.corriendo && sesion.estado.inicio ? (
           <View style={estilos.sesionViva}>
             <View style={estilos.chip}>
@@ -730,7 +741,7 @@ export default function Inicio({
                   const fin = sesion.estado.descanso?.fin ?? 0;
                   return (
                     <TimbreDePildora fin={fin || null}>
-                    <Pressable
+                    <Tocable
                       testID="pildora-descanso"
                       onLayout={(e) => setAnchoPildora(e.nativeEvent.layout.width)}
                       style={[estilos.chip, restante(fin) === 0 && estilos.chipListo]}
@@ -747,7 +758,7 @@ export default function Inicio({
                           ]
                         }
                       </Text>
-                    </Pressable>
+                    </Tocable>
                     </TimbreDePildora>
                   );
                 }}
@@ -760,7 +771,7 @@ export default function Inicio({
                 onPress={() => void sesion.duracionDelDescansoSuelto().then(setSinEmpezar)}
                 accessibilityRole="button"
               >
-                <Text style={estilos.chipTexto}>{T.sesion.descansar}</Text>
+                <Text style={estilos.chipPalabra}>{T.sesion.descansar}</Text>
               </Tocable>
             )}
           </View>
@@ -771,9 +782,10 @@ export default function Inicio({
             disabled={sesion.estado.ocupado}
             accessibilityRole="button"
           >
-            <Text style={estilos.chipTexto}>{sesion.estado.ocupado ? '…' : T.inicio.iniciarEntrenamiento}</Text>
+            <Text style={estilos.chipPalabra}>{sesion.estado.ocupado ? '…' : T.inicio.iniciarEntrenamiento}</Text>
           </Tocable>
         )}
+        </Cruce>
       </View>
       {/* EL MULTIJUGADOR, ARRIBA DE TODO (28/10): «Iniciar grupo» y quién entrena ahora.
           Entrenando, lo reemplaza la tira del grupo (más abajo). */}
@@ -819,7 +831,7 @@ export default function Inicio({
           <PasosInicio
             pasos={pasosHoy}
             meta={metaPasos}
-            acento={paletaDe(numeroDeRango(racha), null).principal}
+            acento={C.principal}
             compacto={sesion.estado.corriendo}
             alCambiarMeta={setMetaPasos}
           />
@@ -866,14 +878,13 @@ export default function Inicio({
       {/* El aviso de tiempo solo aparece cuando falta poco DE VERDAD, no a
           la mañana, y esta redactado hacia adelante: "ultimo tramo para el
           48", nunca "vas a perder la racha". */}
-      {avisoTiempo && <Aparece><Text style={estilos.aviso}>{T.inicio.ultimoTramo(perfil.racha_actual + 1)}</Text></Aparece>}
-      {perdioAyer && <Aparece><Text style={estilos.aviso}>{T.inicio.perdida}</Text></Aparece>}
-      {esDescanso && <Aparece><Text style={estilos.aviso}>{T.inicio.hoyDescansa}</Text></Aparece>}
+      <Aparece visible={!!(avisoTiempo)}><Text style={estilos.aviso}>{T.inicio.ultimoTramo(perfil.racha_actual + 1)}</Text></Aparece>
+      <Aparece visible={!!(perdioAyer)}><Text style={estilos.aviso}>{T.inicio.perdida}</Text></Aparece>
+      <Aparece visible={!!(esDescanso)}><Text style={estilos.aviso}>{T.inicio.hoyDescansa}</Text></Aparece>
       {/* EL DIA QUE LA GUARDA DEJO ESPERANDO. Se dice aca y no solo en la
           hoja: podes cerrar la app y volver, y lo que no podes es quedarte
           pensando que perdiste el dia (§11). */}
-      {perfil.dia_pendiente && <Aparece><Text style={estilos.aviso}>{T.inicio.diaPendiente}</Text></Aparece>}
-
+      <Aparece visible={!!(perfil.dia_pendiente)}><Text style={estilos.aviso}>{T.inicio.diaPendiente}</Text></Aparece>
       {/* MARCA TU GIMNASIO, mientras no este marcado. Se RECUERDA, no se
           insiste: es un globo quieto que lleva a Ajustes, y no aparece
           mientras entrenas — ahi la pantalla es el entrenamiento.
@@ -884,21 +895,24 @@ export default function Inicio({
           son ruido. */}
       {!perfil.gimnasio_lat && !sesion.estado.corriendo && !insistirGimnasio && (
         <Aparece>
-          <Pressable
+          <Tocable
             style={estilos.globoQuieto}
             onPress={() => {
               irAPestana('ajustes');
               pedirResaltarGimnasio();
             }}
           >
+            <Svg width={14} height={17} viewBox="0 0 14 17" fill="none" stroke={C.sub} strokeWidth={1.4}>
+              <Path d="M7 16s6-5.4 6-10A6 6 0 0 0 1 6c0 4.6 6 10 6 10Z" />
+              <Circle cx={7} cy={6} r={2} />
+            </Svg>
             <Text style={estilos.globoTexto}>{T.inicio.gimnasioRecordatorioNativo}</Text>
-          </Pressable>
+          </Tocable>
         </Aparece>
       )}
 
-      {aviso !== '' && <Aparece><Text style={estilos.aviso}>{aviso}</Text></Aparece>}
-      {sesion.estado.aviso !== '' && <Aparece><Text style={estilos.aviso}>{sesion.estado.aviso}</Text></Aparece>}
-
+      <Aparece visible={!!(aviso !== '')}><Text style={estilos.aviso}>{aviso}</Text></Aparece>
+      <Aparece visible={!!(sesion.estado.aviso !== '')}><Text style={estilos.aviso}>{sesion.estado.aviso}</Text></Aparece>
       {/* ENTRENAR CON OTRO (12/10): avisa que estoy entrenando, publica lo que
           se ve acá y muestra el pedido de quien quiere unirse. De una sola
           mano: no le devuelve nada a la sesión. Ver `EnVivoDeInicio`. */}
@@ -915,6 +929,7 @@ export default function Inicio({
         <View style={estilos.sesion}>
           {/* El reloj ya está arriba, en el chip: acá manda el bloque, que es
               lo que se toca doce veces por sesión. */}
+          <Surgir demora={MS.bloque} style={estilos.bloqueEntra}>
           <Bloque
             estado={sesion.estado.bloques}
             total={sesion.estado.series}
@@ -959,11 +974,12 @@ export default function Inicio({
                 bloques={sesion.estado.bloques}
                 inicio={sesion.estado.inicio}
                 unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}
-                principal={paletaDe(numeroDeRango(racha), null).principal}
+                principal={C.principal}
                 alAparecer={traerALaVista}
               />
             }
           />
+          </Surgir>
           {sesion.estado.porUbicacion && <Text style={estilos.nota}>{T.inicio.sesionSola}</Text>}
 
           {terminando ? (
@@ -979,11 +995,11 @@ export default function Inicio({
               </Text>
               {/* "Seguir" se queda con el botón sólido: el que llegó acá sin
                   querer toca donde ya estaba tocando y no pasa nada. */}
-              <Pressable style={estilos.solido} onPress={() => setTerminando(false)}>
-                <FondoOctogonal relleno="#c4c2ba" />
+              <Tocable style={estilos.solido} onPress={() => setTerminando(false)}>
+                <FondoOctogonal relleno={C.claro} luz={C.claro} />
                 <Text style={estilos.textoSolido}>{T.sesion.seguir}</Text>
-              </Pressable>
-              <Pressable
+              </Tocable>
+              <Tocable
                 style={estilos.secundario}
                 disabled={sesion.estado.ocupado}
                 onPress={async () => {
@@ -1003,14 +1019,18 @@ export default function Inicio({
                   cargar();
                 }}
               >
-                <Text style={estilos.enlace}>{sesion.estado.ocupado ? T.sesion.guardando : T.sesion.terminar}</Text>
-              </Pressable>
+                <View style={estilos.subrayado}>
+                  <Text style={estilos.enlace}>{sesion.estado.ocupado ? T.sesion.guardando : T.sesion.terminar}</Text>
+                </View>
+              </Tocable>
             </>
           ) : (
+            <Surgir demora={MS.terminar}>
             <Tocable style={estilos.solido} hundir={0.97} onPress={() => setTerminando(true)}>
-              <FondoOctogonal relleno="#c4c2ba" />
+              <FondoOctogonal relleno={C.claro} luz={C.claro} />
               <Text style={estilos.textoSolido}>{T.sesion.terminar}</Text>
             </Tocable>
+            </Surgir>
           )}
         </View>
       ) : cierre ? (
@@ -1041,14 +1061,14 @@ export default function Inicio({
                   setCierre(null), y un toque al pasar la borraba sin querer —el
                   bug reportado—. Cerrar algo sin querer no puede ser lo que pasa
                   por defecto. */}
-              <Pressable
+              <Tocable
                 onPress={() => setCierre(null)}
                 hitSlop={12}
                 accessibilityRole="button"
                 accessibilityLabel={T.general.cerrar}
               >
                 <Text style={estilos.resumenCerrar}>✕</Text>
-              </Pressable>
+              </Tocable>
             </View>
             <View style={estilos.cifras}>
               <View style={estilos.cifra}>
@@ -1089,7 +1109,7 @@ export default function Inicio({
               abrir. Solo si hubo entrenamiento con bloques: un día a mano no
               tiene resumen que mostrar. */}
           {bloquesDeHoy && bloquesDeHoy.length > 0 && (
-            <Pressable
+            <Tocable
               onPress={() => {
                 const series = bloquesDeHoy.reduce((t, b) => t + (b.series ?? 0), 0);
                 setCierre({
@@ -1103,8 +1123,10 @@ export default function Inicio({
               hitSlop={8}
               style={estilos.verResumen}
             >
-              <Text style={estilos.verResumenTexto}>{T.inicio.verResumen}</Text>
-            </Pressable>
+              <View style={estilos.subrayado}>
+                <Text style={estilos.verResumenTexto}>{T.inicio.verResumen}</Text>
+              </View>
+            </Tocable>
           )}
           {/* Y ACÁ SE INSISTE CON EL PUNTO DEL GIMNASIO: pegado al día que se
               acaba de anotar a mano, que es el único momento en que la oferta
@@ -1122,15 +1144,13 @@ export default function Inicio({
       ) : (
         <>
           <Tocable style={estilos.solido} hundir={0.97} onPress={() => setRegistrarAbierto(true)}>
-            <FondoOctogonal relleno="#c4c2ba" />
+            <FondoOctogonal relleno={C.claro} luz={C.claro} />
             <Text style={estilos.textoSolido}>{sinNada ? T.inicio.registrarPrimerDia : T.inicio.registrarDia}</Text>
           </Tocable>
           {/* PEGADO AL PRINCIPAL, como en la web: el peso NO pasa por registrar
               el día —pesarse no es haber ido al gimnasio— pero tiene que poder
               anotarse cualquier día, entrenes o no. */}
-          <Pressable style={estilos.secundario} onPress={() => setPesoAbierto(true)}>
-            <Text style={estilos.enlace}>{T.peso.anotarPeso}</Text>
-          </Pressable>
+          <Fantasma texto={T.peso.anotarPeso} alTocar={() => setPesoAbierto(true)} />
         </>
       )}
 
@@ -1267,13 +1287,13 @@ export default function Inicio({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Transparente: el fondo lo dibuja `FondoRaiz`, detrás de todas las
   // pestañas. Un color acá lo taparía.
   raiz: { flex: 1 },
   // Transparente: detrás está el fondo, que ya pinta el color de base.
   pantalla: { flexGrow: 1, padding: 24, paddingTop: 64 },
-  centrado: { flex: 1, backgroundColor: '#05060a', alignItems: 'center', justifyContent: 'center', gap: 16 },
+  centrado: { flex: 1, backgroundColor: C.fondo, alignItems: 'center', justifyContent: 'center', gap: 16 },
   // FLEXIBLE Y CON MINIMO: cede el nombre, nunca la fila entera. Ver el
   // comentario de la cabecera.
   yo: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1, minWidth: 96 },
@@ -1283,25 +1303,26 @@ const estilos = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 30,
   },
-  usuario: { color: '#e8ecf6', fontSize: 16, fontWeight: '600', flexShrink: 1 },
-  etiqueta: { color: '#8a93a8', fontSize: 10, letterSpacing: 4, textTransform: 'uppercase' },
-  racha: { color: '#c4c2ba', fontSize: 92, fontWeight: '300', lineHeight: 100 },
+  usuario: { color: C.tinta, fontSize: 16, fontWeight: '600', letterSpacing: -0.1, flexShrink: 1 },
+  etiqueta: { ...R.etiqueta },
+  racha: { color: C.claro, fontSize: 92, fontWeight: '300', lineHeight: 100, fontFamily: L.racha, letterSpacing: -2 },
 
   // El renglón de pasos: tabular para que el número no baile, tenue y con aire
   // arriba (bajo el número de la racha) y abajo (antes de la semana).
-  pasos: { color: '#6a7286', fontSize: 13, marginTop: 14, fontVariant: ['tabular-nums'] },
+  pasos: { color: C.apagado, fontSize: 13, marginTop: 14, fontFamily: L.dato },
 
   tira: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 34 },
   // Pegada a las vidas, como en el aviso: se leen juntas.
   tiraBajoVidas: { marginTop: 18 },
-  letra: { color: '#4a5163', fontSize: 11 },
+  letra: { color: C.apagado, fontSize: 11, fontFamily: L.dato },
 
   impulsos: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 26 },
   impulsosEt: {
-    color: '#4a5163',
+    color: C.apagado,
     fontSize: 10,
     letterSpacing: 2,
     textTransform: 'uppercase',
+    fontWeight: '500',
     marginRight: 4,
   },
 
@@ -1311,48 +1332,57 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     marginTop: 34,
   },
-  apagado: { opacity: 0.6 },
-  textoSolido: { color: '#05060a', fontSize: 15, fontWeight: '600' },
+  apagado: { opacity: DESHABILITADO },
+  textoSolido: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   // `vacio` ya era el punto apagado de la tira de la semana: este es otro.
   sinNada: { marginTop: 26, marginBottom: 10, gap: 6 },
-  vacioTitulo: { color: '#e8ecf6', fontSize: 20, fontWeight: '300' },
-  vacioPie: { color: '#8a93a8', fontSize: 14, lineHeight: 20 },
+  vacioTitulo: { color: C.tinta, fontSize: 20, fontWeight: '300' },
+  vacioPie: { color: C.sub, fontSize: 14, lineHeight: 20 },
+  // Sin caja, pero con placa: en reposo pasa por encima del planeta.
   globoQuieto: {
     marginTop: 16,
-    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 4,
     paddingVertical: 11,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#1d2230',
+    borderTopWidth: 1,
+    borderTopColor: C.linea,
+    backgroundColor: C.placa,
   },
-  globoTexto: { color: '#8a93a8', fontSize: 13, lineHeight: 18 },
-  aviso: { color: '#8a93a8', fontSize: 13, marginTop: 20, textAlign: 'center', lineHeight: 19 },
-  error: { color: '#e8705f', fontSize: 13, textAlign: 'center' },
-  enlace: { color: '#8a93a8', fontSize: 13 },
+  globoTexto: { flex: 1, color: C.sub, fontSize: 13, lineHeight: 18 },
+  aviso: { color: C.sub, fontSize: 13, marginTop: 20, textAlign: 'center', lineHeight: 19, alignSelf: 'center', backgroundColor: C.placa, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 4 },
+  error: { color: C.error, fontSize: 13, textAlign: 'center' },
+  enlace: { color: C.sobreMotor, fontSize: 13, ...HALO },
 
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
     borderWidth: 1,
-    borderColor: '#2a3040',
+    borderColor: C.bordeChip,
+    backgroundColor: conAlfa(C.negro, 0.28),
     borderRadius: 999,
     paddingVertical: 7,
     paddingHorizontal: 12,
     minHeight: 36,
   },
-  chipTexto: { color: '#c4c2ba', fontSize: 13, fontVariant: ['tabular-nums'] },
-  latido: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#7e8ca8' },
+  chipTexto: { color: C.claro, fontSize: 13, fontFamily: L.dato },
+  chipPalabra: { color: C.claro, fontSize: 13, fontWeight: '500' },
+  latido: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.claro, ...luz(C.claro, 0.9, 3) },
   // No se achica: los dos chips son numeros y un numero cortado no se lee.
   sesionViva: { flexDirection: 'row', gap: 8, flexShrink: 0 },
-  chipListo: { backgroundColor: '#c4c2ba', borderColor: '#c4c2ba' },
-  chipTextoListo: { color: '#05060a' },
+  lugarDelChip: { flexShrink: 0 },
+  chipListo: { backgroundColor: C.claro, borderColor: C.claro, ...luz(C.claro, 0.4, 6) },
+  chipTextoListo: { color: C.fondo },
 
   sesion: { marginTop: 16 },
-  crono: { color: '#e8ecf6', fontSize: 44, fontWeight: '300', fontVariant: ['tabular-nums'], marginTop: 4 },
-  nota: { color: '#4a5163', fontSize: 12, lineHeight: 17, marginTop: 8 },
-  pregunta: { color: '#8a93a8', fontSize: 14, lineHeight: 20, marginTop: 24 },
-  preguntaFuerte: { color: '#e8ecf6', fontWeight: '600' },
+  // Por encima de lo que viene después: el globito del + flota debajo del + y no puede quedar tapado.
+  bloqueEntra: { zIndex: 2, elevation: 2 },
+  crono: { color: C.tinta, fontSize: 44, fontWeight: '300', fontFamily: L.dato, marginTop: 4 },
+  nota: { ...R.nota, marginTop: 8  },
+  pregunta: { color: C.sub, fontSize: 14, lineHeight: 20, marginTop: 24 },
+  preguntaFuerte: { color: C.tinta, fontWeight: '600' },
   secundario: { paddingVertical: 14, alignItems: 'center' },
 
   // MAS CHICO QUE ANTES (25/9): era marginTop 34 y 22 de alto con el numero
@@ -1361,17 +1391,17 @@ const estilos = StyleSheet.create({
   resumen: {
     marginTop: 18,
     paddingVertical: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: '#1d2230',
+    borderTopWidth: 1,
+    borderColor: C.linea,
   },
   resumenCabe: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  resumenTitulo: { color: '#e8ecf6', fontSize: 14, fontWeight: '500' },
-  resumenCerrar: { color: '#8a93a8', fontSize: 16, paddingHorizontal: 4 },
+  resumenTitulo: { color: C.tinta, fontSize: 14, fontWeight: '500' },
+  resumenCerrar: { color: C.sub, fontSize: 16, paddingHorizontal: 4 },
   cifras: { flexDirection: 'row', gap: 28, marginTop: 8 },
   cifra: { alignItems: 'flex-start' },
-  cifraNumero: { color: '#c4c2ba', fontSize: 26, fontWeight: '300', fontVariant: ['tabular-nums'] },
+  cifraNumero: { color: C.claro, fontSize: 26, fontWeight: '300', fontFamily: L.dato, letterSpacing: -1 },
   // "Ver lo que hiciste hoy": tenue, debajo de los botones de foto/peso.
-  verResumen: { paddingVertical: 10, marginTop: 2 },
-  verResumenTexto: { color: '#8a93a8', fontSize: 13 },
-});
+  verResumen: { paddingVertical: 10, marginTop: 2, alignSelf: 'flex-start' },
+  verResumenTexto: { color: C.sobreMotor, fontSize: 13, ...HALO },
+  subrayado: { paddingBottom: 3, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: conAlfa(C.sobreMotor, 0.45), backgroundColor: C.placa },
+}));

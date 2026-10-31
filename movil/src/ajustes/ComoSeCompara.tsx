@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { COMO_SE_COMPARA, type Parte } from '@nucleo/comoSeCompara';
 import { T } from '@nucleo/textos';
 import { C } from '../colores';
+import { Text } from '../Texto';
+import { R } from '../roles';
+import Tocable from '../Tocable';
 
 /**
  * CÓMO SE CALCULA EL RANKING DE FUERZA, abajo de todo en Ajustes.
@@ -24,7 +27,7 @@ export default function ComoSeCompara() {
 
   return (
     <View style={estilos.seccion}>
-      <Pressable
+      <Tocable
         style={estilos.cabecera}
         onPress={() => setAbierto(!abierto)}
         accessibilityRole="button"
@@ -32,7 +35,7 @@ export default function ComoSeCompara() {
       >
         <Text style={estilos.titulo}>{T.ajustes.comoSeCompara}</Text>
         <Text style={estilos.signo}>{abierto ? '−' : '+'}</Text>
-      </Pressable>
+      </Tocable>
 
       {abierto &&
         COMO_SE_COMPARA.map((b, i) =>
@@ -73,7 +76,7 @@ function pintar(parte: Parte, i: number) {
 const estilos = StyleSheet.create({
   seccion: { marginTop: 30 },
   cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 },
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
+  titulo: { ...R.etiqueta },
   signo: { color: C.sub, fontSize: 18 },
   subtitulo: { color: C.tinta, fontSize: 15, marginTop: 20, marginBottom: 6 },
   parrafo: { color: C.apagado, fontSize: 14, lineHeight: 21, marginTop: 10 },

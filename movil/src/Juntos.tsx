@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Share, StyleSheet, View } from 'react-native';
 import { echarDelGrupo, linkDelGrupo, responderUnion, salirDelGrupo, salirDeUnion } from '@compartido/enVivo';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import { disponible } from '@nucleo/esquema';
@@ -11,11 +11,16 @@ import { nombreVisible } from '@nucleo/propios';
 import { supabase } from './supabase';
 import { useNombresDeEjercicios } from './useNombresDeEjercicios';
 import Avatar from './Avatar';
-import { C } from './colores';
+import { C, conTema, conAlfa } from './colores';
+import { useTema } from './useTema';
 import Aparece from './Aparece';
 import Tocable from './Tocable';
 import { numeroDeRango } from '@nucleo/rangos';
 import { paletaDe } from '@nucleo/paletas';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import FondoOctogonal from './FondoOctogonal';
+import { R } from './roles';
 
 /**
  * "ENTRENANDO CONTIGO", en Ranking (12/10/2026): con quién estoy unido y qué
@@ -41,6 +46,7 @@ export default function Juntos({
   /** La racha de cada uno, por id: el aro de su cara lleva el color de su rango (28/10). */
   rachas?: ReadonlyMap<string, number>;
 }) {
+  useTema();
   const aro = (id: string) => {
     const r = rachas?.get(id);
     return { borderColor: r === undefined ? C.lineaFuerte : paletaDe(numeroDeRango(r), null).principal };
@@ -68,6 +74,7 @@ export default function Juntos({
 
   return (
     <View testID="juntos" style={estilos.seccion}>
+      <FondoOctogonal relleno={conAlfa(C.hoja, 0.88)} borde={C.lineaFuerte} corte={12} />
       <Text style={estilos.rotulo}>{T.social.juntos}</Text>
       {uniones.map((u) => (
         <Aparece key={u.id}>
@@ -82,17 +89,17 @@ export default function Juntos({
                 {u.laPediYo ? T.social.esperandoA(u.otro.username) : u.invitacion ? T.social.teInvita(u.otro.username) : T.social.quiereUnirse(u.otro.username)}
               </Text>
               {u.laPediYo ? (
-                <Pressable hitSlop={8} onPress={() => void salirDeUnion(supabase, u.otro.id).then(recargar)}>
+                <Tocable hitSlop={8} onPress={() => void salirDeUnion(supabase, u.otro.id).then(recargar)}>
                   <Text style={estilos.apagada}>{T.general.cancelar}</Text>
-                </Pressable>
+                </Tocable>
               ) : (
                 <>
-                  <Pressable testID="juntos-aceptar" hitSlop={8} onPress={() => void responderUnion(supabase, u.id, true).then(recargar)}>
+                  <Tocable testID="juntos-aceptar" hitSlop={8} onPress={() => void responderUnion(supabase, u.id, true).then(recargar)}>
                     <Text style={estilos.accion}>{T.social.aceptar}</Text>
-                  </Pressable>
-                  <Pressable hitSlop={8} onPress={() => void responderUnion(supabase, u.id, false).then(recargar)}>
+                  </Tocable>
+                  <Tocable hitSlop={8} onPress={() => void responderUnion(supabase, u.id, false).then(recargar)}>
                     <Text style={estilos.apagada}>{T.social.no}</Text>
-                  </Pressable>
+                  </Tocable>
                 </>
               )}
             </View>
@@ -136,13 +143,13 @@ export default function Juntos({
             </View>
             {/* En grupo, salir es uno solo, abajo; sacar, solo quien lo armó. */}
             {!u.grupo ? (
-              <Pressable testID="juntos-salir" hitSlop={8} onPress={() => void salirDeUnion(supabase, u.otro.id).then(recargar)}>
+              <Tocable testID="juntos-salir" hitSlop={8} onPress={() => void salirDeUnion(supabase, u.otro.id).then(recargar)}>
                 <Text style={estilos.apagada}>{T.social.salirDeUnion}</Text>
-              </Pressable>
+              </Tocable>
             ) : yoArmo ? (
-              <Pressable testID="juntos-sacar" hitSlop={8} onPress={() => void echarDelGrupo(supabase, u.otro.id).then(recargar)}>
+              <Tocable testID="juntos-sacar" hitSlop={8} onPress={() => void echarDelGrupo(supabase, u.otro.id).then(recargar)}>
                 <Text style={estilos.apagada}>{T.social.sacarDelGrupo}</Text>
-              </Pressable>
+              </Tocable>
             ) : null}
           </View>
         );
@@ -155,9 +162,9 @@ export default function Juntos({
             <Text style={estilos.invitarTexto}>{T.social.invitarAlGrupo}</Text>
           </Tocable>
           {enGrupo && (
-            <Pressable testID="juntos-salir-grupo" hitSlop={8} onPress={() => void salirDelGrupo(supabase).then(recargar)}>
+            <Tocable testID="juntos-salir-grupo" hitSlop={8} onPress={() => void salirDelGrupo(supabase).then(recargar)}>
               <Text style={estilos.apagada}>{T.social.salirDelGrupo}</Text>
-            </Pressable>
+            </Tocable>
           )}
         </View>
       )}
@@ -165,13 +172,13 @@ export default function Juntos({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // ARRIBA DE TODO Y EN UNA TARJETA (28/10, aprobado en la galería): es lo que está pasando.
-  seccion: { marginTop: 14, borderWidth: 1, borderColor: '#2e3548', borderRadius: 18, backgroundColor: 'rgba(9,10,16,0.88)', paddingVertical: 12, paddingHorizontal: 14 },
+  seccion: { marginTop: 14, paddingVertical: 12, paddingHorizontal: 14 },
   aro: { borderWidth: 2, borderRadius: 999, padding: 1 },
   invitar: { backgroundColor: C.claro, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 16 },
   invitarTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
-  rotulo: { color: C.apagado, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 },
+  rotulo: { ...R.etiqueta, marginBottom: 6  },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   nombre: { flex: 1, color: C.tinta, fontSize: 14 },
   cabecera: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -180,9 +187,9 @@ const estilos = StyleSheet.create({
   viejo: { color: C.apagado },
   accion: { color: C.claro, fontSize: 14 },
   apagada: { color: C.apagado, fontSize: 13 },
-  pildora: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 },
+  pildora: { borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 },
   pildoraLista: { borderColor: C.sub },
-  pildoraTexto: { color: C.sub, fontSize: 12, fontVariant: ['tabular-nums'] },
+  pildoraTexto: { color: C.sub, fontSize: 12, fontFamily: L.dato },
   pildoraTextoLista: { color: C.tinta },
   pie: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10 },
-});
+}));

@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { supabase } from './supabase';
 import { miId } from '@compartido/quienSoy';
 import { DIAS_SEMANA, MESES, deISO, hoyISO } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 import { cargarMes, celdasDelMes, moverMes, recalcularRacha, type DatosDelMes } from '@compartido/calendario';
 import HojaDelDia from './HojaDelDia';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * EL CALENDARIO DE STATS, en la app nativa: uno solo, y se toca para MIRAR.
@@ -32,6 +37,7 @@ export default function CalendarioDias({
   porRevisar?: Set<string>;
   alRevisar?: () => void;
 }) {
+  useTema();
   const hoy = hoyISO();
   const base = deISO(hoy);
   const [ancla, setAncla] = useState({ anio: base.getFullYear(), mes: base.getMonth() });
@@ -78,18 +84,18 @@ export default function CalendarioDias({
   return (
     <View style={estilos.calendario}>
       <View style={estilos.cabecera}>
-        <Pressable style={estilos.flecha} onPress={() => mover(-1)} accessibilityLabel={T.calendario.mesAnterior}>
+        <Tocable style={estilos.flecha} onPress={() => mover(-1)} accessibilityLabel={T.calendario.mesAnterior}>
           <Text style={estilos.flechaTexto}>‹</Text>
-        </Pressable>
+        </Tocable>
         <Text style={estilos.mes}>{T.calendario.mesYAnio(MESES[ancla.mes], ancla.anio)}</Text>
-        <Pressable
+        <Tocable
           style={[estilos.flecha, esMesActual && { opacity: 0.25 }]}
           onPress={() => mover(1)}
           disabled={esMesActual}
           accessibilityLabel={T.calendario.mesSiguiente}
         >
           <Text style={estilos.flechaTexto}>›</Text>
-        </Pressable>
+        </Tocable>
       </View>
 
       <View style={[estilos.grilla, { marginBottom: 14 }]}>
@@ -128,7 +134,7 @@ export default function CalendarioDias({
                   <Text
                     style={[
                       estilos.numero,
-                      c.estado === 'hecho' && { color: '#08080c', fontWeight: '600' },
+                      c.estado === 'hecho' && { color: C.fondo, fontWeight: '600' },
                       c.estado === 'futuro' && { color: conAlfa(C.apagado, 0.4) },
                     ]}
                   >
@@ -177,9 +183,9 @@ export default function CalendarioDias({
       {/* El botón está siempre; la instrucción aparece recién después de
           corregir, que es cuando se entiende para qué es. */}
       {corrigio && <Text style={estilos.nota}>{T.calendario.recalcularNota}</Text>}
-      <Pressable onPress={recalcular} disabled={recalculando} hitSlop={8} style={{ marginTop: 10 }}>
+      <Tocable onPress={recalcular} disabled={recalculando} hitSlop={8} style={{ marginTop: 10 }}>
         <Text style={estilos.botonTexto}>{recalculando ? T.calendario.recalculando : T.calendario.recalcular}</Text>
-      </Pressable>
+      </Tocable>
       {!!aviso && <Text style={estilos.aviso}>{aviso}</Text>}
 
       {abierto && (
@@ -199,17 +205,17 @@ export default function CalendarioDias({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   conVida: { borderWidth: 1.5, borderStyle: 'dashed' },
-  calendario: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea, paddingTop: 20, paddingBottom: 6 },
+  calendario: { borderTopWidth: 1, borderColor: C.linea, paddingTop: 20, paddingBottom: 6 },
   cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 },
   // 44 pt: el mínimo con el que un pulgar acierta.
   flecha: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   flechaTexto: { color: C.sub, fontSize: 20 },
-  mes: { color: C.sub, fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', fontVariant: ['tabular-nums'] },
+  mes: { ...R.etiqueta, fontFamily: L.dato  },
   grilla: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 10 },
   casilla: { width: `${100 / 7}%`, alignItems: 'center' },
-  nombreDia: { color: C.apagado, fontSize: 10, letterSpacing: 1, textAlign: 'center' },
+  nombreDia: { color: C.apagado, fontSize: 10, textAlign: 'center', fontFamily: L.dato },
   dia: {
     width: 34,
     height: 34,
@@ -219,22 +225,22 @@ const estilos = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'transparent',
   },
-  numero: { color: C.sub, fontSize: 12, fontVariant: ['tabular-nums'] },
+  numero: { color: C.sub, fontSize: 12, fontFamily: L.dato },
   guion: { width: 10, height: 2, borderRadius: 1, backgroundColor: C.apagado },
   marca: {
     position: 'absolute',
     bottom: -2,
     width: 5,
     height: 5,
-    borderRadius: 2.5,
+    borderRadius: 999,
     borderWidth: 1.5,
     borderColor: C.fondo,
   },
   leyenda: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 18, rowGap: 6, marginTop: 22 },
   referencia: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   muestra: { width: 12, height: 12, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  referenciaTexto: { color: C.apagado, fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase' },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 12 },
+  referenciaTexto: { ...R.etiqueta },
+  nota: { ...R.nota, marginTop: 12  },
   botonTexto: { color: C.claro, fontSize: 14 },
   aviso: { color: C.sub, fontSize: 13, marginTop: 8 },
-});
+}));

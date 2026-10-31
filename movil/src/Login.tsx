@@ -1,19 +1,14 @@
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { supabase } from './supabase';
 import { VUELTA } from './enlace';
 import { mensajeDeAuth } from '@nucleo/errores';
 import { T } from '@nucleo/textos';
+import { C, DESHABILITADO, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text, TextInput } from './Texto';
+import Tocable from './Tocable';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * ENTRAR — TANDA 2, y la primera pantalla de verdad de la app nativa.
@@ -41,6 +36,7 @@ import { T } from '@nucleo/textos';
 type Modo = 'entrar' | 'crear' | 'recuperar';
 
 export default function Login({ alEntrar, modoInicial = 'entrar' }: { alEntrar: () => void; modoInicial?: 'entrar' | 'crear' }) {
+  useTema();
   const [modo, setModo] = useState<Modo>(modoInicial);
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
@@ -125,7 +121,7 @@ export default function Login({ alEntrar, modoInicial = 'entrar' }: { alEntrar: 
           autoCorrect={false}
           keyboardType="email-address"
           textContentType="emailAddress"
-          placeholderTextColor="#4a5163"
+          placeholderTextColor={C.apagado}
           placeholder={T.entrar.correoEjemplo}
         />
 
@@ -145,35 +141,36 @@ export default function Login({ alEntrar, modoInicial = 'entrar' }: { alEntrar: 
           </>
         )}
 
-        <Pressable
+        <Tocable
           style={[estilos.solido, cargando && estilos.apagado]}
           onPress={enviar}
           disabled={cargando}
         >
+<FondoOctogonal relleno={C.claro} luz={C.claro} />
           {cargando ? (
-            <ActivityIndicator color="#05060a" />
+            <ActivityIndicator color={C.fondo} />
           ) : (
             <Text style={estilos.textoSolido}>{titulo}</Text>
           )}
-        </Pressable>
+        </Tocable>
 
         {error !== '' && <Text style={estilos.error}>{error}</Text>}
         {aviso !== '' && <Text style={estilos.aviso}>{aviso}</Text>}
 
         <View style={estilos.secundarios}>
           {modo !== 'entrar' && (
-            <Pressable onPress={() => cambiarModo('entrar')}>
+            <Tocable onPress={() => cambiarModo('entrar')}>
               <Text style={estilos.enlace}>{T.entrar.volverAEntrar}</Text>
-            </Pressable>
+            </Tocable>
           )}
           {modo === 'entrar' && (
             <>
-              <Pressable onPress={() => cambiarModo('crear')}>
+              <Tocable onPress={() => cambiarModo('crear')}>
                 <Text style={estilos.enlace}>{T.entrar.primeraVez}</Text>
-              </Pressable>
-              <Pressable onPress={() => cambiarModo('recuperar')}>
+              </Tocable>
+              <Tocable onPress={() => cambiarModo('recuperar')}>
                 <Text style={estilos.enlace}>{T.entrar.olvide}</Text>
-              </Pressable>
+              </Tocable>
             </>
           )}
         </View>
@@ -186,19 +183,20 @@ export default function Login({ alEntrar, modoInicial = 'entrar' }: { alEntrar: 
 // Salen a mano porque el sistema de paletas por rango es del motor visual y
 // esa pantalla todavía no existe acá; cuando llegue, esto se va a leer de un
 // solo lado.
-const estilos = StyleSheet.create({
-  todo: { flex: 1, backgroundColor: '#05060a' },
+const estilos = conTema(() => StyleSheet.create({
+  todo: { flex: 1, backgroundColor: C.fondo },
   centro: { flexGrow: 1, justifyContent: 'center', padding: 24, maxWidth: 420, width: '100%', alignSelf: 'center' },
   marca: {
-    color: '#8a93a8',
+    color: C.sub,
     fontSize: 13,
     letterSpacing: 6,
     textTransform: 'uppercase',
+    fontWeight: '500',
     textAlign: 'center',
     marginBottom: 44,
   },
   queEs: {
-    color: '#8a93a8',
+    color: C.sub,
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
@@ -206,31 +204,30 @@ const estilos = StyleSheet.create({
     marginBottom: 32,
   },
   etiqueta: {
-    color: '#8a93a8',
+    color: C.sub,
     fontSize: 12,
     letterSpacing: 1,
     textTransform: 'uppercase',
+    fontWeight: '500',
     marginBottom: 6,
   },
   campo: {
-    borderBottomColor: '#2a3040',
+    borderBottomColor: C.lineaFuerte,
     borderBottomWidth: 1,
-    color: '#e8ecf6',
+    color: C.tinta,
     fontSize: 16,
     paddingVertical: 10,
     marginBottom: 20,
   },
   solido: {
-    backgroundColor: '#c4c2ba',
-    borderRadius: 2,
     paddingVertical: 15,
     alignItems: 'center',
     marginTop: 8,
   },
-  apagado: { opacity: 0.6 },
-  textoSolido: { color: '#05060a', fontSize: 15, fontWeight: '600' },
-  error: { color: '#e8705f', fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },
-  aviso: { color: '#8a93a8', fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },
+  apagado: { opacity: DESHABILITADO },
+  textoSolido: { color: C.fondo, fontSize: 15, fontWeight: '600' },
+  error: { color: C.error, fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },
+  aviso: { color: C.sub, fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },
   secundarios: { marginTop: 26, gap: 14, alignItems: 'center' },
-  enlace: { color: '#8a93a8', fontSize: 13 },
-});
+  enlace: { color: C.sub, fontSize: 13 },
+}));

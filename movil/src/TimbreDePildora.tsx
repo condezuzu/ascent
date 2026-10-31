@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { AccessibilityInfo, Animated, Easing } from 'react-native';
 import { DESPERTADOR } from '@nucleo/avisoDescanso';
+import { LLEGA, SE_VA } from './movimiento';
 
 /**
  * LA PÍLDORA DEL DESCANSO SUENA COMO UN DESPERTADOR (20/10, a pedido): al llegar a 0:00 se
@@ -22,10 +23,10 @@ export default function TimbreDePildora({ fin, children }: { fin: number | null;
       sonoPara.current = fin;
       // Una animación nueva por tanda: la misma instancia no se puede encadenar tres veces.
       const tanda = () => Animated.sequence([
-        Animated.timing(t, { toValue: 1, duration: 90, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(t, { toValue: 1, duration: 90, easing: LLEGA, useNativeDriver: true }),
         Animated.timing(t, { toValue: -1, duration: 140, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
         Animated.timing(t, { toValue: 1, duration: 140, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(t, { toValue: 0, duration: 110, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        Animated.timing(t, { toValue: 0, duration: 110, easing: SE_VA, useNativeDriver: true }),
       ]);
       // Cada sacudón arranca con su tanda de golpes: de arranque a arranque, lo mismo.
       const pausa = DESPERTADOR.entreGolpes * (DESPERTADOR.golpes - 1) + DESPERTADOR.entreTandas - 480;

@@ -11564,11 +11564,14 @@ console.log('\n157. La pantalla de bloqueo: el timer que se caia y la campana');
   // Un target de Apple no puede importar TypeScript, asi que estan copiados.
   // Esto compara los dos lados: si alguien cambia la paleta, se canta en vez de
   // quedar de otro color para siempre en la pantalla que nadie mira dos veces.
+  //
+  // DESDE EL 30/10 EL WIDGET VA CON LOS FIJOS: la paleta de la app sigue al rango y sube de
+  // contraste por OTA, y lo de la pantalla bloqueada necesita build.
   const cfg157 = de157('movil', 'targets', 'descanso', 'expo-target.config.js');
-  const col157 = de157('movil', 'src', 'colores.ts');
-  for (const [nombre, hex] of [['fondo', '#05060a'], ['tinta', '#e8ecf6'], ['sub', '#8a93a8'], ['claro', '#c4c2ba']]) {
-    chequear('el widget y la app comparten ' + nombre,
-      cfg157.includes(nombre + ": '" + hex + "'") && col157.includes(nombre + ": '" + hex + "'"), true);
+  const col157 = de157('movil', 'src', 'coloresFijos.ts');
+  for (const [nombre, fijo, hex] of [['fondo', 'negro', '#05060a'], ['tinta', 'tinta', '#e8ecf6'], ['sub', 'sub', '#8a93a8'], ['claro', 'crema', '#c4c2ba']]) {
+    chequear('el widget y los colores fijos comparten ' + nombre,
+      cfg157.includes(nombre + ": '" + hex + "'") && col157.includes(fijo + ": '" + hex + "'"), true);
   }
 }
 
@@ -14674,7 +14677,7 @@ console.log('\n191. El aviso de pérdida sale de lo que quedó guardado, no de u
     return [
       /const perdioAyer = perdida \|\| perdidaSinVer\(perfil\.perdida_fecha, logs\.filter\(\(l\) => !l\.es_descanso\)\.map\(\(l\) => l\.fecha\), hoy\);/.test(t),
       /apagado=\{perdioAyer && !registradoHoy\}/.test(t),
-      /\{perdioAyer && [(<]/.test(t),
+      /\{perdioAyer && [(<]|visible=\{!!\(perdioAyer\)\}/.test(t),
       /\{perdida && [(<]/.test(t),
     ];
   };
@@ -16921,7 +16924,7 @@ console.log('\n206. La pantalla del descanso: qué se estaba haciendo, el arco, 
   ], [true, true, true, true, false]);
   // Desde el 21/10 son dos pantallas (la que corre y la de antes de empezar): el color, una vez.
   chequear('el color del arco se decide en un solo lugar', [
-    (de206('movil', 'src', 'Inicio.tsx').match(/const acentoDelDescanso = paletaDe\(numeroDeRango\(racha\), null\)\.principal;/g) ?? []).length,
+    (de206('movil', 'src', 'Inicio.tsx').match(/const acentoDelDescanso = C\.principal;/g) ?? []).length,
     (de206('movil', 'src', 'Inicio.tsx').match(/<Descanso[\s\S]{0,200}?acento=\{acentoDelDescanso\}/g) ?? []).length,
   ], [1, 2]);
 }
@@ -19082,7 +19085,7 @@ console.log('\n247. Entrenar en grupo, del lado de la app: la lista, el link, el
   ], [true, true, true]);
   const ju = de247('movil', 'src', 'Juntos.tsx');
   chequear('en el grupo: sacar solo si lo armé yo, salir es uno solo, y el link se ofrece aunque no haya nadie', [
-    /\) : yoArmo \? \(\s*<Pressable testID="juntos-sacar"/.test(ju),
+    /\) : yoArmo \? \(\s*<(?:Pressable|Tocable) testID="juntos-sacar"/.test(ju),
     /testID="juntos-salir-grupo"/.test(ju) && /void salirDelGrupo\(supabase\)/.test(ju),
     /if \(uniones\.length === 0 && !\(conGrupos && entrenando\)\) return null;/.test(ju),
     /Share\.share\(\{ message: T\.social\.mensajeDeInvitacion\(enlaceDeGrupo\(codigo\)\) \}\)/.test(ju),
@@ -19592,11 +19595,11 @@ console.log('\n262. El aviso de la vida: colores fijos, botones redondeados y 4,
   const { contraste } = await import('../nucleo/contraste.ts');
   const { C: C262 } = await import('../movil/src/colores.ts');
   const v = leer262(join(dirname(fileURLToPath(import.meta.url)), '..', 'movil', 'src', 'RachaSalvada.tsx'), 'utf8').replace(/\r\n/g, '\n');
-  chequear('los colores son fijos: nada sale de la paleta del rango', [/paletaDe|pal\.principal|textoSobre/.test(v), /usar: \{ backgroundColor: C\.claro \}/.test(v), /guardar: \{ backgroundColor: C\.fondo, borderWidth: 1, borderColor: C\.bordeBoton \}/.test(v), /linkTexto: \{ color: C\.link/.test(v)], [false, true, true, true]);
+  chequear('los colores son fijos: nada sale de la paleta del rango', [/paletaDe|pal\.principal|textoSobre/.test(v), /usar: \{ backgroundColor: C\.crema \}/.test(v), /guardar: \{ backgroundColor: C\.negro, borderWidth: 1, borderColor: C\.bordeBoton \}/.test(v), /linkTexto: \{ color: C\.link/.test(v)], [false, true, true, true]);
   chequear('los botones, redondeados y con sombra', /boton: \{ borderRadius: 999,[^}]*\.\.\.sombra \}/.test(v), true);
   const pares = [
-    ['Usar vida', C262.fondo, C262.claro],
-    ['Guardar vida', C262.tinta, C262.fondo],
+    ['Usar vida', C262.negro, C262.crema],
+    ['Guardar vida', C262.tinta, C262.negro],
     ['(la racha baja 10 días)', C262.sub, C262.hoja],
     ['Fui. Corregir día', C262.link, C262.hoja],
     ['el texto del cuadro', C262.tinta, C262.hoja],
@@ -19726,7 +19729,7 @@ console.log('\n269. Rutinas: la lista fuera de editar, la de otra persona entera
     /<RutinaPlegada [^>]*abiertos \/>/.test(de),
     /abajoDelDia=/.test(de),
     /hayRutinasGuardadas/.test(de),
-    /\{!esYo && \(\s*<Pressable testID="rutina-copiar"/.test(de),
+    /\{!esYo && \(\s*<(?:Pressable|Tocable) testID="rutina-copiar"/.test(de),
     /const esAbierto = abiertos \|\| abierto === d;/.test(pl),
   ], [true, false, false, true, true]);
   const dias = RU.semanaVacia();
@@ -19813,11 +19816,11 @@ console.log('\n271. Las fotos del perfil no llevan "me gusta"; la grilla queda d
     /🔥|fueg/i.test(fg + fq + am),
     /foto/i.test(mg271) || /me_gusta_fotos/.test(deBug('supabase', 'schema.sql')),
   ], [false, false, false]);
-  chequear('las fotos: tres por fila del ancho medido, redondeadas y con sombra', [
+  chequear('las fotos: tres por fila del ancho medido, rectas y con sombra', [
     /onLayout=\{\(e\) => setAncho\(e\.nativeEvent\.layout\.width\)\}/.test(fq),
     /const lado = Math\.floor\(\(\(ancho \|\| width - 48\) - HUECO \* 2\) \/ 3\)/.test(fq),
-    /sombra: \{ borderRadius: 14,[^}]*shadowOpacity/.test(fq),
-    /cuadrito: \{ borderRadius: 14, overflow: 'hidden' \}/.test(fq),
+    /sombra: \{ borderRadius: 1,[^}]*\.\.\.luz\(/.test(fq),
+    /cuadrito: \{ borderRadius: 1, overflow: 'hidden' \}/.test(fq),
   ], [true, true, true, true]);
 }
 console.log('\n272. El descanso al terminar: el reloj grande queda en 0:00 y lo de más va chico abajo a la derecha, sin cambiar de pantalla (19/10)');
@@ -19827,7 +19830,7 @@ console.log('\n272. El descanso al terminar: el reloj grande queda en 0:00 y lo 
   const { EN } = await import('../nucleo/textos-en.ts');
   const d = sinComentarios(deBug('movil', 'src', 'Descanso.tsx'));
   chequear('terminado, el reloj grande dice 0:00 y lo de más se escribe +0:40', [cuentaAtras(0), '+' + cuentaAtras(40)], ['0:00', '+0:40']);
-  chequear('el número grande es siempre la cuenta atrás (en 0 dice 0:00)', /<Text testID="descanso-reloj" style=\{estilos\.numero\}[^>]*>\s*\{cuentaAtras\(falta\)\}\s*<\/Text>/.test(d), true);
+  chequear('el número grande es siempre la cuenta atrás (en 0 dice 0:00)', /<Text testID="descanso-reloj" style=\{estilos\.numero\}[^>]*>\s*<CifraJunta texto=\{cuentaAtras\(falta\)\} apretar=\{-16\.5\} \/>\s*<\/Text>/.test(d), true);
   chequear('lo de más: solo al terminar, chico, abajo a la derecha del arco', [
     /\{terminado && \(\s*<Text testID="descanso-de-mas" style=\{estilos\.deMas\}/.test(d),
     /deMas: \{ position: 'absolute', right: 4, bottom: 4, color: C\.sub, fontSize: 15/.test(d),
@@ -19862,8 +19865,8 @@ console.log('\n273. La ventana al terminar: los textos pedidos, con el estilo de
     /Alert/.test(sinComentarios(pr) + sinComentarios(v)),
     /\{preguntaRutina && <VentanaRutina pregunta=\{preguntaRutina\} alCerrar=\{\(\) => setPreguntaRutina\(null\)\} \/>\}/.test(ini),
   ], [false, true]);
-  chequear('con el estilo de la app: tarjeta redondeada, título, texto y dos píldoras (crema y con borde)', [
-    /caja: \{[^}]*borderRadius: 22,/.test(v),
+  chequear('con el estilo de la app: caja cortada, título, texto y dos píldoras (crema y con borde)', [
+    /<FondoOctogonal relleno=\{C\.hoja\} borde=\{C\.lineaFuerte\} corte=\{14\} luz=\{C\.claro\} \/>/.test(v),
     /pildora: \{ borderRadius: 999,/.test(v),
     /crema: \{ backgroundColor: C\.claro \}/.test(v) && /borde: \{ borderWidth: 1, borderColor: C\.bordeBoton \}/.test(v),
     v.indexOf('estilos.titulo') < v.indexOf('estilos.texto') && v.indexOf('estilos.texto') < v.indexOf('estilos.acciones'),
@@ -20182,7 +20185,7 @@ console.log('\n284. La entrada de la app: el aro del logo, el destello y el zoom
     (lay.match(/\{sesion === '/g) ?? []).length === 1 && /\{sesion === 'con' && \(\s*<View style=\{estilos\.todo\}>\s*(\{\s*\}\s*)*<FondoRaiz \/>\s*(\{\s*\}\s*)*\{abierta && \(/.test(lay) ? 0 : 1,
     (lay.match(/\{abierta && (claveNueva && )?\(?sesion === '/g) ?? []).length >= 4,
     /const abierta = entrada === 'fin';/.test(lay),
-    /\{entrada !== 'fin' && \(\s*<EntradaDeLaApp lista=\{sesion !== 'mirando' && \(sesion !== 'con' \|\| datosListos\)\}/.test(lay),
+    /\{entrada !== 'fin' && \(\s*<EntradaDeLaApp lista=\{letrasListas && sesion !== 'mirando' && \(sesion !== 'con' \|\| datosListos\)\}/.test(lay),
   ], [0, true, true, true]);
   const en = sinComentarios(deBug('movil', 'src', 'EntradaDeLaApp.tsx'));
   chequear('la entrada abre la app al empezar el zoom, y el zoom no depende del hilo de JS', [
@@ -20220,8 +20223,8 @@ console.log('\n285. Anotar el peso: el número grande, − y + y la regla (20/10
 console.log('\n286. Registrar el día con foto: el mismo estilo que anotar el peso (20/10)');
 {
   const rd = sinComentarios(deBug('movil', 'src', 'RegistrarDia.tsx'));
-  chequear('colores fijos, la foto en una tarjeta redondeada y los botones redondos de la hoja del peso', [
-    /from '\.\/colores'|usePaleta/.test(rd), /from '\.\/coloresFijos'/.test(rd), /tarjeta: \{[^}]*borderRadius: 22/.test(rd), /redondo: \{[^}]*borderRadius: 29/.test(rd), /solido: \{[^}]*borderRadius: 999/.test(rd),
+  chequear('colores fijos, la foto en una caja cortada y los botones redondos de la hoja del peso', [
+    /from '\.\/colores'|usePaleta/.test(rd), /from '\.\/coloresFijos'/.test(rd), /<FondoOctogonal relleno="none" borde=\{FIJO\.linea\} corte=\{14\} tapar=\{FIJO\.regla\} \/>/.test(rd), /redondo: \{[^}]*borderRadius: 29/.test(rd), /<FondoOctogonal relleno=\{FIJO\.crema\} luz=\{FIJO\.crema\} \/>/.test(rd),
   ], [false, true, true, true, true]);
   chequear('las dos puertas siguen siendo cámara y galería, con los textos de siempre (la batería toca «Elegir de la galería»)', [
     /<Puerta icono="camara" texto=\{T\.registrar\.sacarFoto\} alTocar=\{\(\) => elegir\('camara'\)\} \/>/.test(rd),
@@ -20247,7 +20250,7 @@ console.log('\n288. «Olvidar este día», aparte y al final de la ventana de re
   const pos = (x) => vr.indexOf(x);
   chequear('el botón va después de los otros dos, solo en la pregunta (no en «¿Estás seguro?»), y olvida', [
     pos('testID="ventana-rutina-olvidar"') > pos("testID={seguro ? 'ventana-rutina-no' : 'ventana-rutina-nueva'}"),
-    /\{!seguro && \(\s*<Pressable\s+testID="ventana-rutina-olvidar"/.test(vr),
+    /\{!seguro && \(\s*<(?:Pressable|Tocable)\s+testID="ventana-rutina-olvidar"/.test(vr),
     /onPress=\{\(\) => void guardar\('olvidar'\)\}/.test(vr),
     /<Text style=\{estilos\.tenueTexto\}>\{T\.rutina\.olvidarDia\}<\/Text>/.test(vr),
   ], [true, true, true, true]);
@@ -20307,7 +20310,7 @@ console.log('\n291. El fin del descanso con la app abierta vibra como un despert
   const ini = sinComentarios(deBug('movil', 'src', 'Inicio.tsx'));
   const tim = sinComentarios(deBug('movil', 'src', 'TimbreDePildora.tsx'));
   chequear('la píldora va adentro del timbre, que se sacuda una vez por tanda y respeta «Reducir movimiento»', [
-    /<TimbreDePildora fin=\{fin \|\| null\}>\s*<Pressable\s+testID="pildora-descanso"/.test(ini),
+    /<TimbreDePildora fin=\{fin \|\| null\}>\s*<(?:Pressable|Tocable)\s+testID="pildora-descanso"/.test(ini),
     /length: DESPERTADOR\.tandas/.test(tim),
     /isReduceMotionEnabled\(\)/.test(tim),
   ], [true, true, true]);
@@ -20955,7 +20958,7 @@ console.log('\n317. Las microanimaciones: lo que entra crece, los botones se hun
 {
   const ap = deBug('movil', 'src', 'Aparece.tsx');
   chequear('Aparece crece desde alto cero hasta el medido, respeta «reducir movimiento» y al terminar suelta el alto', [
-    /outputRange: \[0, alto\]/.test(ap), /isReduceMotionEnabled/.test(ap), /if \(listo\) return <View testID=\{testID\}>\{children\}<\/View>;/.test(ap),
+    /outputRange: \[0, alto\]/.test(ap), /sinMovimiento/.test(ap), /if \(listo\) return <View testID=\{testID\}>\{ultimo\.current\}<\/View>;/.test(ap),
   ], [true, true, true]);
   const usos = (archivo) => (deBug('movil', 'src', archivo).match(/<Aparece[ >]/g) ?? []).length;
   const toques = (archivo) => (deBug('movil', 'src', archivo).match(/<Tocable[\s>]/g) ?? []).length;
@@ -21225,6 +21228,271 @@ console.log('\n320. Moss y Ascent son dos cuentas: borrar la de Ascent no toca M
     globales318('await supabase.auth.signOut();'), globales318("await supabase.auth.signOut({ scope: 'global' });"),
     globales318("await supabase.auth.signOut({ scope: 'local' });"),
   ], [1, 1, 0]);
+}
+console.log('\n321. El piso de 4,5:1 de la nativa: los colores y lo que los atenúa (30/10)');
+{
+  const { contraste: contraste321 } = await import('../nucleo/contraste.ts');
+  const { C: C321, DESHABILITADO: DES321 } = await import('../movil/src/colores.ts');
+  const { FIJO: FIJO321 } = await import('../movil/src/coloresFijos.ts');
+  const { FONDO_RANGO_7: F7321 } = await import('../nucleo/paletas.ts');
+  const { readFileSync: leer321, readdirSync: dir321 } = await import('node:fs');
+  const raiz321 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const mezcla321 = (a, fondo, alfa) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(a.slice(i, i + 2), 16) * alfa + parseInt(fondo.slice(i, i + 2), 16) * (1 - alfa)).toString(16).padStart(2, '0')).join('');
+  const fondos321 = [C321.fondo, C321.hoja, F7321];
+  for (const token of ['tinta', 'sub', 'apagado', 'sobreMotor', 'error']) {
+    chequear(`${token} llega a 4,5:1 sobre el fondo, la hoja y el fondo del rango 7`, fondos321.every((f) => contraste321(C321[token], f) >= 4.5), true);
+  }
+  chequear('tenue no es para leer: si llegara, sobraría', contraste321(C321.tenue, C321.fondo) < 4.5, true);
+  for (const token of ['tinta', 'sub']) {
+    chequear(`un botón deshabilitado con texto ${token} sigue en 4,5:1`, contraste321(mezcla321(C321[token], C321.fondo, DES321), C321.fondo) >= 4.5, true);
+  }
+  // En las hojas fijas lo que se deshabilita es el botón crema con texto negro.
+  chequear('lo mismo en las hojas de colores fijos', [FIJO321.deshabilitado === DES321, contraste321(mezcla321(FIJO321.crema, FIJO321.regla, FIJO321.deshabilitado), FIJO321.negro) >= 4.5], [true, true]);
+
+  // Lo que baja la opacidad de un contenedor baja la de su texto. Cada opacidad fija de la nativa
+  // está en esta lista con su razón: si aparece una nueva, se canta en vez de bajar el contraste callada.
+  const SIN_TEXTO321 = new Map([
+    ['Espacio.tsx', 'velo de la bienvenida'], ['Objetos.tsx', 'dibujo de la bienvenida'],
+    ['Bloque.tsx', 'el − de un control sin nada que restar'], ['CalendarioDias.tsx', 'la flecha de un mes al que no se puede ir'],
+    ['CampoEstelar.tsx', 'estrellas'], ['CampoPeso.tsx', 'el − y el + sin peso'],
+    ['FilaRutina.tsx', 'el dedo encima: un instante'], ['GraficoPasos.tsx', 'la línea de la meta'],
+    ['Ranking.tsx', 'el dedo encima: un instante'], ['RutinaDe.tsx', 'el dedo encima: un instante'],
+    ['RutinaPlegada.tsx', 'el dedo encima: un instante'], ['StatsGeneral.tsx', 'la insignia de un rango y el día de descanso'],
+  ]);
+  const fuentes321 = dir321(join(raiz321, 'movil'), { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && /\.tsx$/.test(e.name) && !e.parentPath.includes('node_modules') && !e.parentPath.includes('targets'))
+    .map((e) => join(e.parentPath, e.name));
+  const nuevas321 = [];
+  for (const r of fuentes321) {
+    const nombre = r.split(/[\\/]/).pop();
+    const lineas = leer321(r, 'utf8').split('\n');
+    for (const l of lineas) {
+      if (/^\s*(\/\/|\*)/.test(l)) continue;
+      if (/opacity: 0?\.\d/.test(l) && !/shadowOpacity|interpolate|toValue/.test(l) && !SIN_TEXTO321.has(nombre)) nuevas321.push(nombre + ': ' + l.trim().slice(0, 60));
+    }
+  }
+  chequear('ninguna opacidad fija nueva sobre lo que se lee', nuevas321, []);
+
+  // El velo vive con el fondo: cubre a todas las pantallas, y solo Inicio en reposo lo lleva a la mitad.
+  const inicio321 = leer321(join(raiz321, 'movil', 'src', 'Inicio.tsx'), 'utf8');
+  const velo321 = leer321(join(raiz321, 'movil', 'src', 'VeloDeLectura.tsx'), 'utf8');
+  const raizF321 = leer321(join(raiz321, 'movil', 'src', 'FondoRaiz.tsx'), 'utf8');
+  chequear('el velo de lectura está en la raíz del fondo, y a la mitad solo en Inicio en reposo', [
+    /<VeloDeLectura entero=\{!op\.lecturaMedia\} \/>/.test(raizF321),
+    /lecturaMedia=\{!sesion\.estado\.corriendo && !cierre\}/.test(inicio321),
+    /toValue: entero \? 1 : 0\.5/.test(velo321),
+  ], [true, true, true]);
+  // Sin esto, en la vista web el motor no arranca y test:real mide el texto contra el vacío: fue así del 28/10 al 30/10.
+  for (const f of ['EstrellaQueTitila.tsx', 'PuntoDelDia.tsx', 'RachaSalvada.tsx', 'CampoEstelar.tsx']) {
+    chequear(`el bucle de adorno de ${f} no retiene el arranque del motor`, /isInteraction: false/.test(leer321(join(raiz321, 'movil', 'src', f), 'utf8')), true);
+  }
+}
+console.log('\n322. Un minuto es uno: «1 minutos hoy» (30/10)');
+{
+  const { TEXTOS_ES: es322 } = await import('../nucleo/textos.ts');
+  const { EN: en322 } = await import('../nucleo/textos-en.ts');
+  chequear('el singular y el plural, en los dos idiomas', [es322.inicio.minutosDeHoy(1), es322.inicio.minutosDeHoy(2), en322.inicio.minutosDeHoy(1), en322.inicio.minutosDeHoy(2)], ['1 minuto hoy', '2 minutos hoy', '1 minute today', '2 minutes today']);
+}
+console.log('\n323. Una sola paleta para toda la nativa (30/10)');
+{
+  const { C: C323, fijarPaleta: fijar323, conTema: conTema323, mezclar: mezclar323, versionDePaleta: version323, DESHABILITADO: DES323 } = await import('../movil/src/colores.ts');
+  const { PALETAS_RANGO: PR323, PALETAS_PLANETA: PP323, paletaDe: paletaDe323, FONDO_RANGO_7: F7323 } = await import('../nucleo/paletas.ts');
+  const { contraste: contraste323 } = await import('../nucleo/contraste.ts');
+  const { readFileSync: leer323, readdirSync: dir323 } = await import('node:fs');
+  const ts323 = (await import('typescript')).default;
+  const raiz323 = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+  fijar323(paletaDe323(2), 2);
+  chequear('los teñidos siguen a la paleta: el mismo color-mix que la web', [C323.claro, C323.principal, C323.linea, C323.diaVacio], [
+    PR323[2].claro, PR323[2].principal, mezclar323(PR323[2].principal, '#1d2230', 0.2), mezclar323(PR323[2].principal, '#1d2230', 0.3),
+  ]);
+  chequear('el color-mix: 20 % de uno y el resto del otro', mezclar323('#ffffff', '#000000', 0.2), '#333333');
+  const antes323 = version323();
+  fijar323(paletaDe323(2), 2);
+  chequear('pedir la misma paleta no redibuja nada: cambiar de pestaña pide lo mismo', version323(), antes323);
+  const hoja323 = conTema323(() => ({ x: { color: C323.claro } }));
+  const delDos323 = hoja323.x.color;
+  fijar323(paletaDe323(5), 5);
+  chequear('una hoja con conTema se rearma sola', [delDos323, hoja323.x.color], [PR323[2].claro, PR323[5].claro]);
+  fijar323(paletaDe323(7), 7);
+  chequear('el rango 7 tiene su negro, como en la web', C323.fondo, F7323);
+  chequear('lo que no se tiñe no se tiñe', [C323.crema, C323.negro, C323.tinta], ['#c4c2ba', '#05060a', '#e8ecf6']);
+
+  // El piso, con cada paleta posible: los siete rangos y los diez planetas.
+  const mezclaAlfa323 = (a, fondo, alfa) => mezclar323(a, fondo, alfa);
+  const todas323 = [...[1, 2, 3, 4, 5, 6, 7].map((r) => [String(r), PR323[r], r]), ...Object.entries(PP323).map(([n, p]) => [n, p, 4])];
+  const flojas323 = [];
+  for (const [nombre, p, r] of todas323) {
+    fijar323(p, r);
+    const pares = {
+      'claro sobre el fondo': contraste323(C323.claro, C323.fondo),
+      'el fondo sobre el sólido': contraste323(C323.fondo, C323.claro),
+      'el fondo sobre el sólido deshabilitado': contraste323(C323.fondo, mezclaAlfa323(C323.claro, C323.fondo, DES323)),
+      'claro sobre la meta prendida': contraste323(C323.claro, mezclaAlfa323(C323.claro, C323.fondo, 0.09)),
+    };
+    for (const [que, v] of Object.entries(pares)) if (v < 4.5) flojas323.push(`${nombre}: ${que} ${v.toFixed(2)}`);
+  }
+  chequear('lo que se lee en el color del rango llega a 4,5:1 con todas las paletas', flojas323, []);
+  // Se deja como estaba: las secciones de arriba y de abajo leen `C`.
+  fijar323({ principal: '#7E8CA8', claro: '#C4C2BA' }, 3);
+
+  // Todos los componentes con un color teñido se enteran del cambio, y ningún color queda escrito a mano.
+  const fuentes323 = ['movil/src', 'movil/app'].flatMap((d) => dir323(join(raiz323, d), { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && /\.tsx?$/.test(e.name) && !e.parentPath.includes('node_modules'))
+    .map((e) => join(e.parentPath, e.name)));
+  const FUERA323 = /[\\/](colores\.ts|coloresFijos\.ts|Minimo\.tsx|Raiz\.tsx|HudDiagnostico\.tsx|useTema\.ts)$|bienvenida[\\/]/;
+  // El logo y la estrella de las vidas son dibujos con sus colores, iguales en todos los rangos.
+  const CON_COLOR323 = /(EntradaDeLaApp\.tsx|Estrella\.tsx)$/;
+  const TENIDO323 = /(?<![A-Za-z0-9_])C\.(fondo|claro|principal|linea|lineaFuerte|diaLleno|diaVacio|bordeChip|bordeMeta|fondoMeta|bordeSerie|bordeOcto|cuadro|celdaVacia|barra[A-Z]\w*)(?![A-Za-z0-9_])/;
+  const sinTema323 = [];
+  const sinConTema323 = [];
+  const aMano323 = [];
+  for (const r of fuentes323) {
+    if (FUERA323.test(r)) continue;
+    const nombre = r.slice(raiz323.length + 1).replace(/\\/g, '/');
+    const texto = leer323(r, 'utf8');
+    if (!CON_COLOR323.test(r)) {
+      texto.split('\n').forEach((l, i) => {
+        if (/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)) return;
+        if (/['"\x60](#[0-9a-fA-F]{3,8}|rgba?\()/.test(l) ) aMano323.push(`${nombre}:${i + 1}`);
+      });
+    }
+    if (!TENIDO323.test(texto)) continue;
+    const sf = ts323.createSourceFile(r, texto, ts323.ScriptTarget.Latest, true, ts323.ScriptKind.TSX);
+    const hayJsx = (n) => { let si = false; const v = (x) => { if (si) return; if (ts323.isJsxElement(x) || ts323.isJsxSelfClosingElement(x) || ts323.isJsxFragment(x)) { si = true; return; } ts323.forEachChild(x, v); }; v(n); return si; };
+    const nombreDe = (n) => {
+      if (ts323.isFunctionDeclaration(n) && n.name) return n.name.text;
+      if (ts323.isFunctionExpression(n) && n.name) return n.name.text;
+      if ((ts323.isArrowFunction(n) || ts323.isFunctionExpression(n)) && ts323.isVariableDeclaration(n.parent) && ts323.isIdentifier(n.parent.name)) return n.parent.name.text;
+      return null;
+    };
+    const visitar = (n, enFuncion) => {
+      if (ts323.isFunctionLike(n) && n.body) {
+        const nom = nombreDe(n);
+        if (nom && /^[A-ZÁÉÍÓÚÑ]/.test(nom) && hayJsx(n) && !(ts323.isBlock(n.body) && n.body.statements[0]?.getText() === 'useTema();')) sinTema323.push(`${nombre}: ${nom}`);
+        ts323.forEachChild(n, (h) => visitar(h, true));
+        return;
+      }
+      if (!enFuncion && ts323.isCallExpression(n) && n.expression.getText() === 'StyleSheet.create' && TENIDO323.test(n.getText())) sinConTema323.push(nombre);
+      ts323.forEachChild(n, (h) => visitar(h, enFuncion));
+    };
+    visitar(sf, false);
+  }
+  chequear('cada componente de un archivo con color teñido llama a useTema', sinTema323, []);
+  chequear('cada hoja con color teñido va en conTema', sinConTema323, []);
+  chequear('ningún color escrito a mano en un componente', aMano323, []);
+  const layout323 = leer323(join(raiz323, 'movil', 'app', '_layout.tsx'), 'utf8');
+  chequear('la paleta sigue al fondo desde antes de pintar nada: en el módulo, no en un efecto', /^seguirElFondo\(\);/m.test(layout323), true);
+}
+console.log('\n324. Las letras de la nativa: Inter, Outfit solo para la racha, Geist Mono para los datos (30/10)');
+{
+  const { readFileSync: leer324, readdirSync: dir324, existsSync: hay324 } = await import('node:fs');
+  const raiz324 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const fuentes324 = ['movil/src', 'movil/app'].flatMap((d) => dir324(join(raiz324, d), { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && /\.tsx$/.test(e.name) && !e.parentPath.includes('node_modules'))
+    .map((e) => join(e.parentPath, e.name)));
+  // La red de seguridad no depende de nada: si la app se cae, tiene que poder dibujarse igual.
+  const RN324 = /[\\/](Minimo\.tsx|Raiz\.tsx|HudDiagnostico\.tsx|Texto\.tsx)$/;
+  const conTextoDeRN = fuentes324.filter((r) => !RN324.test(r) && /import \{[^}]*(?<![\w ]type )(?<![A-Za-z0-9_])Text(Input)?(?![A-Za-z0-9_])[^}]*\} from 'react-native'/.test(leer324(r, 'utf8')));
+  chequear('nadie usa el Text de React Native: pasaría por la fuente del sistema', conTextoDeRN.map((r) => r.slice(raiz324.length + 1)), []);
+  chequear('ni Animated.Text', fuentes324.filter((r) => !RN324.test(r) && /Animated\.Text(?![A-Za-z0-9_])/.test(leer324(r, 'utf8'))).map((r) => r.slice(raiz324.length + 1)), []);
+  const conRacha = fuentes324.filter((r) => /L\.racha/.test(leer324(r, 'utf8')) && !/[\\/]Texto\.tsx$/.test(r)).map((r) => r.split(/[\\/]/).pop()).sort();
+  chequear('Outfit es solo el número de la racha', conRacha, ['Inicio.tsx', 'RachaConRotulo.tsx']);
+
+  const fu324 = leer324(join(raiz324, 'movil', 'src', 'fuentes.ts'), 'utf8');
+  const archivos324 = [...fu324.matchAll(/require\('\.\.\/assets\/fuentes\/([A-Za-z0-9_]+)\.ttf'\)/g)].map((m) => m[1]);
+  chequear('cada archivo que la app pide está en assets', archivos324.filter((n) => !hay324(join(raiz324, 'movil', 'assets', 'fuentes', n + '.ttf'))), []);
+  const nombrados324 = [...fu324.slice(fu324.indexOf('export function archivoDe')).matchAll(/'((?:Inter|Outfit|GeistMono)_[A-Za-z0-9_]+)'/g)].map((m) => m[1]);
+  chequear('y lo que resuelve un peso es uno de esos archivos', nombrados324.filter((n) => !archivos324.includes(n)), []);
+  chequear('con los licencias de las tres familias', ['Inter', 'Outfit', 'GeistMono'].filter((n) => !hay324(join(raiz324, 'movil', 'assets', 'fuentes', 'LICENCIA-' + n + '.txt'))), []);
+
+  // expo-font ya está en el binario, anidado. Sumarlo a package.json cambiaría la huella: las OTA no llegarían.
+  const pq324 = JSON.parse(leer324(join(raiz324, 'movil', 'package.json'), 'utf8'));
+  chequear('expo-font no se suma a package.json: las OTA no llegarían a las builds de hoy', 'expo-font' in pq324.dependencies, false);
+  chequear('Metro y los tipos lo encuentran adentro de expo', [
+    /'expo-font': path\.resolve\(__dirname, 'node_modules', 'expo', 'node_modules', 'expo-font'\)/.test(leer324(join(raiz324, 'movil', 'metro.config.js'), 'utf8')),
+    /"expo-font": \[\s*"\.\/node_modules\/expo\/node_modules\/expo-font"/.test(leer324(join(raiz324, 'movil', 'tsconfig.json'), 'utf8')),
+  ], [true, true]);
+  const lay324 = leer324(join(raiz324, 'movil', 'app', '_layout.tsx'), 'utf8');
+  chequear('la entrada espera a las letras, y las letras tienen tope', [/lista=\{letrasListas &&/.test(lay324), /Promise\.race\(\[carga,/.test(fu324)], [true, true]);
+}
+console.log('\n325. La forma de la nativa: octágono o píldora (30/10)');
+{
+  const { readFileSync: leer325, readdirSync: dir325 } = await import('node:fs');
+  const raiz325 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const fuentes325 = ['movil/src', 'movil/app'].flatMap((d) => dir325(join(raiz325, d), { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && /\.tsx$/.test(e.name) && !e.parentPath.includes('node_modules') && !e.parentPath.includes('bienvenida'))
+    .map((e) => join(e.parentPath, e.name)));
+  // Lo que se permite: recto (hasta 2), píldora (999) y lo que es redondo por su medida: círculo o barra.
+  const FUERA325 = /[\\/](Minimo|Raiz|HudDiagnostico)\.tsx$/;
+  const delMedio325 = [];
+  for (const r of fuentes325) {
+    if (FUERA325.test(r)) continue;
+    const lineas = leer325(r, 'utf8').split('\n');
+    lineas.forEach((l, i) => {
+      if (/^\s*(\/\/|\*)/.test(l)) return;
+      const m = l.match(/border(?:Top|Bottom)?(?:Left|Right)?Radius: ([\d.]+)/);
+      if (!m) return;
+      const n = Number(m[1]);
+      if (n <= 2 || n >= 999) return;
+      const ctx = /\{/.test(l) && /\}/.test(l) ? l : lineas.slice(Math.max(0, i - 6), i + 6).join(' ');
+      const w = ctx.match(/width: ([\d.]+)/), h = ctx.match(/height: ([\d.]+)/);
+      if (h && Math.abs(Number(h[1]) / 2 - n) < 1.01) return;
+      if (w && Math.abs(Number(w[1]) / 2 - n) < 1.01) return;
+      delMedio325.push(r.slice(raiz325.length + 1).replace(/\\/g, '/') + ':' + (i + 1) + ' ' + n);
+    });
+  }
+  // Los dibujos: la gota que cae del hielo, y lo que rellena un círculo ya medido afuera de la línea.
+  const DIBUJOS325 = ['PuntoDelDia.tsx', 'Bloque.tsx'];
+  chequear('ningún radio del medio', delMedio325.filter((d) => !DIBUJOS325.some((f) => d.includes('/' + f + ':'))), []);
+  const stats325 = leer325(join(raiz325, 'movil', 'src', 'Stats.tsx'), 'utf8');
+  chequear('las cuatro cifras de Stats van en caja cortada', [/<Caja key=\{c\.e\} style=\{estilos\.celda\}>/.test(stats325), /valor: \{ \.\.\.R\.cifra \}/.test(stats325)], [true, true]);
+  const spec325 = leer325(join(raiz325, 'spec', 'estetica.md'), 'utf8');
+  chequear('la spec dice las dos decisiones', [/octágono o píldora/i.test(spec325), /caja cortada/i.test(spec325)], [true, true]);
+  // Los roles se dicen una vez: una etiqueta copiada a mano es lo que esta técnica vino a sacar.
+  const copias325 = fuentes325.filter((r) => !FUERA325.test(r) && !/[\\/]roles\.tsx$/.test(r) && !/[\\/]RachaConRotulo\.tsx$/.test(r))
+    .filter((r) => /color: C\.(sub|apagado), fontSize: (9|10|10\.5|11), letterSpacing: [\d.]+, textTransform: 'uppercase'/.test(leer325(r, 'utf8')))
+    .map((r) => r.slice(raiz325.length + 1).replace(/\\/g, '/'));
+  chequear('las etiquetas cuelgan de R.etiqueta', copias325, []);
+}
+console.log('\n326. La profundidad de la nativa: luz de color y bordes de 1 pt (30/10)');
+{
+  const { readFileSync: leer326, readdirSync: dir326 } = await import('node:fs');
+  const raiz326 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const { luz: luz326, C: C326 } = await import('../movil/src/colores.ts');
+  const fuentes326 = ['movil/src', 'movil/app'].flatMap((d) => dir326(join(raiz326, d), { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && /\.tsx$/.test(e.name) && !e.parentPath.includes('node_modules'))
+    .map((e) => join(e.parentPath, e.name)));
+  const FUERA326 = /[\\/](Minimo|Raiz|HudDiagnostico)\.tsx$/;
+  const con326 = (re) => fuentes326.filter((r) => !FUERA326.test(r) && re.test(leer326(r, 'utf8'))).map((r) => r.slice(raiz326.length + 1).replace(/\\/g, '/'));
+  chequear('ninguna sombra negra', con326(/shadowColor: ['"]#0{3,6}['"]/), []);
+  chequear('ningún borde de pelo: son de 1 pt', con326(/hairlineWidth/), []);
+  chequear('la luz es del color que se le pasa y no se corre: emite, no cae', luz326(C326.claro, 0.5, 4), { shadowColor: C326.claro, shadowOpacity: 0.5, shadowRadius: 4, shadowOffset: { width: 0, height: 0 } });
+  const fo326 = leer326(join(raiz326, 'movil', 'src', 'FondoOctogonal.tsx'), 'utf8');
+  chequear('el octágono dibuja su luz, porque una sombra no sigue la diagonal', [/ANILLOS\.map/.test(fo326), /shadow/.test(fo326)], [true, false]);
+}
+console.log('\n327. El movimiento de la nativa: llega con una curva, se va más corto (30/10)');
+{
+  const { readFileSync: leer327, readdirSync: dir327 } = await import('node:fs');
+  const raiz327 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const fuentes327 = ['movil/src', 'movil/app'].flatMap((d) => dir327(join(raiz327, d), { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && /\.tsx$/.test(e.name) && !e.parentPath.includes('node_modules') && !e.parentPath.includes('bienvenida'))
+    .map((e) => join(e.parentPath, e.name)));
+  const FUERA327 = /[\\/](Minimo|Raiz|HudDiagnostico|Tocable)\.tsx$/;
+  const mov327 = leer327(join(raiz327, 'movil', 'src', 'movimiento.ts'), 'utf8');
+  const ms327 = (k) => Number(mov327.match(new RegExp(k + ': (\\d+)'))?.[1]);
+  chequear('salir es más corto que llegar', [ms327('sale') > 0, ms327('hojaSale') < ms327('hojaEntra'), ms327('cruceSale') < ms327('cruceEntra')], [true, true, true]);
+  chequear('la curva de llegar es la del viaje entre pestañas, compartida con la web', /export const LLEGA = Easing\.bezier\(\.\.\.CURVA\)/.test(mov327), true);
+  // Las curvas viejas: se fueron. Lo que oscila (las vidas que titilan) sigue con la suya.
+  const viejas327 = fuentes327.filter((r) => !FUERA327.test(r) && /Easing\.(out|in)\(Easing\.(quad|cubic)\)/.test(leer327(r, 'utf8'))).map((r) => r.slice(raiz327.length + 1).replace(/\\/g, '/'));
+  chequear('ninguna curva suelta: LLEGA, SE_VA o LLENA', viejas327, []);
+  const hoja327 = leer327(join(raiz327, 'movil', 'src', 'Hoja.tsx'), 'utf8');
+  chequear('la hoja sube sola y el velo no sube con ella', [/animationType="none"/.test(hoja327), /useQueSube\(visible\)/.test(hoja327), /estilos\.fondo, \{ opacity: avance/.test(hoja327)], [true, true, true]);
+  // Lo tocable se hunde. Lo que queda afuera tapa una pantalla entera, o usa `pressed` para otra cosa.
+  const SIN_HUNDIR327 = new Set(['CampoTexto.tsx', 'AnotarPeso.tsx', 'BurbujasDelGrupo.tsx', 'CalendarioDias.tsx', 'DiaListo.tsx', 'FilaRutina.tsx', 'FilasArrastrables.tsx', 'FotoGrande.tsx', 'Globito.tsx', 'Hoja.tsx', 'ListaDePesos.tsx', 'RachaSalvada.tsx', 'Ranking.tsx', 'RutinaDe.tsx', 'RutinaPlegada.tsx', 'SubidaRango.tsx', 'VentanaRutina.tsx', 'Bloque.tsx']);
+  chequear('todo lo tocable se hunde', fuentes327.filter((r) => !FUERA327.test(r) && /<Pressable(?![A-Za-z])/.test(sinComentarios(leer327(r, 'utf8'))) && !SIN_HUNDIR327.has(r.split(/[\\/]/).pop())).map((r) => r.split(/[\\/]/).pop()), []);
+  const paq327 = JSON.parse(leer327(join(raiz327, 'movil', 'package.json'), 'utf8'));
+  chequear('sin Reanimated: lo que lo necesita queda para la 1.2.0, y esto sale por OTA', 'react-native-reanimated' in paq327.dependencies, false);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

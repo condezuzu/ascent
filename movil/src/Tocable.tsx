@@ -10,19 +10,26 @@ const PressableAnimado = Animated.createAnimatedComponent(Pressable);
  */
 export default function Tocable({
   style,
-  hundir = 0.95,
+  hundir,
   onPressIn,
   onPressOut,
+  onLayout,
   ...resto
 }: Omit<PressableProps, 'style'> & { style?: StyleProp<ViewStyle>; hundir?: number }) {
   const escala = useRef(new Animated.Value(1)).current;
+  const ancho = useRef(0);
   const ir = (a: number, rebote: number) => Animated.spring(escala, { toValue: a, speed: 40, bounciness: rebote, useNativeDriver: true }).start();
   return (
     <PressableAnimado
       {...resto}
       style={[StyleSheet.flatten(style), { transform: [{ scale: escala }] }]}
+      onLayout={(e) => {
+        ancho.current = e.nativeEvent.layout.width;
+        onLayout?.(e);
+      }}
       onPressIn={(e) => {
-        ir(hundir, 0);
+        // Lo ancho se hunde menos: una fila entera a 0,95 se correría 18 puntos por lado.
+        ir(hundir ?? (ancho.current > 200 ? 0.98 : 0.95), 0);
         onPressIn?.(e);
       }}
       onPressOut={(e) => {

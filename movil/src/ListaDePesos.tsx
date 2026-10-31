@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { borrarPeso, corregirPeso } from '@compartido/peso';
 import { useVersionDelEsquema } from '@compartido/esquema';
@@ -9,7 +9,12 @@ import { aKilos, conComa, deKilos, limites, type Unidad } from '@nucleo/peso';
 import { rumboDelPaso } from '@nucleo/pesoObjetivo';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text, TextInput } from './Texto';
+import { L } from './fuentes';
+import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * LO QUE ANOTASTE, con forma de arreglarlo. La misma lista que la web
@@ -36,6 +41,7 @@ import { C } from './colores';
 const CUANTOS = 6;
 
 function IconoLapiz() {
+  useTema();
   return (
     <Svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={C.sub} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
       <Path d="M4 20l4-1L18.5 8.5l-3-3L5 16z" />
@@ -45,6 +51,7 @@ function IconoLapiz() {
 }
 
 function IconoTacho() {
+  useTema();
   return (
     <Svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke={C.apagado} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
       <Path d="M4 7h16" />
@@ -69,6 +76,7 @@ export default function ListaDePesos({
   objetivo?: number | null;
   alCambiar: () => void;
 }) {
+  useTema();
   const version = useVersionDelEsquema();
   const [corrigiendo, setCorrigiendo] = useState<string | null>(null);
   const [borrando, setBorrando] = useState<string | null>(null);
@@ -144,22 +152,22 @@ export default function ListaDePesos({
                   placeholder={T.peso.placeholder(unidad)}
                   placeholderTextColor={C.apagado}
                 />
-                <Pressable onPress={() => guardar(p.fecha)} hitSlop={8} style={estilos.textoBoton}>
+                <Tocable onPress={() => guardar(p.fecha)} hitSlop={8} style={estilos.textoBoton}>
                   <Text style={estilos.accion}>{T.general.guardar}</Text>
-                </Pressable>
-                <Pressable onPress={() => setCorrigiendo(null)} hitSlop={8} style={estilos.textoBoton}>
+                </Tocable>
+                <Tocable onPress={() => setCorrigiendo(null)} hitSlop={8} style={estilos.textoBoton}>
                   <Text style={estilos.apagada}>{T.general.cancelar}</Text>
-                </Pressable>
+                </Tocable>
               </>
             ) : preguntando ? (
               <>
                 <Text style={estilos.pregunta}>{T.peso.borrarSeguro}</Text>
-                <Pressable onPress={() => borrar(p.fecha)} hitSlop={8} style={estilos.textoBoton}>
+                <Tocable onPress={() => borrar(p.fecha)} hitSlop={8} style={estilos.textoBoton}>
                   <Text style={estilos.peligro}>{T.peso.borrarSi}</Text>
-                </Pressable>
-                <Pressable onPress={() => setBorrando(null)} hitSlop={8} style={estilos.textoBoton}>
+                </Tocable>
+                <Tocable onPress={() => setBorrando(null)} hitSlop={8} style={estilos.textoBoton}>
                   <Text style={estilos.apagada}>{T.general.cancelar}</Text>
-                </Pressable>
+                </Tocable>
               </>
             ) : (
               <>
@@ -209,39 +217,39 @@ export default function ListaDePesos({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   lista: { marginTop: 16 },
-  rotulo: { color: C.apagado, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 },
+  rotulo: { ...R.etiqueta, marginBottom: 6  },
   fila: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     borderBottomColor: C.linea,
   },
   // Cuando se corrige o se pregunta por el borrado, la fila se despega apenas
   // del resto para que se vea qué renglón está en juego.
-  filaActiva: { backgroundColor: C.hoja, borderRadius: 10, paddingHorizontal: 10, marginHorizontal: -10 },
-  cuando: { color: C.apagado, fontSize: 12, minWidth: 58, fontVariant: ['tabular-nums'] },
+  filaActiva: { backgroundColor: C.hoja, borderRadius: 1, paddingHorizontal: 10, marginHorizontal: -10 },
+  cuando: { color: C.apagado, fontSize: 12, minWidth: 58, fontFamily: L.dato },
   // El bloque del dato: el peso manda, el cambio va al lado en voz baja.
   dato: { flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 8 },
-  valor: { color: C.tinta, fontSize: 17, fontWeight: '400', fontVariant: ['tabular-nums'] },
+  valor: { color: C.tinta, fontSize: 17, fontWeight: '400', fontFamily: L.dato },
   unidad: { color: C.apagado, fontSize: 12, fontWeight: '400' },
-  delta: { fontSize: 11, fontVariant: ['tabular-nums'] },
+  delta: { fontSize: 11, fontFamily: L.dato },
   // El color sale del OBJETIVO, no de subir/bajar. Acercarse = verde tenue;
   // alejarse = terracota; ya en el objetivo = el claro de la app; sin objetivo
   // = gris (no se juzga nada hasta que haya un número al que llegar).
-  bien: { color: '#7fae86' },
-  lejos: { color: '#c58f7a' },
+  bien: { color: C.bien },
+  lejos: { color: C.lejos },
   enObjetivo: { color: C.claro },
   neutro: { color: C.apagado },
   pregunta: { color: C.sub, fontSize: 12, flex: 1, lineHeight: 16 },
   campo: {
     flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
-    borderRadius: 8,
+    borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
     color: C.tinta,
@@ -253,7 +261,7 @@ const estilos = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.linea,
   },
   iconoHundido: { transform: [{ scale: 0.92 }], borderColor: C.lineaFuerte, backgroundColor: C.hoja },
@@ -262,4 +270,4 @@ const estilos = StyleSheet.create({
   apagada: { color: C.apagado, fontSize: 13 },
   peligro: { color: C.error, fontSize: 13 },
   error: { color: C.error, fontSize: 13, marginTop: 8 },
-});
+}));

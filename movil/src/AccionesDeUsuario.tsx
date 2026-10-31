@@ -1,12 +1,15 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { bloquear, denunciar, MOTIVOS_DENUNCIA, type MotivoDenuncia } from '@compartido/ranking';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * DENUNCIAR O BLOQUEAR a alguien (migración 53). Una hoja que sube desde abajo,
@@ -28,6 +31,7 @@ function AccionesDeUsuario({
   onCerrar: () => void;
   onBloqueado?: (id: string) => void;
 }) {
+  useTema();
   const [paso, setPaso] = useState<'menu' | 'motivos' | 'bloqueo'>('menu');
   const [ocupado, setOcupado] = useState(false);
   const [enviada, setEnviada] = useState(false);
@@ -74,47 +78,47 @@ function AccionesDeUsuario({
       {enviada ? (
         <View style={estilos.grupo}>
           <Text style={estilos.ok}>{T.social.denunciaEnviada}</Text>
-          <Pressable style={estilos.cancelar} onPress={cerrar}>
+          <Tocable style={estilos.cancelar} onPress={cerrar}>
             <Text style={estilos.cancelarTexto}>{T.general.entendido}</Text>
-          </Pressable>
+          </Tocable>
         </View>
       ) : paso === 'menu' ? (
         <View style={estilos.grupo}>
           <Text style={estilos.titulo}>@{usuario?.username}</Text>
-          <Pressable style={estilos.item} onPress={() => setPaso('motivos')}>
+          <Tocable style={estilos.item} onPress={() => setPaso('motivos')}>
             <Text style={estilos.itemTexto}>{T.social.denunciar}</Text>
-          </Pressable>
-          <Pressable style={estilos.item} onPress={() => setPaso('bloqueo')}>
+          </Tocable>
+          <Tocable style={estilos.item} onPress={() => setPaso('bloqueo')}>
             <Text style={estilos.itemPeligro}>{T.social.bloquear}</Text>
-          </Pressable>
-          <Pressable style={estilos.cancelar} onPress={cerrar}>
+          </Tocable>
+          <Tocable style={estilos.cancelar} onPress={cerrar}>
             <Text style={estilos.cancelarTexto}>{T.general.cancelar}</Text>
-          </Pressable>
+          </Tocable>
         </View>
       ) : paso === 'motivos' ? (
         <View style={estilos.grupo}>
           <Text style={estilos.titulo}>{T.social.denunciaTitulo}</Text>
           {MOTIVOS_DENUNCIA.map((m) => (
-            <Pressable key={m} style={estilos.item} disabled={ocupado} onPress={() => elegirMotivo(m)}>
+            <Tocable key={m} style={estilos.item} disabled={ocupado} onPress={() => elegirMotivo(m)}>
               <Text style={estilos.itemTexto}>{T.social.denunciaMotivos[m]}</Text>
-            </Pressable>
+            </Tocable>
           ))}
           {error !== '' && <Text style={estilos.error}>{error}</Text>}
-          <Pressable style={estilos.cancelar} onPress={() => setPaso('menu')}>
+          <Tocable style={estilos.cancelar} onPress={() => setPaso('menu')}>
             <Text style={estilos.cancelarTexto}>{T.general.volver}</Text>
-          </Pressable>
+          </Tocable>
         </View>
       ) : (
         <View style={estilos.grupo}>
           <Text style={estilos.titulo}>{usuario ? T.social.bloquearTitulo(usuario.username) : ''}</Text>
           <Text style={estilos.que}>{T.social.bloquearQue}</Text>
           {error !== '' && <Text style={estilos.error}>{error}</Text>}
-          <Pressable style={estilos.peligro} disabled={ocupado} onPress={() => confirmarBloqueo()}>
+          <Tocable style={estilos.peligro} disabled={ocupado} onPress={() => confirmarBloqueo()}>
             <Text style={estilos.peligroTexto}>{T.social.bloquearConfirmar}</Text>
-          </Pressable>
-          <Pressable style={estilos.cancelar} onPress={() => setPaso('menu')}>
+          </Tocable>
+          <Tocable style={estilos.cancelar} onPress={() => setPaso('menu')}>
             <Text style={estilos.cancelarTexto}>{T.general.volver}</Text>
-          </Pressable>
+          </Tocable>
         </View>
       )}
     </Hoja>
@@ -123,17 +127,17 @@ function AccionesDeUsuario({
 
 export default nuevaEnCadaApertura(AccionesDeUsuario, (p) => p.usuario !== null);
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   grupo: { gap: 4 },
   titulo: { color: C.tinta, fontSize: 16, marginBottom: 10 },
   que: { color: C.sub, fontSize: 14, lineHeight: 20, marginBottom: 14 },
-  item: { paddingVertical: 15, borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea },
+  item: { paddingVertical: 15, borderTopWidth: 1, borderColor: C.linea },
   itemTexto: { color: C.tinta, fontSize: 16 },
   itemPeligro: { color: C.error, fontSize: 16 },
-  peligro: { backgroundColor: C.error, borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
+  peligro: { backgroundColor: C.error, borderRadius: 999, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
   peligroTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   cancelar: { paddingVertical: 15, alignItems: 'center', marginTop: 6 },
   cancelarTexto: { color: C.sub, fontSize: 15 },
   ok: { color: C.tinta, fontSize: 16, lineHeight: 22, paddingVertical: 8 },
   error: { color: C.error, fontSize: 13, marginTop: 10 },
-});
+}));

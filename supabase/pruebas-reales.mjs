@@ -79,6 +79,18 @@
 //      de 10 s; al terminar se va y se cancela, sin mover Inicio. Aceptar mete en el grupo (29/10).
 //  34. probar-toque-trabado — con la CPU frenada y la página trabada 2,5 s, dos toques en el + a
 //      1,2 s cuentan dos series (la traba mide desde el dedo); un doble toque sigue contando uno (29/10).
+//  35. probar-contraste — todo el texto visible llega a 4,5:1 contra lo que tiene detrás de verdad, motor
+//      incluido, en los siete rangos y los diez planetas (30/10), en la nativa.
+//  36. probar-rango — el sólido, el chip y la pestaña son el claro de los siete rangos; subir con la app
+//      abierta cambia la paleta sin remontar el motor ni perder la sesión; lo fijo sigue fijo (30/10).
+//  37. probar-letras — nada en la fuente del sistema en Inicio, entrenando, el descanso ni Stats; el número
+//      es Outfit, las cifras y el reloj son Geist Mono, y se dibujan de verdad (30/10), en la nativa.
+//  38. probar-forma — ningún radio del medio en ninguna pantalla; las cifras de Stats en caja cortada, la
+//      hoja con las esquinas de arriba cortadas y lo secundario subrayado (30/10), en la nativa.
+//  39. probar-profundidad — ninguna sombra negra ni borde fino; lo que emite, emite en el color del rango:
+//      la punta de la barra, el sólido, la pestaña y la neblina del descanso (30/10), en la nativa.
+//  40. probar-movimiento — cuadro por cuadro: la hoja sube y se va más corto con el velo quieto, las cifras
+//      cuentan, el pulgar viaja, los chips se cruzan, lo tocable se hunde, y con «reducir movimiento» nada (30/10).
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -133,6 +145,12 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'la burbuja de un amigo', archivo: 'probar-burbuja-amigo.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la invitación que llega', archivo: 'probar-invitacion-llega.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'dos toques con el teléfono trabado', archivo: 'probar-toque-trabado.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'el piso de contraste en los siete rangos', archivo: 'probar-contraste.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'toda la app sigue al rango', archivo: 'probar-rango.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'las letras de la nativa', archivo: 'probar-letras.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'octágono o píldora', archivo: 'probar-forma.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'luz de color y bordes de 1 pt', archivo: 'probar-profundidad.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'llega con la curva, se va más corto', archivo: 'probar-movimiento.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

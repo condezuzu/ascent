@@ -1,7 +1,10 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * EL GLOBITO (15/10): un renglón que FLOTA encima de la pantalla y la tapa, sin
@@ -13,6 +16,7 @@ import { C } from './colores';
  * por encima de lo que siga.
  */
 export default function Globito({ texto, alCerrar, testID }: { texto: string; alCerrar: () => void; testID?: string }) {
+  useTema();
   const opacidad = useRef(new Animated.Value(0)).current;
   const cerrando = useRef(false);
 
@@ -29,6 +33,7 @@ export default function Globito({ texto, alCerrar, testID }: { texto: string; al
   return (
     <View style={estilos.ancla} pointerEvents="box-none">
       <Animated.View style={[estilos.globo, { opacity: opacidad }]}>
+        <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={8} luz={C.claro} />
         <Pressable testID={testID} style={estilos.toque} onPress={cerrar} accessibilityRole="button" accessibilityHint={T.general.entendido}>
           {/* Dos renglones (21/10): el aviso de subir el peso dice el rango, y en uno se cortaba. */}
           <Text style={estilos.texto} numberOfLines={2}>
@@ -45,24 +50,16 @@ export default function Globito({ texto, alCerrar, testID }: { texto: string; al
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   ancla: { height: 0, zIndex: 30, elevation: 30 },
   globo: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.lineaFuerte,
-    backgroundColor: C.hoja,
-    shadowColor: '#000',
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
   },
   toque: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 10 },
   texto: { flex: 1, color: C.tinta, fontSize: 13 },
   cruz: { width: 12, height: 12, alignItems: 'center', justifyContent: 'center' },
   raya: { position: 'absolute', width: 12, height: 1.4, borderRadius: 1, backgroundColor: C.apagado },
-});
+}));

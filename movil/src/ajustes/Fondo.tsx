@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import Segmentado from '../Segmentado';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { CAMBIO_FONDO, esPreferenciaFondo, type PreferenciaFondo } from '@nucleo/fondo';
 import { eventos } from '@compartido/eventos';
 import { T } from '@nucleo/textos';
@@ -8,6 +8,8 @@ import { plataforma } from '@plataforma';
 import { C } from '../colores';
 import { CALIDAD_CAMBIO, type PreferenciaDeCalidad } from '@nucleo/calidad';
 import { fijarCalidad, leerCalidad, preferenciaAhora } from '../calidad';
+import { Text } from '../Texto';
+import { R } from '../roles';
 
 /**
  * EL FONDO: automático, siempre, o nunca.
@@ -97,6 +99,6 @@ export default function Fondo() {
 
 const estilos = StyleSheet.create({
   seccion: { marginTop: 30 },
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
+  titulo: { ...R.etiqueta, marginBottom: 10  },
+  nota: { ...R.nota, marginTop: 8  },
 });

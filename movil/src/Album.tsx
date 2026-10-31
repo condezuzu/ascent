@@ -1,18 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useRef } from 'react';
-import {
-  ActivityIndicator,
-  Animated,
-  Easing,
-  Image,
-  Modal,
-  PanResponder,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { ActivityIndicator, Animated, Image, Modal, PanResponder, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { plataforma } from '@plataforma';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
@@ -25,7 +12,8 @@ import { cambiarVisibilidad, cargarAlbum, porMes, quitarFoto, type Celda, type D
 import { primeraYUltima, resumenDelMes } from '@nucleo/album';
 import { paletaDe } from '@nucleo/paletas';
 import FondoEspacial from './FondoEspacial';
-import { C, conAlfa } from './colores';
+import { C, conAlfa, conTema } from './colores';
+import { useTema } from './useTema';
 import { useRecargarAlVolver } from './irAPestana';
 import { bloquearDeslizarPestanas, desbloquearDeslizarPestanas } from './gestoDePestanas';
 import { useEnVuelo } from '@compartido/useEnVuelo';
@@ -37,6 +25,11 @@ import { completarMiniaturas } from './miniaturas';
 import { useFotoLocal } from './fotoLocal';
 import { useArriba } from './zonaSegura';
 import GloboPrimeraVez from './GloboPrimeraVez';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import { R } from './roles';
+import { LLEGA } from './movimiento';
+import Tocable from './Tocable';
 
 /**
  * ÁLBUM — tanda 4.
@@ -56,6 +49,7 @@ import GloboPrimeraVez from './GloboPrimeraVez';
  * el camino.
  */
 export default function Album({ alSalir }: { alSalir: () => void }) {
+  useTema();
   const arriba = useArriba(64);
   const [datos, setDatos] = useState<DatosDeAlbum | null>(null);
   const [cargado, setCargado] = useState(false);
@@ -174,7 +168,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
       Animated.timing(desliz, {
         toValue: -d * anchoRef.current,
         duration: 180,
-        easing: Easing.bezier(...CURVA),
+        easing: LLEGA,
         useNativeDriver: true,
       }).start(() => {
         const i = abiertaRef.current;
@@ -192,7 +186,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
     Animated.timing(desliz, {
       toValue: 0,
       duration: 160,
-      easing: Easing.bezier(...CURVA),
+      easing: LLEGA,
       useNativeDriver: true,
     }).start();
   }, [desliz]);
@@ -292,9 +286,9 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
         {noCargo && !datos ? (
           <View style={estilos.tarjeta}>
             <Text style={estilos.texto}>{T.inicio.noCargo}</Text>
-            <Pressable style={estilos.botonFantasma} onPress={cargar}>
+            <Tocable style={estilos.botonFantasma} onPress={cargar}>
               <Text style={estilos.textoBoton}>{T.inicio.reintentar}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         ) : celdas.length > 0 ? (
           meses.map((m) => {
@@ -318,7 +312,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
               {par && (
                 <View style={estilos.comparar}>
                   {([par.primera, par.ultima] as const).map((c, i) => (
-                    <Pressable
+                    <Tocable
                       key={c.id}
                       style={estilos.mitad}
                       onPress={() => setAbierta(celdas.findIndex((x) => x.id === c.id))}
@@ -328,7 +322,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                       <Text style={estilos.mitadCuando}>
                         {i === 0 ? T.album.laPrimera : T.album.laUltima} · {fechaCorta(c.fecha)}
                       </Text>
-                    </Pressable>
+                    </Tocable>
                   ))}
                 </View>
               )}
@@ -347,7 +341,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                   // escalón desde cero y la segunda tanda entraría antes que
                   // el final de la primera.
                   <Surgir key={c.id} indice={m.desde + j}>
-                    <Pressable
+                    <Tocable
                       onPress={() => setAbierta(m.desde + j)}
                       accessibilityLabel={fechaLinda(c.fecha)}
                       style={[estilos.celda, { width: lado, height: lado }]}
@@ -358,7 +352,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                       {!!(c.miniatura || c.url) && <Foto celda={c} lado={lado} />}
                       {/* Un punto y nada más: quién ve la foto, de un vistazo. */}
                       {c.visibilidad === 'amigos' && <View style={estilos.punto} />}
-                    </Pressable>
+                    </Tocable>
                   </Surgir>
                 ))}
               </View>
@@ -424,9 +418,9 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                 {!!foto.planeta && <Text style={estilos.planeta}>{foto.planeta}</Text>}
                 {foto.esSubida && <Text style={estilos.planeta}>{T.album.deSubida}</Text>}
               </View>
-              <Pressable onPress={() => setAbierta(null)} accessibilityLabel={T.general.cerrar} hitSlop={12}>
+              <Tocable onPress={() => setAbierta(null)} accessibilityLabel={T.general.cerrar} hitSlop={12}>
                 <Text style={estilos.cerrarTexto}>×</Text>
-              </Pressable>
+              </Tocable>
             </View>
 
             {/* `box-none` ES LO QUE HACÍA QUE NO SE PUDIERA DESLIZAR (25/9).
@@ -437,16 +431,16 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                 menos lo que tocan sus hijos, o sea las dos flechas. */}
             <View style={estilos.pasos} pointerEvents="box-none">
               {abierta! > 0 ? (
-                <Pressable onPress={() => setAbierta((i) => (i ?? 0) - 1)} accessibilityLabel={T.album.anterior} hitSlop={12}>
+                <Tocable onPress={() => setAbierta((i) => (i ?? 0) - 1)} accessibilityLabel={T.album.anterior} hitSlop={12}>
                   <Text style={estilos.paso}>‹</Text>
-                </Pressable>
+                </Tocable>
               ) : (
                 <View />
               )}
               {abierta! < celdas.length - 1 ? (
-                <Pressable onPress={() => setAbierta((i) => (i ?? 0) + 1)} accessibilityLabel={T.album.siguiente} hitSlop={12}>
+                <Tocable onPress={() => setAbierta((i) => (i ?? 0) + 1)} accessibilityLabel={T.album.siguiente} hitSlop={12}>
                   <Text style={estilos.paso}>›</Text>
-                </Pressable>
+                </Tocable>
               ) : (
                 <View />
               )}
@@ -454,14 +448,14 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
 
             <View style={estilos.pie}>
               <View style={estilos.acciones}>
-                <Pressable
+                <Tocable
                   onPress={alternar}
                   style={[estilos.pastilla, foto.visibilidad === 'amigos' && estilos.pastillaPrendida]}
                 >
                   <Text style={[estilos.pastillaTexto, foto.visibilidad === 'amigos' && { color: C.fondo }]}>
                     {foto.visibilidad === 'privada' ? T.album.soloVos : T.album.amigos}
                   </Text>
-                </Pressable>
+                </Tocable>
                 {/* LOS DOS SON BOTONES Y SE VE (25/9). *"Los dos botones abajo
                     a la derecha del visor no parecen botones, parecen frases
                     chicas."* Y el de quitar lo era literalmente: texto suelto,
@@ -473,17 +467,17 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
                     pregunta, y hasta ahí no hay nada que avisar. */}
                 {confirmando ? (
                   <View style={estilos.confirmar}>
-                    <Pressable style={[estilos.pastilla, estilos.pastillaRoja]} onPress={() => quitarGuardado()}>
+                    <Tocable style={[estilos.pastilla, estilos.pastillaRoja]} onPress={() => quitarGuardado()}>
                       <Text style={[estilos.pastillaTexto, estilos.textoRojo]}>{T.album.quitarSi}</Text>
-                    </Pressable>
-                    <Pressable style={estilos.pastilla} onPress={() => setConfirmando(false)}>
+                    </Tocable>
+                    <Tocable style={estilos.pastilla} onPress={() => setConfirmando(false)}>
                       <Text style={estilos.pastillaTexto}>{T.album.no}</Text>
-                    </Pressable>
+                    </Tocable>
                   </View>
                 ) : (
-                  <Pressable style={estilos.pastilla} onPress={() => setConfirmando(true)}>
+                  <Tocable style={estilos.pastilla} onPress={() => setConfirmando(true)}>
                     <Text style={estilos.pastillaTexto}>{T.album.quitarFoto}</Text>
-                  </Pressable>
+                  </Tocable>
                 )}
               </View>
             </View>
@@ -512,16 +506,19 @@ const claveDe = (c: Celda) => (c.miniatura ? 'mini-' : 'entera-') + c.ruta;
 
 /** LA ENTERA, ABIERTA: también del disco del teléfono, por su ruta (15/10). Antes se bajaba en cada apertura. */
 function FotoEntera({ celda, lado }: { celda: Celda; lado: number }) {
+  useTema();
   const uri = useFotoLocal('entera-' + celda.ruta, celda.url);
   return uri ? <Image source={{ uri }} style={{ width: lado, height: lado }} resizeMode="contain" /> : null;
 }
 
 function FotoMitad({ celda }: { celda: Celda }) {
+  useTema();
   const uri = useFotoLocal(claveDe(celda), celda.miniatura || celda.url);
   return uri ? <Image source={{ uri }} style={estilos.mitadFoto} resizeMode="cover" /> : <View style={estilos.mitadFoto} />;
 }
 
 function Foto({ celda, lado }: { celda: Celda; lado: number }) {
+  useTema();
   const opacidad = useRef(new Animated.Value(0)).current;
   const url = useFotoLocal(claveDe(celda), celda.miniatura || celda.url);
   if (!url) return null;
@@ -533,7 +530,7 @@ function Foto({ celda, lado }: { celda: Celda; lado: number }) {
         Animated.timing(opacidad, {
           toValue: 1,
           duration: SURGIR_MS,
-          easing: Easing.bezier(...CURVA),
+          easing: LLEGA,
           useNativeDriver: true,
         }).start()
       }
@@ -541,22 +538,22 @@ function Foto({ celda, lado }: { celda: Celda; lado: number }) {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Transparente: el fondo lo dibuja `FondoRaiz`.
   raiz: { flex: 1 },
   pantalla: { flexGrow: 1, padding: 24, paddingTop: 64, paddingBottom: 40 },
   titulo: { color: C.tinta, fontSize: 22, marginBottom: 20 },
   error: { color: C.error, fontSize: 14, marginBottom: 12 },
   cabezaMes: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 },
-  rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
+  rotulo: { ...R.etiqueta },
   cuentaMes: { color: C.apagado, fontSize: 11 },
   // LA COMPARACION: dos mitades iguales, con la fecha debajo de cada una.
   comparar: { flexDirection: 'row', gap: 4, marginBottom: 4 },
   mitad: { flex: 1 },
-  mitadFoto: { width: '100%', aspectRatio: 1, borderRadius: 6, backgroundColor: C.hoja },
+  mitadFoto: { width: '100%', aspectRatio: 1, borderRadius: 1, backgroundColor: C.hoja },
   mitadCuando: { color: C.apagado, fontSize: 10, marginTop: 4, textAlign: 'center' },
   grilla: { flexDirection: 'row', flexWrap: 'wrap' },
-  celda: { backgroundColor: C.hoja, borderRadius: 6, overflow: 'hidden' },
+  celda: { backgroundColor: C.hoja, borderRadius: 1, overflow: 'hidden' },
   punto: {
     position: 'absolute',
     right: 6,
@@ -566,16 +563,10 @@ const estilos = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: C.claro,
   },
-  tarjeta: {
-    backgroundColor: 'rgba(11,13,19,0.72)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
-    borderRadius: 14,
-    padding: 14,
-  },
+  tarjeta: {},
   texto: { color: C.sub, fontSize: 14 },
   botonFantasma: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 10,
@@ -610,8 +601,8 @@ const estilos = StyleSheet.create({
   marco: {
     alignSelf: 'center',
     padding: 6,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 1,
+    borderWidth: 1,
     borderColor: C.linea,
     backgroundColor: C.hoja,
     overflow: 'hidden',
@@ -629,11 +620,11 @@ const estilos = StyleSheet.create({
   cuando: { flexDirection: 'row', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' },
   fecha: { color: C.tinta, fontSize: 16 },
   // "día 41": el registro, en el claro de la app para que se lea como un logro.
-  diaDeRacha: { color: C.claro, fontSize: 13, fontVariant: ['tabular-nums'] },
+  diaDeRacha: { color: C.claro, fontSize: 13, fontFamily: L.dato },
   planeta: { color: C.sub, fontSize: 13 },
   acciones: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pastilla: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 8,
@@ -644,4 +635,4 @@ const estilos = StyleSheet.create({
   textoRojo: { color: C.error },
   pastillaTexto: { color: C.tinta, fontSize: 14 },
   confirmar: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-});
+}));

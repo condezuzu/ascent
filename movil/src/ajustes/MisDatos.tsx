@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { juntarMisDatos } from '@compartido/cuenta';
 import type { Perfil } from '@nucleo/tipos';
 import { T } from '@nucleo/textos';
 import { supabase } from '../supabase';
-import { C } from '../colores';
+import { C, DESHABILITADO, conTema } from '../colores';
+import { useTema } from '../useTema';
+import { Text } from '../Texto';
+import { R } from '../roles';
+import Tocable from '../Tocable';
 
 /**
  * LLEVARSE TODO: el historial entero en un archivo.
@@ -27,6 +31,7 @@ import { C } from '../colores';
  * para siempre.
  */
 export default function MisDatos({ perfil }: { perfil: Perfil }) {
+  useTema();
   const [exportando, setExportando] = useState(false);
   const [error, setError] = useState('');
 
@@ -52,26 +57,26 @@ export default function MisDatos({ perfil }: { perfil: Perfil }) {
   return (
     <View style={estilos.seccion}>
       <Text style={estilos.titulo}>{T.ajustes.misDatos}</Text>
-      <Pressable style={[estilos.boton, exportando && estilos.apagado]} onPress={exportar} disabled={exportando}>
+      <Tocable style={[estilos.boton, exportando && estilos.apagado]} onPress={exportar} disabled={exportando}>
         <Text style={estilos.botonTexto}>{exportando ? T.ajustes.exportando : T.ajustes.exportar}</Text>
-      </Pressable>
+      </Tocable>
       {error !== '' && <Text style={estilos.error}>{error}</Text>}
     </View>
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 30 },
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
+  titulo: { ...R.etiqueta, marginBottom: 10  },
   boton: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingVertical: 13,
     alignItems: 'center',
   },
-  apagado: { opacity: 0.45 },
+  apagado: { opacity: DESHABILITADO },
   botonTexto: { color: C.tinta, fontSize: 14 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
+  nota: { ...R.nota, marginTop: 8  },
   error: { color: C.error, fontSize: 13, marginTop: 8 },
-});
+}));

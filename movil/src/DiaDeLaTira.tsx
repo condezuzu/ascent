@@ -1,6 +1,9 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Animated, Easing, StyleSheet, Text, type StyleProp, type TextStyle } from 'react-native';
+import { Animated, Easing, StyleSheet, type StyleProp, type TextStyle } from 'react-native';
 import { paletaDe } from '@nucleo/paletas';
+import { C } from './colores';
+import { Text } from './Texto';
+import { LLENA } from './movimiento';
 
 /**
  * UN DÍA DE LA TIRA DE LUNES A DOMINGO, con la animación aprobada en la galería
@@ -14,7 +17,7 @@ const ENTRE_DIAS_MS = 45;
 const ENTRA_MS = 320;
 const SALTO_MS = 420;
 const FIN_DE_LA_ENTRADA = ESPERA_MS + 6 * ENTRE_DIAS_MS + ENTRA_MS;
-const CURVA_ENTRA = Easing.bezier(0.2, 0.7, 0.2, 1);
+const CURVA_ENTRA = LLENA;
 const CURVA_SALTO = Easing.bezier(0.3, 0.6, 0.3, 1);
 
 function mezclar(a: string, b: string, cuanto: number) {
@@ -26,8 +29,8 @@ function mezclar(a: string, b: string, cuanto: number) {
 /** La B: la tinta con un 30 % del claro del rango y el halo del claro; el agujero negro, más oscuro. */
 export function colorDelDiaRegistrado(rango: number) {
   const p = paletaDe(rango);
-  if (rango === 7) return { relleno: mezclar(p.claro, '#05050A', 0.25), halo: p.principal };
-  return { relleno: mezclar('#e8ecf6', p.claro, 0.3), halo: p.claro };
+  if (rango === 7) return { relleno: mezclar(p.claro, p.apagado, 0.25), halo: p.principal };
+  return { relleno: mezclar(C.tinta, p.claro, 0.3), halo: p.claro };
 }
 
 export default function DiaDeLaTira({

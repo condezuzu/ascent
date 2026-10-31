@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import { Modal, StyleSheet, View, Animated } from 'react-native';
+import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { pasadoDe } from '@nucleo/avisoDescanso';
 import CompaneroEnDescanso from './CompaneroEnDescanso';
 import { PRESETS_DESCANSO, descansoAMano } from '@nucleo/reglas';
@@ -16,12 +16,18 @@ import {
   avisarFin,
   type DescansoVivo,
 } from '@compartido/descanso';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 import { taparElFondo } from './desenfoqueDelFondo';
 import { useArriba } from './zonaSegura';
 import { cuentaLaSerie, horaDelToque } from './toques';
 import Aparece from './Aparece';
 import Tocable from './Tocable';
+import { Text, TextInput, CifraJunta } from './Texto';
+import { L } from './fuentes';
+import FondoOctogonal from './FondoOctogonal';
+import { Fantasma } from './roles';
+import { useQueSube } from './movimiento';
 
 /**
  * EL DESCANSO ENTRE SERIES, en nativo (§18). La misma pantalla que la web:
@@ -64,6 +70,8 @@ export default function Descanso({
   /** Sumar la serie sin salir: suma y vuelve a arrancar el descanso. */
   alSumar: () => void;
 }) {
+  useTema();
+  const { montada, avance } = useQueSube(visible);
   const arriba = useArriba(56);
   const [, repintar] = useState(0);
   // Opaca y a pantalla completa: mientras se ve, el fondo 3D no tiene por qué dibujar.
@@ -163,11 +171,26 @@ export default function Descanso({
   const serie = vivo.serie && vivo.serie > 0 ? T.descanso.serieDe(vivo.serie, vivo.meta ?? 0) : null;
 
   return (
-    <Modal visible={visible} animationType="fade" onRequestClose={alOcultar} statusBarTranslucent>
-      <View style={[estilos.pantalla, { paddingTop: arriba }]}>
-        <Pressable style={estilos.cerrar} onPress={alOcultar} accessibilityLabel={T.descanso.cerrar}>
+    <Modal visible={montada} transparent animationType="none" onRequestClose={alOcultar} statusBarTranslucent>
+      <Animated.View
+        style={[
+          estilos.pantalla,
+          { paddingTop: arriba, opacity: avance, transform: [{ translateY: avance.interpolate({ inputRange: [0, 1], outputRange: [46, 0] }) }] },
+        ]}
+      >
+        {/* La neblina del rango: el aire de la pantalla, sin tapar el número. */}
+        <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Defs>
+            <RadialGradient id="neblina" cx="50%" cy="47%" rx="90%" ry="46%">
+              <Stop offset="0" stopColor={C.principal} stopOpacity={0.13} />
+              <Stop offset="0.7" stopColor={C.principal} stopOpacity={0} />
+            </RadialGradient>
+          </Defs>
+          <Rect width="100%" height="100%" fill="url(#neblina)" />
+        </Svg>
+        <Tocable style={estilos.cerrar} onPress={alOcultar} accessibilityLabel={T.descanso.cerrar}>
           <Text style={estilos.cerrarTexto}>✕</Text>
-        </Pressable>
+        </Tocable>
 
         {/* ARRIBA, CHICO: qué estabas haciendo (12/10). Antes la pantalla era un
             número solo: decía cuándo volver y nada sobre a qué. */}
@@ -194,6 +217,18 @@ export default function Descanso({
                 r={RADIO}
                 fill="none"
                 stroke={acento}
+                strokeWidth={10}
+                strokeOpacity={0.2}
+                strokeLinecap="round"
+                strokeDasharray={LARGO}
+                strokeDashoffset={LARGO * (1 - proporcion)}
+              />
+              <Circle
+                cx={LADO / 2}
+                cy={LADO / 2}
+                r={RADIO}
+                fill="none"
+                stroke={acento}
                 strokeWidth={4}
                 strokeLinecap="round"
                 strokeDasharray={LARGO}
@@ -201,7 +236,7 @@ export default function Descanso({
               />
             </Svg>
             <Text testID="descanso-reloj" style={estilos.numero} accessibilityLiveRegion="polite">
-              {cuentaAtras(falta)}
+              <CifraJunta texto={cuentaAtras(falta)} apretar={-16.5} />
             </Text>
             {terminado && (
               <Text testID="descanso-de-mas" style={estilos.deMas} accessibilityLabel={`${cuentaAtras(pasadoDe(vivo.fin, ahora))} ${T.descanso.deMas}`}>
@@ -213,29 +248,31 @@ export default function Descanso({
 
         {terminado ? (
           <View style={estilos.abajo}>
-            <Pressable style={[estilos.solido, { backgroundColor: acento, borderColor: acento }]} onPress={(e) => cuentaLaSerie(horaDelToque(e)) && alSumar()}>
+            <Tocable style={estilos.solido} onPress={(e) => cuentaLaSerie(horaDelToque(e)) && alSumar()}>
+              <FondoOctogonal relleno={C.claro} luz={C.claro} />
               <Text style={estilos.solidoTexto}>{T.descanso.serieHecha}</Text>
-            </Pressable>
-            <Pressable
-              style={estilos.texto}
-              onPress={() => {
+            </Tocable>
+            <Fantasma
+              enHoja
+              texto={T.descanso.seguir}
+              alTocar={() => {
                 void borrarDescanso();
                 alSaltar();
               }}
-            >
-              <Text style={estilos.textoBoton}>{T.descanso.seguir}</Text>
-            </Pressable>
+            />
           </View>
         ) : (
           <View style={estilos.abajo}>
             {/* "SERIE HECHA" ES UN BOTÓN, no un enlace: sumar la serie sin salir
                 es lo que más se hace desde acá. */}
             {sinEmpezar ? (
-              <Tocable testID="descanso-empezar" style={[estilos.solido, { backgroundColor: acento, borderColor: acento }]} onPress={sinEmpezar.alEmpezar}>
+              <Tocable testID="descanso-empezar" style={estilos.solido} onPress={sinEmpezar.alEmpezar}>
+                <FondoOctogonal relleno={C.claro} luz={C.claro} />
                 <Text style={estilos.solidoTexto}>{T.descanso.empezar}</Text>
               </Tocable>
             ) : (
               <Tocable style={estilos.borde} onPress={(e) => cuentaLaSerie(horaDelToque(e)) && alSumar()}>
+                <FondoOctogonal relleno="none" borde={C.claro} />
                 <Text style={estilos.bordeTexto}>{T.descanso.serieHecha}</Text>
               </Tocable>
             )}
@@ -251,7 +288,7 @@ export default function Descanso({
                   <Text style={[estilos.presetTexto, estilos.presetTextoActivo]}>{duracionCorta(vivo.duracion)}</Text>
                 </View>
               )}
-              <Pressable
+              <Tocable
                 testID="descanso-a-mano"
                 style={[estilos.preset, aMano !== null && estilos.presetActivo]}
                 onPress={() => setAMano(aMano === null ? '' : null)}
@@ -259,7 +296,7 @@ export default function Descanso({
                 accessibilityRole="button"
               >
                 <Text style={[estilos.presetTexto, aMano !== null && estilos.presetTextoActivo]}>+</Text>
-              </Pressable>
+              </Tocable>
             </View>
             {aMano !== null && (
               <Aparece>
@@ -282,7 +319,7 @@ export default function Descanso({
                     }
                   }}
                 />
-                <Pressable
+                <Tocable
                   testID="descanso-a-mano-usar"
                   style={[estilos.preset, estilos.presetActivo]}
                   disabled={descansoAMano(aMano) === null}
@@ -296,19 +333,17 @@ export default function Descanso({
                   <Text style={[estilos.presetTexto, estilos.presetTextoActivo, descansoAMano(aMano) === null && { color: C.apagado }]}>
                     {T.descanso.aManoUsar}
                   </Text>
-                </Pressable>
+                </Tocable>
               </View>
               </Aparece>
             )}
-            {aMano !== null && aMano.trim() !== '' && descansoAMano(aMano) === null && <Aparece><Text style={estilos.aManoMal}>{T.descanso.aManoMal}</Text></Aparece>}
-            <Pressable style={estilos.texto} onPress={alOcultar}>
-              <Text style={estilos.textoBoton}>{quieto ? T.general.cancelar : T.descanso.saltar}</Text>
-            </Pressable>
+            <Aparece visible={!!(aMano !== null && aMano.trim() !== '' && descansoAMano(aMano) === null)}><Text style={estilos.aManoMal}>{T.descanso.aManoMal}</Text></Aparece>
+            <Fantasma enHoja texto={quieto ? T.general.cancelar : T.descanso.saltar} alTocar={alOcultar} />
           </View>
         )}
 
         <CompaneroEnDescanso visible={visible} ahora={ahora} />
-      </View>
+      </Animated.View>
     </Modal>
   );
 }
@@ -318,7 +353,7 @@ const RADIO = 128;
 const LADO = RADIO * 2 + 16;
 const LARGO = 2 * Math.PI * RADIO;
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: C.fondo, paddingHorizontal: 24, paddingTop: 56, paddingBottom: 30 },
   cerrar: { position: 'absolute', top: 48, right: 16, minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
   cerrarTexto: { color: C.sub, fontSize: 20 },
@@ -330,22 +365,20 @@ const estilos = StyleSheet.create({
   arco: { width: LADO, height: LADO, alignItems: 'center', justifyContent: 'center' },
   // Girado un cuarto: el arco arranca arriba, como un reloj.
   dibujo: { position: 'absolute', top: 0, left: 0, transform: [{ rotate: '-90deg' }] },
-  numero: { color: C.tinta, fontSize: 84, fontWeight: '200', fontVariant: ['tabular-nums'] },
+  numero: { color: C.tinta, fontSize: 78, fontWeight: '200', fontFamily: L.dato, letterSpacing: -4 },
   // En la esquina del cuadrado del arco, afuera del círculo.
-  deMas: { position: 'absolute', right: 4, bottom: 4, color: C.sub, fontSize: 15, fontVariant: ['tabular-nums'] },
+  deMas: { position: 'absolute', right: 4, bottom: 4, color: C.sub, fontSize: 15, fontFamily: L.dato },
   abajo: { alignItems: 'stretch' },
-  solido: { borderWidth: 1, borderRadius: 4, paddingVertical: 16, alignItems: 'center' },
+  solido: { paddingVertical: 16, alignItems: 'center' },
   solidoTexto: { color: C.fondo, fontSize: 16, fontWeight: '600' },
-  borde: { borderWidth: 1, borderColor: C.sub, borderRadius: 4, paddingVertical: 16, alignItems: 'center' },
+  borde: { paddingVertical: 16, alignItems: 'center' },
   bordeTexto: { color: C.tinta, fontSize: 16 },
   presets: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 12 },
   aMano: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 },
-  aManoCampo: { color: C.tinta, fontSize: 16, minWidth: 170, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.lineaFuerte, paddingVertical: 6, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  aManoCampo: { color: C.tinta, fontSize: 16, minWidth: 170, borderBottomWidth: 1, borderBottomColor: C.lineaFuerte, paddingVertical: 6, textAlign: 'center', fontFamily: L.dato },
   aManoMal: { color: C.sub, fontSize: 12, textAlign: 'center', marginTop: 6 },
-  preset: { borderWidth: 1, borderColor: C.linea, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 11 },
+  preset: { borderWidth: 1, borderColor: C.linea, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 9 },
   presetActivo: { borderColor: C.sub },
-  presetTexto: { color: C.apagado, fontSize: 12 },
+  presetTexto: { color: C.apagado, fontSize: 11.5, letterSpacing: -0.3, fontFamily: L.dato },
   presetTextoActivo: { color: C.tinta },
-  texto: { paddingVertical: 9, alignItems: 'center' },
-  textoBoton: { color: C.sub, fontSize: 14 },
-});
+}));

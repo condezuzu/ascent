@@ -1,11 +1,14 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
-import { C } from './colores';
+import { Image, StyleSheet, View } from 'react-native';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
 
 /**
  * La cara de alguien en una lista: su foto, o la inicial de su nombre.
  * El mismo criterio que `src/components/Avatar.tsx` de la web.
  */
 export default function Avatar({ url, nombre, tam = 34 }: { url: string | null; nombre: string | null; tam?: number }) {
+  useTema();
   const caja = { width: tam, height: tam, borderRadius: tam / 2 };
   return (
     <View style={[estilos.avatar, caja]}>
@@ -18,14 +21,14 @@ export default function Avatar({ url, nombre, tam = 34 }: { url: string | null; 
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   avatar: {
     backgroundColor: C.hoja,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
   inicial: { color: C.sub },
-});
+}));

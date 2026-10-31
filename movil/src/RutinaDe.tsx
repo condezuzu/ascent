@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { hayAlgo, ORDEN_SEMANA, soloLosDias } from '@nucleo/rutinas';
 import { T } from '@nucleo/textos';
 import { nombreVisible } from '@nucleo/propios';
@@ -9,7 +9,12 @@ import { plataforma } from '@plataforma';
 import { supabase } from './supabase';
 import RutinaPlegada from './RutinaPlegada';
 import Corazon from './Corazon';
-import { C } from './colores';
+import { C, DESHABILITADO, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * LA RUTINA DE ALGUIEN, PARA MIRARLA (14/10): la tuya en tu perfil, la de un
@@ -28,6 +33,7 @@ import { C } from './colores';
  * persona; tocarlo de nuevo lo quita. Sin la migración 92 no aparece.
  */
 export default function RutinaDe({ quien, esYo = false, nombre }: { quien: string; esYo?: boolean; nombre?: string }) {
+  useTema();
   const [rutina, setRutina] = useState<RutinaParaVer | null>(null);
   const [catalogo, setCatalogo] = useState<CatalogoDeRutina>(new Map());
   const [aviso, setAviso] = useState('');
@@ -141,10 +147,10 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
             );
           })}
           <View style={estilos.botones}>
-            <Pressable style={[estilos.pildora, estilos.pildoraBorde]} onPress={() => { setEligiendo(false); setElegidos([]); }} accessibilityRole="button">
+            <Tocable style={[estilos.pildora, estilos.pildoraBorde]} onPress={() => { setEligiendo(false); setElegidos([]); }} accessibilityRole="button">
               <Text style={estilos.pildoraBordeTexto}>{T.rutina.cancelar}</Text>
-            </Pressable>
-            <Pressable
+            </Tocable>
+            <Tocable
               testID="copiar-elegidos"
               style={[estilos.pildora, estilos.pildoraCrema, elegidos.length === 0 && estilos.apagada]}
               onPress={() => void copiar()}
@@ -152,7 +158,7 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
               accessibilityRole="button"
             >
               <Text style={estilos.pildoraCremaTexto}>{T.rutina.copiarDias(elegidos.length)}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         </View>
       ) : (
@@ -166,9 +172,9 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
           {/* La tuya también, abierta (20/10): cerrada, en tu perfil no se veía ningún ejercicio. */}
           <RutinaPlegada dias={rutina.dias} catalogo={catalogo} soloConAlgo={rutina.deducida} abiertos />
           {!esYo && (
-            <Pressable testID="rutina-copiar" style={[estilos.pildora, estilos.pildoraBorde, estilos.copiar]} onPress={() => setEligiendo(true)} accessibilityRole="button">
+            <Tocable testID="rutina-copiar" style={[estilos.pildora, estilos.pildoraBorde, estilos.copiar]} onPress={() => setEligiendo(true)} accessibilityRole="button">
               <Text style={estilos.pildoraBordeTexto}>{T.rutina.copiar}</Text>
-            </Pressable>
+            </Tocable>
           )}
         </>
       )}
@@ -177,29 +183,29 @@ export default function RutinaDe({ quien, esYo = false, nombre }: { quien: strin
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   caja: { marginTop: 8 },
-  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 26, marginBottom: 10 },
+  seccion: { ...R.etiqueta, marginTop: 26, marginBottom: 10  },
   nombre: { color: C.apagado, fontSize: 12, marginBottom: 4 },
   filaNombre: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 6 },
+  nota: { ...R.nota, marginTop: 6  },
   indicacion: { color: C.sub, fontSize: 13, marginBottom: 6 },
-  diaElegible: { flexDirection: 'row', gap: 12, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.linea },
+  diaElegible: { flexDirection: 'row', gap: 12, paddingVertical: 12, borderTopWidth: 1, borderTopColor: C.linea },
   tocado: { opacity: 0.6 },
-  circulo: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: '#626b80', alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  circulo: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: C.bordeBoton, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   circuloMarcado: { backgroundColor: C.claro, borderColor: C.claro },
   tilde: { width: 9, height: 5, borderLeftWidth: 2, borderBottomWidth: 2, borderColor: C.fondo, transform: [{ rotate: '-45deg' }, { translateY: -1 }] },
   diaCuerpo: { flex: 1, minWidth: 0 },
   diaNombre: { color: C.tinta, fontSize: 15, marginBottom: 4 },
   fila: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 3 },
   ejercicio: { color: C.sub, fontSize: 14, flexShrink: 1 },
-  cantidad: { color: C.apagado, fontSize: 13, fontVariant: ['tabular-nums'] },
+  cantidad: { color: C.apagado, fontSize: 13, fontFamily: L.dato },
   botones: { flexDirection: 'row', gap: 10, marginTop: 14 },
   pildora: { flex: 1, borderRadius: 999, paddingVertical: 12, alignItems: 'center' },
-  pildoraBorde: { borderWidth: 1, borderColor: '#626b80' },
+  pildoraBorde: { borderWidth: 1, borderColor: C.bordeBoton },
   pildoraBordeTexto: { color: C.tinta, fontSize: 14 },
   pildoraCrema: { backgroundColor: C.claro },
   pildoraCremaTexto: { color: C.fondo, fontSize: 14, fontWeight: '600' },
-  apagada: { opacity: 0.4 },
+  apagada: { opacity: DESHABILITADO },
   copiar: { flex: 0, alignSelf: 'stretch', marginTop: 14 },
-});
+}));

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { numeroDeRango, planetaDeDia } from '@nucleo/rangos';
 import { esUnidad, type Unidad } from '@nucleo/peso';
@@ -14,9 +14,15 @@ import FondoEspacial from './FondoEspacial';
 import PesoHoja from './PesoHoja';
 import CargarMarca from './CargarMarca';
 import Surgir from './Surgir';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 import { volverOInicio } from './volver';
 import { useArriba } from './zonaSegura';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import FondoOctogonal from './FondoOctogonal';
+import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * MIS MARCAS (§16): donde se cargan, se miran y se borran.
@@ -37,6 +43,7 @@ import { useArriba } from './zonaSegura';
  * la última pisara a la anterior, anotar un mal día borraría un PR.
  */
 export default function MisMarcas() {
+  useTema();
   const router = useRouter();
   const arriba = useArriba(16);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
@@ -99,9 +106,9 @@ export default function MisMarcas() {
   // "Reintentar", que sin señal no puede hacer nada. Lo encontró el barrido
   // del 25/9 en el perfil propio; acá estaba igual, en las dos ramas.
   const salida = (
-    <Pressable onPress={() => volverOInicio(router)} hitSlop={10} style={[estilos.volverSuelto, { paddingTop: arriba }]}>
+    <Tocable onPress={() => volverOInicio(router)} hitSlop={10} style={[estilos.volverSuelto, { paddingTop: arriba }]}>
       <Text style={estilos.volver}>{T.general.volver}</Text>
-    </Pressable>
+    </Tocable>
   );
 
   if (cargando) {
@@ -121,9 +128,9 @@ export default function MisMarcas() {
         {salida}
         <View style={estilos.centrado}>
           <Text style={estilos.nota}>{T.general.noSePudo}</Text>
-          <Pressable onPress={cargar}>
+          <Tocable onPress={cargar}>
             <Text style={estilos.enlace}>{T.inicio.reintentar}</Text>
-          </Pressable>
+          </Tocable>
         </View>
       </View>
     );
@@ -139,7 +146,7 @@ export default function MisMarcas() {
     const desplegado = abierto === m.ejercicio;
     return (
       <Surgir key={m.ejercicio} indice={i}>
-        <Pressable
+        <Tocable
           style={estilos.fila}
           onPress={() => {
             // La pregunta y el aviso son del ejercicio que estaba desplegado.
@@ -157,7 +164,7 @@ export default function MisMarcas() {
               años sigue valiendo, pero quien lo mira tiene derecho a saberlo
               sin tener que desplegar nada. */}
           <Text style={estilos.fecha}>{fechaDeMarca(m.fecha)}</Text>
-        </Pressable>
+        </Tocable>
 
         {desplegado && (
           <View style={estilos.historial}>
@@ -168,12 +175,12 @@ export default function MisMarcas() {
               porBorrar === h.id ? (
                 <View key={h.id} style={estilos.previa}>
                   <Text style={[estilos.apagado, estilos.pregunta]}>{T.fuerza.borrarSeguro}</Text>
-                  <Pressable onPress={() => borrar(h.id)} disabled={borrando === h.id} hitSlop={8}>
+                  <Tocable onPress={() => borrar(h.id)} disabled={borrando === h.id} hitSlop={8}>
                     <Text style={estilos.peligro}>{T.fuerza.borrarSi}</Text>
-                  </Pressable>
-                  <Pressable onPress={() => setPorBorrar(null)} hitSlop={8}>
+                  </Tocable>
+                  <Tocable onPress={() => setPorBorrar(null)} hitSlop={8}>
                     <Text style={estilos.apagado}>{T.general.cancelar}</Text>
-                  </Pressable>
+                  </Tocable>
                 </View>
               ) : (
                 <View key={h.id} style={estilos.previa}>
@@ -185,7 +192,7 @@ export default function MisMarcas() {
                   </Text>
                   <Text style={estilos.apagado}>{origenDeMarca(h)}</Text>
                   <Text style={estilos.apagado}>{fechaDeMarca(h.fecha)}</Text>
-                  <Pressable
+                  <Tocable
                     onPress={() => {
                       setNoSeBorro(false);
                       setPorBorrar(h.id);
@@ -193,17 +200,17 @@ export default function MisMarcas() {
                     hitSlop={8}
                   >
                     <Text style={estilos.peligro}>{T.general.borrar}</Text>
-                  </Pressable>
+                  </Tocable>
                 </View>
               )
             )}
             {noSeBorro && <Text style={estilos.peligro}>{T.fuerza.noSeBorro}</Text>}
-            <Pressable
+            <Tocable
               style={estilos.texto}
               onPress={() => abrirHoja(m.ejercicio)}
             >
               <Text style={estilos.enlace}>{T.fuerza.otraDe(m.nombre.toLowerCase())}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         )}
       </Surgir>
@@ -219,15 +226,16 @@ export default function MisMarcas() {
         velo={0.74}
       />
       <ScrollView contentContainerStyle={[estilos.contenido, { paddingTop: arriba }]}>
-        <Pressable onPress={() => volverOInicio(router)} hitSlop={10}>
+        <Tocable onPress={() => volverOInicio(router)} hitSlop={10}>
           <Text style={estilos.volver}>{T.general.volver}</Text>
-        </Pressable>
+        </Tocable>
 
         <Text style={estilos.titulo}>{T.fuerza.misMarcas}</Text>
 
-        <Pressable style={estilos.solido} onPress={() => abrirHoja()}>
+        <Tocable style={estilos.solido} onPress={() => abrirHoja()}>
+          <FondoOctogonal relleno={C.claro} luz={C.claro} />
           <Text style={estilos.solidoTexto}>{T.fuerza.anotarMarca}</Text>
-        </Pressable>
+        </Tocable>
 
         {marcas.length === 0 ? (
           <View style={estilos.vacio}>
@@ -265,9 +273,9 @@ export default function MisMarcas() {
                 <Text style={estilos.nota}>
                   {T.fuerza.yaEstanLasTres} {T.fuerza.faltaPeso}
                 </Text>
-                <Pressable style={estilos.botonPeso} onPress={() => setPesoAbierto(true)} testID="abrir-anotar-peso">
+                <Tocable style={estilos.botonPeso} onPress={() => setPesoAbierto(true)} testID="abrir-anotar-peso">
                   <Text style={estilos.botonPesoTexto}>{T.peso.anotarPeso}</Text>
-                </Pressable>
+                </Tocable>
                 <PesoHoja visible={pesoAbierto} unidad={unidad} alCerrar={() => setPesoAbierto(false)} alGuardar={cargar} />
               </>
             )}
@@ -303,7 +311,7 @@ export default function MisMarcas() {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   todo: { flex: 1 },
   contenido: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 48 },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
@@ -312,23 +320,20 @@ const estilos = StyleSheet.create({
   // `contenido`, para que el enlace no se corra al llegar los datos.
   volverSuelto: { paddingHorizontal: 20, paddingTop: 16 },
   titulo: { color: C.tinta, fontSize: 26, fontWeight: '300', marginTop: 10, marginBottom: 18 },
-  solido: { backgroundColor: C.tinta, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
+  solido: { paddingVertical: 14, alignItems: 'center' },
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
-  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 28, marginBottom: 10 },
+  seccion: { ...R.etiqueta, marginTop: 28, marginBottom: 10  },
   tarjeta: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
-    borderRadius: 12,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
+    borderTopWidth: 1,
+    borderTopColor: C.linea,
   },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 13 },
   nombre: { flex: 1, color: C.tinta, fontSize: 15 },
-  kilos: { color: C.tinta, fontSize: 15, fontVariant: ['tabular-nums'] },
-  fecha: { color: C.apagado, fontSize: 12, minWidth: 54, textAlign: 'right' },
+  kilos: { color: C.tinta, fontSize: 15, fontFamily: L.dato },
+  fecha: { color: C.apagado, fontSize: 12, minWidth: 54, textAlign: 'right', fontFamily: L.dato },
   historial: { paddingHorizontal: 12, paddingBottom: 12, gap: 8 },
   previa: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  previaPeso: { flex: 1, color: C.sub, fontSize: 13, fontVariant: ['tabular-nums'] },
+  previaPeso: { flex: 1, color: C.sub, fontSize: 13, fontFamily: L.dato },
   apagado: { color: C.apagado, fontSize: 12 },
   peligro: { color: C.error, fontSize: 12 },
   pregunta: { flex: 1, lineHeight: 17 },
@@ -339,4 +344,4 @@ const estilos = StyleSheet.create({
   botonPesoTexto: { color: C.tinta, fontSize: 14 },
   vacio: { marginTop: 34, alignItems: 'center', gap: 4 },
   vacioTexto: { color: C.apagado, fontSize: 13, textAlign: 'center', lineHeight: 19 },
-});
+}));

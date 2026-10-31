@@ -5,10 +5,22 @@ import type { Pestana } from './irAPestana';
  * LOS ICONOS DE LA BARRA (28/10, a pedido: icono arriba, palabra chica abajo). Los mismos trazos
  * que la barra de la web (src/components/Nav.tsx), para que las dos apps se lean igual.
  */
-export default function IconoDePestana({ cual, color, tam = 22 }: { cual: Pestana; color: string; tam?: number }) {
+export default function IconoDePestana({ cual, color, tam = 22, luz }: { cual: Pestana; color: string; tam?: number; luz?: boolean }) {
   const trazo = { stroke: color, strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
   return (
     <Svg width={tam} height={tam} viewBox="0 0 24 24">
+      {/* La luz: el mismo dibujo, ancho y tenue, debajo. */}
+      {luz && <Trazos cual={cual} color={color} trazo={{ ...trazo, strokeWidth: 5, strokeOpacity: 0.16 }} />}
+      <Trazos cual={cual} color={color} trazo={trazo} />
+    </Svg>
+  );
+}
+
+type Trazo = { stroke: string; strokeWidth: number; strokeOpacity?: number; strokeLinecap: 'round'; strokeLinejoin: 'round'; fill: string };
+
+function Trazos({ cual, color, trazo }: { cual: Pestana; color: string; trazo: Trazo }) {
+  return (
+    <>
       {cual === 'inicio' && (
         <>
           <Path d="M3 11.5 12 4l9 7.5" {...trazo} />
@@ -43,6 +55,6 @@ export default function IconoDePestana({ cual, color, tam = 22 }: { cual: Pestan
           <Path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2.1 2.1M16.9 16.9 19 19M19 5l-2.1 2.1M7.1 16.9 5 19" {...trazo} />
         </>
       )}
-    </Svg>
+    </>
   );
 }

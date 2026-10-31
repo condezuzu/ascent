@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import { Animated, Easing, StyleSheet, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import { numeroDeRango } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
 import Insignia from '../Insignia';
 import { C, conAlfa } from '../colores';
+import { Text, TextoAnimado } from '../Texto';
+import { L } from '../fuentes';
+import Tocable from '../Tocable';
 
 /**
  * LA ÚLTIMA PANTALLA DE LA ENTRADA (15/10): "Mira quién llega más lejos". Las
@@ -183,16 +186,16 @@ export default function RankingDeEntrada({ alSalir }: { alSalir: (destino: 'crea
             },
           ]}
         >
-          <Pressable testID="bienvenida-crear" disabled={paso < 4} onPress={() => alSalir('crear')} style={estilos.botonToque} accessibilityRole="button">
-            <Animated.Text numberOfLines={1} style={[estilos.botonTexto, { opacity: textoBoton }]}>
+          <Tocable testID="bienvenida-crear" disabled={paso < 4} onPress={() => alSalir('crear')} style={estilos.botonToque} accessibilityRole="button">
+            <TextoAnimado numberOfLines={1} style={[estilos.botonTexto, { opacity: textoBoton }]}>
               {T.bienvenida.crear}
-            </Animated.Text>
-          </Pressable>
+            </TextoAnimado>
+          </Tocable>
         </Animated.View>
         <Animated.View style={{ opacity: yaTengo }}>
-          <Pressable testID="bienvenida-entrar" disabled={paso < 4} onPress={() => alSalir('entrar')} hitSlop={8} style={estilos.enlace} accessibilityRole="button">
+          <Tocable testID="bienvenida-entrar" disabled={paso < 4} onPress={() => alSalir('entrar')} hitSlop={8} style={estilos.enlace} accessibilityRole="button">
             <Text style={estilos.enlaceTexto}>{T.bienvenida.entrar}</Text>
-          </Pressable>
+          </Tocable>
         </Animated.View>
       </View>
     </View>
@@ -203,12 +206,12 @@ const estilos = StyleSheet.create({
   centro: { flex: 1, justifyContent: 'center', paddingHorizontal: 28, gap: 30 },
   lista: { borderWidth: 1, borderColor: C.linea, borderRadius: 14, backgroundColor: conAlfa(C.hoja, 0.9), paddingVertical: 6, paddingHorizontal: 18 },
   fila: { position: 'absolute', left: 18, right: 18, top: 6, height: ALTO_FILA, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  linea: { position: 'absolute', top: 0, left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: C.linea },
+  linea: { position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: C.linea },
   puesto: { width: 16, color: C.sub, fontSize: 14 },
   avatar: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: C.lineaFuerte, alignItems: 'center', justifyContent: 'center' },
   inicial: { color: C.tinta, fontSize: 13 },
   nombre: { flex: 1, color: C.tinta, fontSize: 15 },
-  racha: { width: 30, textAlign: 'right', color: C.claro, fontSize: 17, fontVariant: ['tabular-nums'] },
+  racha: { width: 30, textAlign: 'right', color: C.claro, fontSize: 17, fontFamily: L.dato },
   titulo: { color: C.tinta, fontSize: 30, lineHeight: 36, fontWeight: '500' },
   luz: { position: 'absolute', alignSelf: 'center', width: 2, backgroundColor: C.claro },
   pie: { alignItems: 'center', paddingHorizontal: 28, paddingBottom: 50, minHeight: 140, justifyContent: 'flex-end' },

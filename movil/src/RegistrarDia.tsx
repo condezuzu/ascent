@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { supabase } from './supabase';
@@ -19,6 +19,9 @@ import { prepararFoto, prepararMiniatura } from './foto';
 import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
 import { FIJO } from './coloresFijos';
+import { Text } from './Texto';
+import FondoOctogonal from './FondoOctogonal';
+import Tocable from './Tocable';
 
 type Elegida = { uri: string; ancho: number; alto: number };
 
@@ -197,8 +200,12 @@ function RegistrarDia({
 
       {/* LA FOTO EN UNA TARJETA GRANDE (20/10): el mismo estilo que anotar el peso. */}
       <View style={estilos.tarjeta} testID="registrar-foto">
+        <FondoOctogonal relleno={FIJO.regla} borde={FIJO.linea} corte={14} />
         {foto ? (
-          <Image source={{ uri: foto.uri }} style={estilos.vista} resizeMode="cover" accessibilityIgnoresInvertColors />
+          <>
+            <Image source={{ uri: foto.uri }} style={estilos.vista} resizeMode="cover" accessibilityIgnoresInvertColors />
+            <FondoOctogonal relleno="none" borde={FIJO.linea} corte={14} tapar={FIJO.regla} />
+          </>
         ) : (
           <View style={estilos.puertas}>
             <Puerta icono="camara" texto={T.registrar.sacarFoto} alTocar={() => elegir('camara')} />
@@ -208,27 +215,28 @@ function RegistrarDia({
       </View>
       {foto && (
         <View style={estilos.chips}>
-          <Pressable style={estilos.chip} onPress={() => setTocado(!compartida)} testID="registrar-foto-quien">
+          <Tocable style={estilos.chip} onPress={() => setTocado(!compartida)} testID="registrar-foto-quien">
             <Text style={estilos.chipTexto}>{compartida ? T.registrar.laVenAmigos : T.registrar.soloLaVesVos}</Text>
-          </Pressable>
-          <Pressable style={estilos.chip} onPress={() => setFoto(null)}>
+          </Tocable>
+          <Tocable style={estilos.chip} onPress={() => setFoto(null)}>
             <Text style={estilos.chipApagado}>{T.registrar.quitarFoto}</Text>
-          </Pressable>
+          </Tocable>
         </View>
       )}
 
-      <Pressable
+      <Tocable
         style={[estilos.solido, (cargando || (yaEsta && !foto)) && estilos.apagado]}
         onPress={() => confirmar()}
         disabled={cargando || (yaEsta && !foto)}
         testID="registrar-confirmar"
       >
+        <FondoOctogonal relleno={FIJO.crema} luz={FIJO.crema} />
         {cargando ? (
           <ActivityIndicator color={FIJO.negro} />
         ) : (
           <Text style={estilos.solidoTexto}>{yaEsta ? T.general.guardar : T.inicio.registrarDia}</Text>
         )}
-      </Pressable>
+      </Tocable>
       {aviso !== '' && <Text style={[estilos.aviso, !!registradoAca && subioAca && estilos.avisoSubida]}>{aviso}</Text>}
       {error !== '' && <Text style={estilos.error}>{error}</Text>}
     </Hoja>
@@ -240,7 +248,7 @@ export default nuevaEnCadaApertura(RegistrarDia, (p) => p.visible);
 /** Sacar o elegir: el botón redondo de la hoja del peso, con su ícono y el texto abajo. */
 function Puerta({ icono, texto, alTocar }: { icono: 'camara' | 'galeria'; texto: string; alTocar: () => void }) {
   return (
-    <Pressable style={estilos.puerta} onPress={alTocar} accessibilityRole="button" testID={'registrar-foto-' + icono}>
+    <Tocable style={estilos.puerta} onPress={alTocar} accessibilityRole="button" testID={'registrar-foto-' + icono}>
       {({ pressed }) => (
         <>
           <View style={[estilos.redondo, pressed && estilos.redondoApretado]}>
@@ -262,14 +270,14 @@ function Puerta({ icono, texto, alTocar }: { icono: 'camara' | 'galeria'; texto:
           <Text style={estilos.puertaTexto}>{texto}</Text>
         </>
       )}
-    </Pressable>
+    </Tocable>
   );
 }
 
 const estilos = StyleSheet.create({
   titulo: { color: FIJO.tinta, fontSize: 15, fontWeight: '600', textAlign: 'center' },
   sub: { color: FIJO.sub, fontSize: 13, marginTop: 4, marginBottom: 16, textAlign: 'center' },
-  tarjeta: { width: '100%', aspectRatio: 4 / 5, maxHeight: 360, alignSelf: 'center', borderRadius: 22, overflow: 'hidden', backgroundColor: FIJO.regla, borderWidth: 1, borderColor: FIJO.linea, alignItems: 'center', justifyContent: 'center' },
+  tarjeta: { width: '100%', aspectRatio: 4 / 5, maxHeight: 360, alignSelf: 'center', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   vista: { width: '100%', height: '100%' },
   puertas: { flexDirection: 'row', gap: 36 },
   puerta: { alignItems: 'center', gap: 10 },
@@ -280,8 +288,8 @@ const estilos = StyleSheet.create({
   chip: { borderWidth: 1, borderColor: FIJO.raya, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14 },
   chipTexto: { color: FIJO.tinta, fontSize: 13 },
   chipApagado: { color: FIJO.sub, fontSize: 13 },
-  solido: { backgroundColor: FIJO.crema, borderRadius: 999, paddingVertical: 14, alignItems: 'center', marginTop: 18 },
-  apagado: { opacity: 0.5 },
+  solido: { paddingVertical: 14, alignItems: 'center', marginTop: 18 },
+  apagado: { opacity: FIJO.deshabilitado },
   solidoTexto: { color: FIJO.negro, fontSize: 15, fontWeight: '600' },
   aviso: { color: FIJO.sub, fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },
   // El aviso de subida de rango va encendido: es un premio, no un aviso más.

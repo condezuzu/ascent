@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { Ejercicio } from '@nucleo/tipos';
 import { GRUPOS_PROPIOS, ORDEN_ZONAS, buscarEjercicios, gruposDeZona, nombreDeGrupo, sinAcentos, zonaDeGrupo, type Zona } from '@nucleo/ejercicios';
 import { disponible } from '@nucleo/esquema';
@@ -9,13 +9,18 @@ import { yaEsta } from '@nucleo/yaEsta';
 import { T } from '@nucleo/textos';
 import Hoja from './Hoja';
 import { nuevaEnCadaApertura } from './hojaNueva';
-import { C } from './colores';
+import { C, DESHABILITADO, conTema } from './colores';
+import { useTema } from './useTema';
 import { supabase } from './supabase';
 import { leerRecordados, recordadosAlDia, type Recordados } from '@compartido/pesosRecordados';
 import { leerPerfilCache } from '@compartido/cache';
 import { claveDeEtiqueta } from '@nucleo/carga';
 import { pesoEnLaLista } from '@nucleo/peso';
 import GloboPrimeraVez from './GloboPrimeraVez';
+import { Text, TextInput } from './Texto';
+import { L } from './fuentes';
+import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * ELEGIR ENTRE CIEN EJERCICIOS, NAVEGANDO. El mismo árbol que la web
@@ -31,11 +36,12 @@ import GloboPrimeraVez from './GloboPrimeraVez';
  * no podía tocar "Press de banca" durante un minuto.
  */
 function Fila({ texto, extra, elegido, onPress }: { texto: string; extra?: string; elegido?: boolean; onPress: () => void }) {
+  useTema();
   return (
-    <Pressable style={estilos.fila} onPress={onPress} accessibilityRole="button">
+    <Tocable style={estilos.fila} onPress={onPress} accessibilityRole="button">
       <Text style={[estilos.filaTexto, elegido && estilos.elegido]} numberOfLines={1}>{texto}</Text>
       {extra !== undefined && <Text style={estilos.extra}>{extra}</Text>}
-    </Pressable>
+    </Tocable>
   );
 }
 
@@ -53,6 +59,7 @@ function SelectorEjercicio({
   alElegir: (id: string | null, mide?: 'series' | 'tiempo') => void;
   alCerrar: () => void;
 }) {
+  useTema();
   const actual = ejercicios.find((e) => e.id === valor) ?? null;
   const [zona, setZona] = useState<Zona | null>(null);
   const [grupo, setGrupo] = useState<string | null>(null);
@@ -153,9 +160,9 @@ function SelectorEjercicio({
     <Hoja visible={visible} alCerrar={alCerrar}>
       <View style={estilos.cabecera}>
         {zona && (
-          <Pressable onPress={volver} style={estilos.volver} accessibilityLabel={T.general.volver}>
+          <Tocable onPress={volver} style={estilos.volver} accessibilityLabel={T.general.volver}>
             <Text style={estilos.volverTexto}>←</Text>
-          </Pressable>
+          </Tocable>
         )}
         <Text style={estilos.titulo}>{titulo}</Text>
       </View>
@@ -198,9 +205,9 @@ function SelectorEjercicio({
           <Text style={estilos.rotulo}>{T.ejercicios.queMusculo}</Text>
           <View style={estilos.chips}>
             {GRUPOS_PROPIOS.map((g) => (
-              <Pressable key={g} style={[estilos.chip, creando.grupo === g && estilos.chipElegido]} onPress={() => setCreando({ ...creando, grupo: g })}>
+              <Tocable key={g} style={[estilos.chip, creando.grupo === g && estilos.chipElegido]} onPress={() => setCreando({ ...creando, grupo: g })}>
                 <Text style={[estilos.chipTexto, creando.grupo === g && estilos.elegido]}>{T.ejercicios.grupos[g] ?? g}</Text>
-              </Pressable>
+              </Tocable>
             ))}
           </View>
           {creando.grupo === 'cardio' && <Text style={estilos.nota}>{T.ejercicios.seMideEnMinutos}</Text>}
@@ -208,19 +215,19 @@ function SelectorEjercicio({
           {parecido && (
             <View testID="ya-esta">
               <Text style={estilos.yaEsta}>{T.ejercicios.yaEsta(parecido.nombre)}</Text>
-              <Pressable testID="ya-esta-usar" style={estilos.crear} onPress={() => elegir(parecido.id)}>
+              <Tocable testID="ya-esta-usar" style={estilos.crear} onPress={() => elegir(parecido.id)}>
                 <Text style={estilos.crearTexto}>{T.ejercicios.usarEse}</Text>
-              </Pressable>
+              </Tocable>
             </View>
           )}
-          <Pressable
+          <Tocable
             testID="crear-ejercicio-listo"
             style={[parecido ? estilos.crearIgual : estilos.crear, (!creando.grupo || creando.nombre.trim().length < 2) && estilos.apagado]}
             onPress={() => void crear()}
             disabled={!creando.grupo || creando.nombre.trim().length < 2}
           >
             <Text style={parecido ? estilos.crearIgualTexto : estilos.crearTexto}>{parecido ? T.ejercicios.crearIgual : T.ejercicios.crear}</Text>
-          </Pressable>
+          </Tocable>
         </View>
       )}
 
@@ -273,7 +280,7 @@ function SelectorEjercicio({
           .filter((e) => e.grupo === grupo)
           .map((e) => <Fila key={e.id} texto={e.nombre} extra={ultimos[e.id]} elegido={e.id === valor} onPress={() => elegir(e.id)} />)}
 
-      <Pressable
+      <Tocable
         style={estilos.cancelar}
         onPress={() => {
           setBusqueda('');
@@ -282,47 +289,47 @@ function SelectorEjercicio({
         }}
       >
         <Text style={estilos.cancelarTexto}>{T.general.cancelar}</Text>
-      </Pressable>
+      </Tocable>
     </Hoja>
   );
 }
 
 export default nuevaEnCadaApertura(SelectorEjercicio, (p) => p.visible);
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   cabecera: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   volver: { minWidth: 36, minHeight: 36, justifyContent: 'center' },
   volverTexto: { color: C.sub, fontSize: 20 },
   titulo: { color: C.tinta, fontSize: 20, fontWeight: '500' },
-  rotulo: { color: C.apagado, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', marginTop: 14, marginBottom: 2 },
+  rotulo: { ...R.etiqueta, marginTop: 14, marginBottom: 2  },
   separa: { height: 14 },
   fila: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     minHeight: 48,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     borderBottomColor: C.linea,
   },
   // `flexShrink`: con el peso al lado, un nombre largo se corta él y no empuja el número afuera.
   filaTexto: { color: C.sub, fontSize: 16, flexShrink: 1, paddingRight: 12 },
   elegido: { color: C.tinta, fontWeight: '600' },
   // Más claro que el nombre: el peso es lo que se viene a leer (10/10).
-  extra: { color: C.tinta, fontSize: 15, fontVariant: ['tabular-nums'] },
+  extra: { color: C.tinta, fontSize: 15, fontFamily: L.dato },
   cancelar: { paddingVertical: 16, alignItems: 'center', marginTop: 8 },
-  buscador: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 10, paddingHorizontal: 12, marginBottom: 8 },
+  buscador: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingHorizontal: 12, marginBottom: 8 },
   lupa: { color: C.sub, fontSize: 18 },
   buscar: { flex: 1, color: C.tinta, fontSize: 16, paddingVertical: 10 },
   nota: { color: C.apagado, fontSize: 13, marginVertical: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 6 },
-  chip: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
+  chip: { borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
   chipElegido: { borderColor: C.tinta },
   chipTexto: { color: C.sub, fontSize: 14 },
-  crear: { alignSelf: 'flex-start', borderWidth: StyleSheet.hairlineWidth, borderColor: C.tinta, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 18, marginTop: 12 },
+  crear: { alignSelf: 'flex-start', borderWidth: 1, borderColor: C.tinta, borderRadius: 999, paddingVertical: 10, paddingHorizontal: 18, marginTop: 12 },
   crearTexto: { color: C.tinta, fontSize: 15 },
   yaEsta: { color: C.tinta, fontSize: 14, marginTop: 14 },
   crearIgual: { alignSelf: 'flex-start', paddingVertical: 10, marginTop: 6 },
   crearIgualTexto: { color: C.sub, fontSize: 14 },
-  apagado: { opacity: 0.4 },
+  apagado: { opacity: DESHABILITADO },
   cancelarTexto: { color: C.sub, fontSize: 14 },
-});
+}));

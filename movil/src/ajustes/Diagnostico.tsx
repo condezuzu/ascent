@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { subioLoDeLaSesion } from '@compartido/antesDePreguntar';
-import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, Share, StyleSheet, View } from 'react-native';
 import { hoyISO } from '@nucleo/fechas';
 import { numeroDeRango } from '@nucleo/rangos';
 import { mirarElGimnasio } from '@compartido/gimnasio';
@@ -12,13 +12,17 @@ import { T } from '@nucleo/textos';
 import type { OrigenSesion, Perfil } from '@nucleo/tipos';
 import { supabase } from '../supabase';
 import SubidaRango from '../SubidaRango';
-import { C } from '../colores';
+import { C, conTema } from '../colores';
+import { useTema } from '../useTema';
 import { comoLeyoLosPasos } from '../plataforma/salud';
 import { comoAnduvoElMotor, type EstadoDelMotor } from '../estadoDelMotor';
 import { comoEstanLosAvisos, probarAvisoRemoto } from '../plataforma/avisos';
 import { medirCuadros, type Medicion } from '../medirCuadros';
 import { CLAVE_HUD, HUD_CAMBIO } from '../HudDiagnostico';
 import { eventos } from '@compartido/eventos';
+import { Text, TextInput } from '../Texto';
+import { R } from '../roles';
+import Tocable from '../Tocable';
 
 /**
  * QUÉ ESTÁ VIENDO LA APP, Y QUÉ FUE HACIENDO.
@@ -52,6 +56,7 @@ import { eventos } from '@compartido/eventos';
  *    actualizaciones por el aire cortadas, por un botón de copiar.
  */
 export default function Diagnostico({ perfil }: { perfil: Perfil }) {
+  useTema();
   const [abierto, setAbierto] = useState(false);
   const [dia, setDia] = useState<{ origen: string } | null>(null);
   const [sinDia, setSinDia] = useState(false);
@@ -227,14 +232,14 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
 
   return (
     <View style={estilos.seccion}>
-      <Pressable
+      <Tocable
         style={estilos.plegable}
         onPress={() => setAbierto(!abierto)}
         accessibilityState={{ expanded: abierto }}
       >
         <Text style={estilos.titulo}>{T.ajustes.diagnostico}</Text>
         <Text style={estilos.signo}>{abierto ? '−' : '+'}</Text>
-      </Pressable>
+      </Tocable>
 
       {abierto && (
         <>
@@ -263,7 +268,7 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
           ))}
 
           {pendientes > 0 && (
-            <Pressable
+            <Tocable
               style={estilos.boton}
               onPress={async () => {
                 await vaciar(supabase);
@@ -271,14 +276,14 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
               }}
             >
               <Text style={estilos.botonTexto}>{T.ajustes.diagVaciarCola}</Text>
-            </Pressable>
+            </Tocable>
           )}
 
-          <Pressable style={estilos.boton} onPress={mirarAhora} disabled={mirando}>
+          <Tocable style={estilos.boton} onPress={mirarAhora} disabled={mirando}>
             <Text style={estilos.botonTexto}>
               {mirando ? T.ajustes.gimnasioBuscando : T.ajustes.diagMirarAhora}
             </Text>
-          </Pressable>
+          </Tocable>
           <Text style={estilos.nota}>{T.ajustes.diagMirarNota}</Text>
 
           {/* VER LA SUBIDA DE RANGO SIN ESPERAR AL DÍA 11. Es lo único de la
@@ -286,18 +291,18 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
               no sirve para ajustar una animación: mirarla, cambiar algo y
               volver a mirarla tomaría un mes. Muestra el rango en el que
               estás como si acabaras de llegar. */}
-          <Pressable style={estilos.boton} onPress={() => setVerSubida(true)}>
+          <Tocable style={estilos.boton} onPress={() => setVerSubida(true)}>
             <Text style={estilos.botonTexto}>{T.ajustes.diagVerSubida}</Text>
-          </Pressable>
+          </Tocable>
 
-          <Pressable style={estilos.boton} onPress={revisarZona}>
+          <Tocable style={estilos.boton} onPress={revisarZona}>
             <Text style={estilos.botonTexto}>{T.ajustes.diagRevisarZona}</Text>
-          </Pressable>
+          </Tocable>
           <Text style={estilos.nota}>{T.ajustes.diagZonaNota}</Text>
 
-          <Pressable testID="diag-aviso-remoto" style={estilos.boton} onPress={probarRemoto} disabled={remoto === 'pidiendo'}>
+          <Tocable testID="diag-aviso-remoto" style={estilos.boton} onPress={probarRemoto} disabled={remoto === 'pidiendo'}>
             <Text style={estilos.botonTexto}>{remoto === 'pidiendo' ? T.ajustes.diagRemotoPidiendo : T.ajustes.diagRemoto}</Text>
-          </Pressable>
+          </Tocable>
           <Text style={estilos.nota}>{T.ajustes.diagRemotoNota}</Text>
           {remoto && remoto !== 'pidiendo' && (
             <>
@@ -321,7 +326,7 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
               aprieta, se sale de Ajustes y se hace el gesto que se quiere
               revisar. El resultado va a la bitácora de acá abajo, que es lo
               que ya se puede compartir. */}
-          <Pressable
+          <Tocable
             style={estilos.boton}
             onPress={async () => {
               setMidiendoCuadros(true);
@@ -336,7 +341,7 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
             <Text style={estilos.botonTexto}>
               {midiendoCuadros ? T.ajustes.diagCuadrosMidiendo : T.ajustes.diagCuadros}
             </Text>
-          </Pressable>
+          </Tocable>
           <Text style={estilos.nota}>{T.ajustes.diagCuadrosNota}</Text>
           {cuadros && (
             <>
@@ -355,11 +360,11 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
               última consulta a Salud, SIEMPRE a la vista mientras se usa la app.
               Es lo que hace falta para cazar el lag en el gimnasio: entrar a
               Stats y ver si el tirón coincide con una lectura de HealthKit. */}
-          <Pressable style={estilos.boton} onPress={cambiarHud}>
+          <Tocable style={estilos.boton} onPress={cambiarHud}>
             <Text style={estilos.botonTexto}>
               {hud ? 'Apagar el medidor en pantalla' : 'Prender el medidor en pantalla'}
             </Text>
-          </Pressable>
+          </Tocable>
           <Text style={estilos.nota}>
             Muestra cuadros por segundo, el peor cuadro del último medio segundo y
             la última consulta a Salud (qué fue y cuánto tardó). Andá a Stats y
@@ -380,10 +385,10 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
           </ScrollView>
 
           <View style={estilos.acciones}>
-            <Pressable onPress={cargar} hitSlop={8}>
+            <Tocable onPress={cargar} hitSlop={8}>
               <Text style={estilos.enlace}>{T.ajustes.diagRefrescar}</Text>
-            </Pressable>
-            <Pressable
+            </Tocable>
+            <Tocable
               onPress={() => {
                 // Sin bitácora no se abre nada: la hoja de compartir vacía es
                 // peor que un botón que no responde.
@@ -392,8 +397,8 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
               hitSlop={8}
             >
               <Text style={estilos.enlace}>{T.ajustes.diagCompartir}</Text>
-            </Pressable>
-            <Pressable
+            </Tocable>
+            <Tocable
               onPress={async () => {
                 await borrarBitacora();
                 cargar();
@@ -401,7 +406,7 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
               hitSlop={8}
             >
               <Text style={estilos.enlace}>{T.ajustes.diagBorrar}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         </>
       )}
@@ -418,18 +423,18 @@ export default function Diagnostico({ perfil }: { perfil: Perfil }) {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   seccion: { marginTop: 34 },
   plegable: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },
-  titulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
+  titulo: { ...R.etiqueta },
   signo: { color: C.sub, fontSize: 18 },
   fila: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 5 },
   que: { color: C.apagado, fontSize: 12 },
   dice: { color: C.sub, fontSize: 12, flexShrink: 1, textAlign: 'right' },
   boton: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 1,
     paddingVertical: 12,
     alignItems: 'center',
     marginTop: 12,
@@ -439,9 +444,9 @@ const estilos = StyleSheet.create({
   cuadro: {
     maxHeight: 220,
     marginTop: 14,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.linea,
-    borderRadius: 10,
+    borderRadius: 1,
     backgroundColor: C.hoja,
   },
   // Monoespaciada: son pares de dato y valor, y alineados se leen de un
@@ -449,4 +454,4 @@ const estilos = StyleSheet.create({
   bitacora: { color: C.sub, fontSize: 11, lineHeight: 16, padding: 10, fontFamily: 'Courier' },
   acciones: { flexDirection: 'row', gap: 18, marginTop: 12 },
   enlace: { color: C.sub, fontSize: 13 },
-});
+}));

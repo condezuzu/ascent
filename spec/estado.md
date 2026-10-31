@@ -44,6 +44,23 @@ solo el catálogo fijo, no los ejercicios propios de los usuarios (con siete pro
 nuevos daba una falla falsa). No toca datos ni la app; hasta pegarla, `test:conexion`
 marca a producción una atrás.
 
+## La vuelta visual de la nativa (30 y 31/10, por OTA, sin build)
+
+Las seis técnicas de la sección 11 de la galería, cada una con su commit y su sonda en
+`test:real`: **contraste** (`probar-contraste`, piso de 4,5:1 contra el motor de verdad),
+**rango** (`probar-rango`, una sola paleta: `C` con getters, `conTema` y `useTema`),
+**letras** (`probar-letras`, `Texto.tsx`, `fuentes.ts`), **forma** (`probar-forma`,
+`roles.tsx`, octágono o píldora), **profundidad** (`probar-profundidad`, luz de color) y
+**movimiento** (`probar-movimiento`, `movimiento.ts`). Sin Reanimated: lo que lo necesita
+(que las filas se reacomoden solas, arrastrar una hoja con el dedo) queda para la 1.2.0.
+
+Al agregar un componente con un color teñido: su hoja va en `conTema` y el componente llama
+a `useTema`, o no sigue al rango. Lo pinea la sección 323 de `test:db`. El widget de la
+pantalla bloqueada sigue con `FIJO`: es Swift, necesita build.
+
+**`expo-font` no va en `package.json`**: está en el binario anidado adentro de `expo`, y
+sumarlo movería su ruta de autolinking. Se resuelve por alias en `metro.config.js`.
+
 ## Lo que cambió el 15/10 (OTA a `telefono` esa noche)
 
 - **La entrada nueva** en las dos apps: cuatro pantallas (los pesos, el día que

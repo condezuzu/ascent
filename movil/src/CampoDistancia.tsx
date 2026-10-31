@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { distanciaCorta, kmEscritos, type UnidadDistancia } from '@nucleo/distancia';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text, TextInput } from './Texto';
+import { L } from './fuentes';
 
 /**
  * LA DISTANCIA DE LA VUELTA DE CARDIO (21/10): la caja de `CampoReps`, con decimales.
@@ -20,6 +23,7 @@ export default function CampoDistancia({
   unidad: UnidadDistancia;
   alCambiar: (km: number | null) => void;
 }) {
+  useTema();
   const mostrar = (v: number | undefined) => (v !== undefined ? distanciaCorta(v, unidad) : '');
   const [texto, setTexto] = useState(mostrar(km));
   const tecleando = useRef(false);
@@ -56,7 +60,7 @@ export default function CampoDistancia({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   caja: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -65,6 +69,6 @@ const estilos = StyleSheet.create({
     borderBottomColor: C.lineaFuerte,
     paddingVertical: 2,
   },
-  input: { color: C.tinta, fontSize: 22, width: 66, textAlign: 'right', fontVariant: ['tabular-nums'], padding: 0 },
+  input: { color: C.tinta, fontSize: 22, width: 66, textAlign: 'right', fontFamily: L.dato, padding: 0 },
   unidad: { color: C.apagado, fontSize: 12 },
-});
+}));

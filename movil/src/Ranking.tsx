@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { leerViva, suscribirViva } from '@compartido/sesionViva';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
@@ -35,7 +35,8 @@ import GloboPrimeraVez from './GloboPrimeraVez';
 import { cargarMedallasDeMuchos } from '@compartido/perfil';
 import { leerPerfilCache } from '@compartido/cache';
 import type { Medalla } from '@nucleo/medallas';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 import { useRecargarAlVolver } from './irAPestana';
 import InvitarConLink from './InvitarConLink';
 import Juntos from './Juntos';
@@ -47,6 +48,9 @@ import { disponible } from '@nucleo/esquema';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import { useArriba } from './zonaSegura';
 import Tocable from './Tocable';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import { R } from './roles';
 
 /**
  * RANKING — tanda 4.
@@ -63,6 +67,7 @@ import Tocable from './Tocable';
  * sino porque no había adónde ir.
  */
 export default function Ranking({ alSalir }: { alSalir: () => void }) {
+  useTema();
   const router = useRouter();
   const arriba = useArriba(64);
   // LA PRIMERA VEZ QUE SE ENTRA A RANKING se pide dejar avisar (si nunca se pidió):
@@ -275,22 +280,22 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                 primero que dice algo es en qué anda. El nombre lleva al perfil
                 y "Agregar" queda aparte: mirar antes que agregar. */}
             <Insignia rango={numeroDeRango(u.racha_actual)} tam={26} />
-            <Pressable style={{ flex: 1 }} onPress={() => router.push(`/perfil/${u.id}`)} accessibilityRole="button">
+            <Tocable style={{ flex: 1 }} onPress={() => router.push(`/perfil/${u.id}`)} accessibilityRole="button">
               <Text style={estilos.nombre}>{u.username}</Text>
-            </Pressable>
+            </Tocable>
             {/* Si esa persona YA te mandó un pedido, "Agregar" rebotaba en
                 silencio contra el suyo: acá se acepta. Y si ya es tu amiga
                 —la acabás de aceptar— no se ofrece nada: ver `accionDeBusqueda`. */}
             {accion.que === 'aceptar' ? (
-              <Pressable onPress={() => aceptar(accion.pedido)} hitSlop={8}>
+              <Tocable onPress={() => aceptar(accion.pedido)} hitSlop={8}>
                 <Text style={estilos.accion}>{T.social.aceptar}</Text>
-              </Pressable>
+              </Tocable>
             ) : accion.que === 'enviado' ? (
               <Text style={estilos.dato}>{T.social.pedidoEnviado}</Text>
             ) : accion.que === 'agregar' ? (
-              <Pressable onPress={() => agregar(u.id)} hitSlop={8}>
+              <Tocable onPress={() => agregar(u.id)} hitSlop={8}>
                 <Text style={estilos.accion}>{T.social.agregar}</Text>
-              </Pressable>
+              </Tocable>
             ) : null}
           </View>
           );
@@ -318,9 +323,9 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
         {noCargo && (
           <View style={estilos.tarjeta}>
             <Text style={estilos.texto}>{T.inicio.noCargo}</Text>
-            <Pressable style={estilos.botonFantasma} onPress={cargar}>
+            <Tocable style={estilos.botonFantasma} onPress={cargar}>
               <Text style={estilos.textoBoton}>{T.inicio.reintentar}</Text>
-            </Pressable>
+            </Tocable>
           </View>
         )}
 
@@ -370,7 +375,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
               </Surgir>
             ))}
             {amigos.length > RANKING_TOPE && (
-              <Pressable
+              <Tocable
                 testID="ranking-ver-mas"
                 onPress={() => setVerTodos((v) => !v)}
                 hitSlop={12}
@@ -383,7 +388,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                 <Svg width={22} height={22} viewBox="0 0 24 24" style={verTodos ? estilos.flechaArriba : undefined}>
                   <Path d="M6 9l6 6 6-6" fill="none" stroke={C.sub} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
                 </Svg>
-              </Pressable>
+              </Tocable>
             )}
           </View>
         ) : (
@@ -449,12 +454,12 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
                 <View style={estilos.fila} key={s.id}>
                   <Avatar url={s.de.avatar_url} nombre={s.de.username} />
                   <Text style={estilos.nombre}>{s.de.username}</Text>
-                  <Pressable onPress={() => aceptar(s.id)} hitSlop={8}>
+                  <Tocable onPress={() => aceptar(s.id)} hitSlop={8}>
                     <Text style={estilos.accion}>{T.social.aceptar}</Text>
-                  </Pressable>
-                  <Pressable onPress={() => rechazar(s.id)} hitSlop={8}>
+                  </Tocable>
+                  <Tocable onPress={() => rechazar(s.id)} hitSlop={8}>
                     <Text style={[estilos.accion, { color: C.apagado }]}>{T.social.no}</Text>
-                  </Pressable>
+                  </Tocable>
                 </View>
               ))}
             </View>
@@ -485,11 +490,11 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
               </Pressable>
             ))}
             {datos!.actividad.length > ACTIVIDAD_TOPE && (
-              <Pressable onPress={() => setVerTodaLaActividad((v) => !v)} hitSlop={8} style={estilos.verMas}>
+              <Tocable onPress={() => setVerTodaLaActividad((v) => !v)} hitSlop={8} style={estilos.verMas}>
                 <Text style={estilos.verMasTexto}>
                   {verTodaLaActividad ? T.social.actividadMenos : T.social.actividadMas(datos!.actividad.length - ACTIVIDAD_TOPE)}
                 </Text>
-              </Pressable>
+              </Tocable>
             )}
           </View>
         )}
@@ -505,22 +510,16 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Transparente: el fondo lo dibuja `FondoRaiz`.
   raiz: { flex: 1 },
   pantalla: { flexGrow: 1, padding: 24, paddingTop: 64, paddingBottom: 40 },
   titulo: { color: C.tinta, fontSize: 22, marginBottom: 20 },
   tarjeta: {
-    backgroundColor: 'rgba(11,13,19,0.72)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
     marginBottom: 16,
   },
   ranking: { position: 'relative', marginBottom: 16 },
-  lista: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea, paddingVertical: 4 },
+  lista: { borderTopWidth: 1, borderColor: C.linea, paddingVertical: 4 },
   // El hundido al tocar: sin eso, una fila que navega se ve igual que una
   // que no hace nada, y la única forma de saberlo es tocarla.
   filaTocada: { opacity: 0.55 },
@@ -533,18 +532,18 @@ const estilos = StyleSheet.create({
   },
   // Sin flex: las medallas van pegadas al nombre (14/10); uno largo las baja de renglón.
   nombre: { flexShrink: 1, color: C.tinta, fontSize: 15 },
-  dato: { color: C.sub, fontSize: 14, fontVariant: ['tabular-nums'] },
+  dato: { color: C.sub, fontSize: 14, fontFamily: L.dato },
   // La racha de hoy, sola y apartada a la derecha: lo de al lado del nombre son logros.
-  racha: { color: C.tinta, fontSize: 16, minWidth: 34, textAlign: 'right', marginLeft: 14 },
+  racha: { color: C.tinta, fontSize: 16, minWidth: 34, textAlign: 'right', marginLeft: 14, fontFamily: L.dato },
   filaAdentro: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  unirse: { borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14 },
+  unirse: { borderWidth: 1, borderColor: C.lineaFuerte, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14 },
   unirseTexto: { color: C.tinta, fontSize: 13 },
   filaConAviso: { flexWrap: 'wrap' },
   noSePudo: { color: C.sub, fontSize: 13, lineHeight: 18, flexBasis: '100%', paddingTop: 2, paddingBottom: 6 },
   accion: { color: C.claro, fontSize: 14 },
   texto: { color: C.sub, fontSize: 14, marginVertical: 10 },
   botonFantasma: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 10,
@@ -555,7 +554,7 @@ const estilos = StyleSheet.create({
   vacio: { alignItems: 'center', paddingVertical: 36, gap: 6 },
   vacioTexto: { color: C.sub, fontSize: 14, textAlign: 'center' },
   seccion: { marginTop: 24 },
-  rotulo: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 },
+  rotulo: { ...R.etiqueta, marginBottom: 8  },
   verMas: { paddingVertical: 10, alignItems: 'center' },
   verMasTexto: { color: C.sub, fontSize: 13 },
   flechaArriba: { transform: [{ rotate: '180deg' }] },
@@ -563,15 +562,15 @@ const estilos = StyleSheet.create({
   miniatura: {
     width: 38,
     height: 38,
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 1,
+    borderWidth: 1,
     borderColor: C.linea,
   },
   buscador: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.linea,
     borderRadius: 999,
     paddingHorizontal: 12,
@@ -579,4 +578,4 @@ const estilos = StyleSheet.create({
   },
   lupa: { color: C.apagado, fontSize: 15 },
   campo: { flex: 1, color: C.tinta, fontSize: 14, paddingVertical: 6 },
-});
+}));

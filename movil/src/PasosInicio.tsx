@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState, memo } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { T } from '@nucleo/textos';
 import { CLAVE_FESTEJO_PASOS, hayQueFestejar } from '@nucleo/pasos';
 import { hoyISO } from '@nucleo/fechas';
 import { plataforma } from '@plataforma';
 import { HojaDeMeta } from './GraficoPasos';
 import { C, conAlfa } from './colores';
+import { Text, TextoAnimado } from './Texto';
+import { L } from './fuentes';
+import { LLEGA, SE_VA } from './movimiento';
+import Tocable from './Tocable';
 
 /**
  * LOS PASOS DE HOY, CON BARRA (5.1).
@@ -49,7 +53,7 @@ function PasosInicio({
     Animated.timing(avance, {
       toValue: pct,
       duration: 700,
-      easing: Easing.out(Easing.cubic),
+      easing: LLEGA,
       useNativeDriver: false,
     }).start();
   }, [pct, avance]);
@@ -58,8 +62,8 @@ function PasosInicio({
   useEffect(() => {
     if (llego && !llegoAntes.current) {
       Animated.sequence([
-        Animated.timing(latido, { toValue: 1, duration: 260, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        Animated.timing(latido, { toValue: 0, duration: 900, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        Animated.timing(latido, { toValue: 1, duration: 260, easing: LLEGA, useNativeDriver: true }),
+        Animated.timing(latido, { toValue: 0, duration: 900, easing: SE_VA, useNativeDriver: true }),
       ]).start();
     }
     llegoAntes.current = llego;
@@ -79,8 +83,8 @@ function PasosInicio({
       setFestejando(true);
       plataforma.haptica.pulso();
       const pulso = (a: Animated.Value, alto: number) => [
-        Animated.timing(a, { toValue: alto, duration: 280, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        Animated.timing(a, { toValue: 0, duration: 700, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        Animated.timing(a, { toValue: alto, duration: 280, easing: LLEGA, useNativeDriver: true }),
+        Animated.timing(a, { toValue: 0, duration: 700, easing: SE_VA, useNativeDriver: true }),
       ];
       Animated.parallel([Animated.sequence([...pulso(latido, 1), ...pulso(latido, 1)]), Animated.sequence(pulso(crece, 1))]).start();
       setTimeout(() => vivo && setFestejando(false), 3200);
@@ -100,7 +104,7 @@ function PasosInicio({
 
   return (
     <>
-    <Pressable
+    <Tocable
       testID={compacto ? 'pasos-en-sesion' : 'pasos-de-hoy'}
       style={[estilos.raiz, compacto && estilos.raizCompacta]}
       // La meta se cambia acá mismo (vuelta 7): mandaba a Ajustes, donde no estaba.
@@ -108,13 +112,13 @@ function PasosInicio({
       accessibilityHint={compacto ? undefined : T.inicio.pasosCambiarMeta}
     >
       <View style={estilos.fila}>
-        <Animated.Text style={[estilos.numero, { transform: [{ scale: escalaNumero }] }]}>
+        <TextoAnimado style={[estilos.numero, { transform: [{ scale: escalaNumero }] }]}>
           {pasos.toLocaleString(T.general.locale)} <Text style={estilos.unidad}>{T.inicio.pasosUnidad}</Text>
-        </Animated.Text>
+        </TextoAnimado>
         {llego ? (
-          <Animated.Text testID={festejando ? 'pasos-festejo' : undefined} style={[estilos.meta, { color: acento, transform: [{ scale: escalaLatido }] }]}>
+          <TextoAnimado testID={festejando ? 'pasos-festejo' : undefined} style={[estilos.meta, { color: acento, transform: [{ scale: escalaLatido }] }]}>
             {festejando ? T.inicio.pasosFestejo : T.inicio.pasosMetaLlego}
-          </Animated.Text>
+          </TextoAnimado>
         ) : (
           <Text style={estilos.meta}>{T.inicio.pasosMetaChica(meta.toLocaleString(T.general.locale))}</Text>
         )}
@@ -129,7 +133,7 @@ function PasosInicio({
         />
       </View>
       )}
-    </Pressable>
+    </Tocable>
     <HojaDeMeta visible={cambiandoMeta} alCerrar={() => setCambiandoMeta(false)} alCambiar={alCambiarMeta} />
     </>
   );
@@ -140,9 +144,9 @@ const estilos = StyleSheet.create({
   raizCompacta: { marginTop: 8, marginBottom: 2 },
   fila: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   // El origen del crecimiento a la izquierda: así crece desde donde empieza el número.
-  numero: { color: C.tinta, fontSize: 15, fontVariant: ['tabular-nums'], transformOrigin: 'left' },
+  numero: { color: C.tinta, fontSize: 15, fontFamily: L.dato, transformOrigin: 'left' },
   unidad: { color: C.sub, fontSize: 13 },
-  meta: { color: C.apagado, fontSize: 12, fontVariant: ['tabular-nums'] },
+  meta: { color: C.apagado, fontSize: 12, fontFamily: L.dato },
   pista: { height: 6, borderRadius: 999, backgroundColor: conAlfa(C.tinta, 0.08), overflow: 'hidden' },
   relleno: { height: '100%', borderRadius: 999 },
   brillo: { ...StyleSheet.absoluteFillObject, borderRadius: 999 },

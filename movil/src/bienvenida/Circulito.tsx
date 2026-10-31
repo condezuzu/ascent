@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { T } from '@nucleo/textos';
 import { C, conAlfa } from '../colores';
+import Tocable from '../Tocable';
 
 /** Lo que tarda en cargar antes de dejar pasar. */
 export const CARGA_MS = 1500;
@@ -34,7 +35,7 @@ export default function Circulito({ clave, alPasar }: { clave: string; alPasar: 
     return () => cancelAnimationFrame(cuadro);
   }, [clave]);
   return (
-    <Pressable
+    <Tocable
       testID="bienvenida-siguiente"
       onPress={() => listo && alPasar()}
       disabled={!listo}
@@ -61,7 +62,7 @@ export default function Circulito({ clave, alPasar }: { clave: string; alPasar: 
         />
         <Path d="M25 21l8 8-8 8" fill="none" stroke={C.tinta} strokeOpacity={listo ? 1 : 0.25} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
       </Svg>
-    </Pressable>
+    </Tocable>
   );
 }
 

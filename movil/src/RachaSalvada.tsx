@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { DIAS_SEMANA, deISO, fechaLinda, fechasLindas } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
-import { C } from './colores';
+import { C, conAlfa, luz } from './colores';
+import { FIJO } from './coloresFijos';
 import DiaDeLaTira from './DiaDeLaTira';
 import Estrella from './Estrella';
 import PuntoDelDia, { type EstadoDelDia, type FrioDelDia } from './PuntoDelDia';
+import { Text, TextoAnimado } from './Texto';
+import { L } from './fuentes';
+import FondoOctogonal from './FondoOctogonal';
+import { LLEGA } from './movimiento';
+import Tocable from './Tocable';
 
 /**
  * EL AVISO DE LA VIDA, en nativo (rehecho el 19/10, con lo aprobado en la galería).
@@ -41,8 +47,8 @@ function VidaQueTitila({ viva, indice }: { viva: boolean; indice: number }) {
     if (!viva) return;
     const vuelta = Animated.loop(
       Animated.sequence([
-        Animated.timing(t, { toValue: 1, duration: CICLO_TITILEO_MS / 2, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(t, { toValue: 0, duration: CICLO_TITILEO_MS / 2, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(t, { toValue: 1, duration: CICLO_TITILEO_MS / 2, easing: Easing.inOut(Easing.quad), useNativeDriver: true, isInteraction: false }),
+        Animated.timing(t, { toValue: 0, duration: CICLO_TITILEO_MS / 2, easing: Easing.inOut(Easing.quad), useNativeDriver: true, isInteraction: false }),
       ])
     );
     const espera = setTimeout(() => vuelta.start(), indice * (CICLO_TITILEO_MS / 3));
@@ -137,7 +143,7 @@ export default function RachaSalvada({
     const desde = await medirEnLaRaiz(estrellaDelBoton.current);
     const hasta = centroDelDia(ultimo);
     // 1. El texto se comprime en la estrella, que brilla.
-    await new Promise<void>((ok) => Animated.timing(comprime, { toValue: 1, duration: COMPRIME_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(() => ok()));
+    await new Promise<void>((ok) => Animated.timing(comprime, { toValue: 1, duration: COMPRIME_MS, easing: LLEGA, useNativeDriver: true }).start(() => ok()));
     // 2. Salta al día, en arco; el cuadro se va.
     if (desde && hasta) {
       setVuelo({ desde, hasta });
@@ -151,7 +157,7 @@ export default function RachaSalvada({
     // 3. Queda plantada, con un anillo de luz.
     setPlantada(true);
     anillo.setValue(0);
-    await new Promise<void>((ok) => Animated.timing(anillo, { toValue: 1, duration: PLANTA_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(() => ok()));
+    await new Promise<void>((ok) => Animated.timing(anillo, { toValue: 1, duration: PLANTA_MS, easing: LLEGA, useNativeDriver: true }).start(() => ok()));
     // 4. Se congela, y sale el globito.
     setHelada(true);
     plataforma.haptica.pulso();
@@ -234,6 +240,7 @@ export default function RachaSalvada({
               </View>
 
               <Animated.View style={[estilos.caja, { opacity: caja }]} testID="vida-cuadro" pointerEvents={fase === 'aviso' ? 'auto' : 'none'}>
+                <FondoOctogonal relleno={C.hoja} borde={FIJO.raya} corte={14} luz={C.crema} />
                 {cola && tira && <View pointerEvents="none" style={[estilos.cola, { left: cola.x - tira.x - 7 }]} />}
                 <View style={estilos.emblema} pointerEvents="none" testID="vida-emblema">
                   <Estrella tam={18} />
@@ -242,19 +249,19 @@ export default function RachaSalvada({
                 {fallo && <Text style={estilos.fallo}>{fallo === 'guardar' ? T.impulso.salvada.noSeGuardo : T.impulso.salvada.noSeCorrigio}</Text>}
                 <View style={estilos.botones}>
                   <View style={estilos.columna}>
-                    <Pressable testID="vida-usar" style={[estilos.boton, estilos.usar]} onPress={() => void usar()} disabled={ocupado} accessibilityRole="button" accessibilityLabel={T.impulso.salvada.usarVida}>
+                    <Tocable testID="vida-usar" style={[estilos.boton, estilos.usar]} onPress={() => void usar()} disabled={ocupado} accessibilityRole="button" accessibilityLabel={T.impulso.salvada.usarVida}>
                       <Animated.View ref={estrellaDelBoton} collapsable={false} style={{ transform: [{ scale: comprime.interpolate({ inputRange: [0, 1], outputRange: [1, 1.5] }) }], opacity: vuelo || plantada ? 0 : 1 }}>
                         <Estrella tam={15} modo="oscura" />
                       </Animated.View>
-                      <Animated.Text style={[estilos.usarTexto, { opacity: comprime.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }), transform: [{ translateX: comprime.interpolate({ inputRange: [0, 1], outputRange: [0, -14] }) }, { scaleX: comprime.interpolate({ inputRange: [0, 1], outputRange: [1, 0.3] }) }] }]}>
+                      <TextoAnimado style={[estilos.usarTexto, { opacity: comprime.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }), transform: [{ translateX: comprime.interpolate({ inputRange: [0, 1], outputRange: [0, -14] }) }, { scaleX: comprime.interpolate({ inputRange: [0, 1], outputRange: [1, 0.3] }) }] }]}>
                         {T.impulso.salvada.usarVida}
-                      </Animated.Text>
-                    </Pressable>
+                      </TextoAnimado>
+                    </Tocable>
                   </View>
                   <View style={estilos.columna}>
-                    <Pressable testID="vida-guardar" style={[estilos.boton, estilos.guardar]} onPress={() => void guardar()} disabled={ocupado} accessibilityRole="button">
+                    <Tocable testID="vida-guardar" style={[estilos.boton, estilos.guardar]} onPress={() => void guardar()} disabled={ocupado} accessibilityRole="button">
                       <Text style={estilos.guardarTexto}>{fase === 'guardando' ? T.sesion.guardando : T.impulso.salvada.guardarVida}</Text>
-                    </Pressable>
+                    </Tocable>
                     <Text style={estilos.chico}>{T.impulso.salvada.bajaDiez}</Text>
                   </View>
                 </View>
@@ -265,6 +272,7 @@ export default function RachaSalvada({
 
               {fase === 'helada' && cola && (
                 <Animated.View testID="vida-globito" style={[estilos.globito, { top: (tira?.y ?? 0) + PUNTO + 30, opacity: globito }]}>
+                  <FondoOctogonal relleno={C.globo} borde={C.bordeGlobo} corte={10} />
                   <View style={[estilos.globitoCola, { left: Math.max(14, cola.x - 6) }]} />
                   <Text style={estilos.globitoTexto}>{T.impulso.salvada.vidaGastada}</Text>
                 </Animated.View>
@@ -292,44 +300,44 @@ export default function RachaSalvada({
         </View>
 
         {(cerrada || fase === 'helada') && (
-          <Pressable testID="vida-listo" style={[estilos.boton, estilos.usar, estilos.listo]} onPress={alCerrar} accessibilityRole="button">
+          <Tocable testID="vida-listo" style={[estilos.boton, estilos.usar, estilos.listo]} onPress={alCerrar} accessibilityRole="button">
             <Text style={estilos.usarTexto}>{fase === 'guardada' ? T.general.entendido : T.impulso.salvada.listo}</Text>
-          </Pressable>
+          </Tocable>
         )}
       </View>
     </Modal>
   );
 }
 
-const sombra = { shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4 };
+const sombra = luz(C.crema, 0.22, 10);
 
 const estilos = StyleSheet.create({
-  fondo: { flex: 1, backgroundColor: 'rgba(5,6,10,0.96)', paddingHorizontal: 24, paddingTop: 110, paddingBottom: 40, justifyContent: 'space-between' },
+  fondo: { flex: 1, backgroundColor: conAlfa(C.negro, 0.96), paddingHorizontal: 24, paddingTop: 110, paddingBottom: 40, justifyContent: 'space-between' },
   raiz: { flex: 1 },
   titulo: { color: C.tinta, fontSize: 30, fontWeight: '300', marginBottom: 14 },
   detalle: { color: C.sub, fontSize: 16, lineHeight: 23 },
   vidas: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   tira: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
-  letra: { color: C.apagado, fontSize: 11 },
-  estallido: { position: 'absolute', left: 0, top: 0, width: PUNTO, height: PUNTO, borderRadius: PUNTO / 2, borderWidth: 2, borderColor: C.claro },
-  caja: { marginTop: 30, paddingTop: 24, paddingHorizontal: 16, paddingBottom: 12, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, backgroundColor: C.hoja, ...sombra },
-  cola: { position: 'absolute', top: -7, width: 13, height: 13, backgroundColor: C.hoja, borderTopWidth: StyleSheet.hairlineWidth, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, transform: [{ rotate: '45deg' }] },
-  emblema: { position: 'absolute', alignSelf: 'center', top: -17, width: 34, height: 34, borderRadius: 17, backgroundColor: C.hoja, borderWidth: StyleSheet.hairlineWidth, borderColor: C.lineaFuerte, alignItems: 'center', justifyContent: 'center' },
+  letra: { color: C.apagado, fontSize: 11, fontFamily: L.dato },
+  estallido: { position: 'absolute', left: 0, top: 0, width: PUNTO, height: PUNTO, borderRadius: PUNTO / 2, borderWidth: 2, borderColor: C.crema },
+  caja: { marginTop: 30, paddingTop: 24, paddingHorizontal: 16, paddingBottom: 12 },
+  cola: { position: 'absolute', top: -7, width: 13, height: 13, backgroundColor: C.hoja, borderTopWidth: 1, borderLeftWidth: 1, borderColor: FIJO.raya, transform: [{ rotate: '45deg' }] },
+  emblema: { position: 'absolute', alignSelf: 'center', top: -17, width: 34, height: 34, borderRadius: 17, backgroundColor: C.hoja, borderWidth: 1, borderColor: FIJO.raya, alignItems: 'center', justifyContent: 'center' },
   texto: { color: C.tinta, fontSize: 17, lineHeight: 24, textAlign: 'center' },
   fallo: { color: C.error, fontSize: 13, lineHeight: 18, marginTop: 8, textAlign: 'center' },
   botones: { flexDirection: 'row', gap: 10, marginTop: 16 },
   columna: { flex: 1, minWidth: 0, alignItems: 'stretch' },
   boton: { borderRadius: 999, paddingVertical: 13, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, ...sombra },
-  usar: { backgroundColor: C.claro },
-  usarTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
-  guardar: { backgroundColor: C.fondo, borderWidth: 1, borderColor: C.bordeBoton },
+  usar: { backgroundColor: C.crema },
+  usarTexto: { color: C.negro, fontSize: 15, fontWeight: '600' },
+  guardar: { backgroundColor: C.negro, borderWidth: 1, borderColor: C.bordeBoton },
   guardarTexto: { color: C.tinta, fontSize: 15, fontWeight: '500' },
   chico: { color: C.sub, fontSize: 11.5, textAlign: 'center', marginTop: 6 },
-  link: { alignSelf: 'center', marginTop: 12, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 999, backgroundColor: 'rgba(106,168,255,0.08)' },
-  linkTocado: { backgroundColor: 'rgba(106,168,255,0.16)' },
+  link: { alignSelf: 'center', marginTop: 12, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 999, backgroundColor: conAlfa(C.link, 0.08) },
+  linkTocado: { backgroundColor: conAlfa(C.link, 0.16) },
   linkTexto: { color: C.link, fontSize: 13, textDecorationLine: 'underline' },
-  globito: { position: 'absolute', left: 0, right: 0, backgroundColor: '#141824', borderWidth: StyleSheet.hairlineWidth, borderColor: '#3a4258', borderRadius: 16, paddingVertical: 12, paddingHorizontal: 14, ...sombra },
-  globitoCola: { position: 'absolute', top: -7, width: 12, height: 12, backgroundColor: '#141824', borderTopWidth: StyleSheet.hairlineWidth, borderLeftWidth: StyleSheet.hairlineWidth, borderColor: '#3a4258', transform: [{ rotate: '45deg' }] },
+  globito: { position: 'absolute', left: 0, right: 0, paddingVertical: 12, paddingHorizontal: 14 },
+  globitoCola: { position: 'absolute', top: -7, width: 12, height: 12, backgroundColor: C.globo, borderTopWidth: 1, borderLeftWidth: 1, borderColor: C.bordeGlobo, transform: [{ rotate: '45deg' }] },
   globitoTexto: { color: C.tinta, fontSize: 15, lineHeight: 21 },
   volador: { position: 'absolute', left: 0, top: 0, zIndex: 20, width: 24, height: 24 },
   listo: { alignSelf: 'stretch' },

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View, Animated } from 'react-native';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
 import { aISO, deISO, fechaCorta, fechaLinda, hoyISO } from '@nucleo/fechas';
@@ -41,6 +41,14 @@ import { eventos } from '@compartido/eventos';
 import { ABRIR_ENTRENAMIENTO, seAcabaDePedir } from './abrirEntrenamiento';
 import { paletaDe } from '@nucleo/paletas';
 import { useArriba } from './zonaSegura';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import { Caja, R, Seccion } from './roles';
+import { LLEGA, MS, sinMovimiento } from './movimiento';
+import NumeroQueCuenta from './NumeroQueCuenta';
+import Relleno from './Relleno';
 
 const SEMANAS = 8;
 
@@ -91,10 +99,20 @@ function celdaFaltados(faltados: number | null): { v: string; e: string }[] {
 }
 
 export default function Stats({ alSalir }: { alSalir: () => void }) {
+  useTema();
   const arriba = useArriba(64);
   const [datos, setDatos] = useState<Datos | null>(null);
   const [error, setError] = useState('');
   const [pestana, setPestana] = useState<'general' | 'entrenamiento'>(() => (seAcabaDePedir() ? 'entrenamiento' : 'general'));
+  const [anchoSelector, setAnchoSelector] = useState(0);
+  const pulgar = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!anchoSelector) return;
+    const destino = pestana === 'general' ? 0 : (anchoSelector + HUECO_SELECTOR) / 2;
+    void sinMovimiento().then((quieto) => {
+      Animated.timing(pulgar, { toValue: destino, duration: quieto ? 0 : MS.pulgar, easing: LLEGA, useNativeDriver: true }).start();
+    });
+  }, [pestana, anchoSelector, pulgar]);
   // La fila "Hoy" de Inicio trae acá, a la rutina (16/10).
   useEffect(() => eventos.escuchar(ABRIR_ENTRENAMIENTO, () => {
     seAcabaDePedir();
@@ -217,16 +235,16 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     return (
       <View style={estilos.centrado}>
         <Text style={estilos.error}>{error}</Text>
-        <Pressable onPress={cargar}>
+        <Tocable onPress={cargar}>
           <Text style={estilos.enlace}>{T.inicio.reintentar}</Text>
-        </Pressable>
+        </Tocable>
       </View>
     );
   }
   if (!datos) {
     return (
       <View style={estilos.centrado}>
-        <ActivityIndicator color="#8a93a8" />
+        <ActivityIndicator color={C.sub} />
       </View>
     );
   }
@@ -260,11 +278,19 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]} scrollEnabled={!arrastrando} keyboardShouldPersistTaps="handled">
       <Text style={estilos.titulo}>{T.stats.titulo}</Text>
 
-      <View style={estilos.selector}>
+      <View style={estilos.selector} onLayout={(e) => setAnchoSelector(e.nativeEvent.layout.width)}>
+        {/* La selección viaja de una opción a la otra: se ve de dónde vino. */}
+        {anchoSelector > 0 && (
+          <Animated.View
+            testID="stats-pulgar"
+            pointerEvents="none"
+            style={[estilos.pulgar, { width: (anchoSelector - HUECO_SELECTOR) / 2, transform: [{ translateX: pulgar }] }]}
+          />
+        )}
         {(['general', 'entrenamiento'] as const).map((p) => (
           <Tocable
             key={p}
-            style={[estilos.opcion, pestana === p && estilos.opcionActiva]}
+            style={estilos.opcion}
             onPress={() => setPestana(p)}
             accessibilityRole="tab"
             accessibilityState={{ selected: pestana === p }}
@@ -296,10 +322,14 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
             { v: String(mejor), e: T.stats.mejorRacha },
             ...celdaFaltados(datos.faltados),
           ].map((c) => (
-            <View key={c.e} style={estilos.celda}>
-              <Text style={estilos.valor}>{c.v}</Text>
+            <Caja key={c.e} style={estilos.celda}>
+              {/^\d+$/.test(c.v) ? (
+                <NumeroQueCuenta testID="stats-cifra" valor={Number(c.v)} desdeCero style={estilos.valor} />
+              ) : (
+                <Text testID="stats-cifra" style={estilos.valor}>{c.v}</Text>
+              )}
               <Text style={estilos.etiqueta}>{c.e}</Text>
-            </View>
+            </Caja>
           ))}
         </View>
       )}
@@ -327,7 +357,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
           <MiRutina visible={pestana === 'entrenamiento'} abrirHoy alArrastrar={setArrastrando} />
           {/* Una fila por músculo, una barra por semana, en series: la misma
               pantalla que la web, con las mismas funciones del núcleo. */}
-          <Text style={estilos.seccion}>{T.volumen.titulo}</Text>
+          <Seccion>{T.volumen.titulo}</Seccion>
           {!hayAnotado ? (
             <Text style={estilos.nota}>{T.volumen.vacio}</Text>
           ) : (
@@ -336,28 +366,28 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                   ocho barras: eran ellas las que dejaban elegir semana, y eran
                   ellas las que no comunicaban nada. */}
               <View style={estilos.semana}>
-                <Pressable
+                <Tocable
                   onPress={() => setTocada(Math.max(0, indice - 1))}
                   disabled={indice === 0}
                   hitSlop={10}
                   accessibilityLabel={T.volumen.semanaAnterior}
                 >
                   <Text style={[estilos.flecha, indice === 0 && estilos.sinMaximo]}>‹</Text>
-                </Pressable>
+                </Tocable>
                 <Text style={estilos.cuando}>
                   {T.volumen.conTotal(
                     indice === enCurso ? T.volumen.estaSemana : T.volumen.semanaDel(fechaLinda(leidaTotal.desde)),
                     T.volumen.soloSeries(leidaTotal.series)
                   )}
                 </Text>
-                <Pressable
+                <Tocable
                   onPress={() => setTocada(Math.min(enCurso, indice + 1))}
                   disabled={indice === enCurso}
                   hitSlop={10}
                   accessibilityLabel={T.volumen.semanaSiguiente}
                 >
                   <Text style={[estilos.flecha, indice === enCurso && estilos.sinMaximo]}>›</Text>
-                </Pressable>
+                </Tocable>
               </View>
 
               {filas.map((f) => {
@@ -385,15 +415,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                           },
                         ]}
                       />
-                      <View
-                        style={[
-                          estilos.llenado,
-                          como === 'poco' && estilos.llenadoPoco,
-                          como === 'dentro' && estilos.llenadoDentro,
-                          como === 'mucho' && estilos.llenadoMucho,
-                          { width: `${porcionDePista(hechas) * 100}%` },
-                        ]}
-                      />
+                      <Relleno fraccion={porcionDePista(hechas)} style={[estilos.llenado, como === 'poco' && estilos.llenadoPoco, como === 'dentro' && estilos.llenadoDentro, como === 'mucho' && estilos.llenadoMucho]} />
                     </View>
                     <Text style={[estilos.valorFila, como === 'nada' && estilos.sinMaximo]}>
                       {hechas === 0 ? T.volumen.nada : String(hechas)}
@@ -418,7 +440,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
           {/* Todo el catálogo, en el orden del selector; lo nunca hecho con guion. */}
           {maximos.length > 0 && (
             <>
-              <Text style={estilos.seccion}>{T.volumen.maximos}</Text>
+              <Seccion>{T.volumen.maximos}</Seccion>
               <Text style={estilos.nota}>{T.volumen.maximosNota}</Text>
               {maximos.map((g) => {
                 const clave = g.grupo ?? 'dots';
@@ -439,7 +461,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                 const conVacios = vacios[clave] ?? conPeso.length === 0;
                 return (
                   <View key={clave}>
-                    <Pressable
+                    <Tocable
                       style={estilos.cabeza}
                       onPress={() => setPlegados((p) => ({ ...p, [clave]: !abierto }))}
                       accessibilityRole="button"
@@ -449,7 +471,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                       <Text style={estilos.cabezaCuenta}>
                         {T.volumen.conPesoDe(g.conPeso, g.filas.length)} {abierto ? '▾' : '›'}
                       </Text>
-                    </Pressable>
+                    </Tocable>
                     {abierto &&
                       (conVacios ? g.filas : conPeso).map((f) => (
                         <View key={f.ejercicio} style={[estilos.fila, estilos.filaDeGrupo]}>
@@ -469,14 +491,14 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                         </View>
                       ))}
                     {abierto && faltan > 0 && conPeso.length > 0 && (
-                      <Pressable
+                      <Tocable
                         style={estilos.otros}
                         onPress={() => setVacios((p) => ({ ...p, [clave]: !conVacios }))}
                       >
                         <Text style={estilos.otrosTexto}>
                           {conVacios ? T.volumen.ocultarLosOtros : T.volumen.verLosOtros(faltan)}
                         </Text>
-                      </Pressable>
+                      </Tocable>
                     )}
                   </View>
                 );
@@ -491,91 +513,86 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   );
 }
 
-const estilos = StyleSheet.create({
+const HUECO_SELECTOR = 8;
+
+const estilos = conTema(() => StyleSheet.create({
   // Transparente: el fondo lo dibuja `FondoRaiz`.
   raiz: { flex: 1 },
   pantalla: { flexGrow: 1, padding: 24, paddingTop: 64, paddingBottom: 40 },
-  centrado: { flex: 1, backgroundColor: '#05060a', alignItems: 'center', justifyContent: 'center', gap: 16 },
-  titulo: { color: '#8a93a8', fontSize: 11, letterSpacing: 4, textTransform: 'uppercase', marginBottom: 20 },
+  centrado: { flex: 1, backgroundColor: C.fondo, alignItems: 'center', justifyContent: 'center', gap: 16 },
+  titulo: { ...R.etiqueta, marginBottom: 20  },
 
-  selector: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+  selector: { flexDirection: 'row', gap: HUECO_SELECTOR, marginBottom: 20 },
+  pulgar: { position: 'absolute', left: 0, top: 0, bottom: 0, borderWidth: 1, borderColor: C.claro, backgroundColor: C.fondoMeta, borderRadius: 999 },
   opcion: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#1d2230',
+    borderColor: C.linea,
     borderRadius: 999,
     paddingVertical: 10,
     alignItems: 'center',
   },
-  opcionActiva: { borderColor: '#8a93a8' },
-  opcionTexto: { color: '#4a5163', fontSize: 14 },
-  opcionTextoActivo: { color: '#e8ecf6' },
+  opcionTexto: { color: C.apagado, fontSize: 14 },
+  opcionTextoActivo: { color: C.claro },
 
-  grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  celda: { width: '47%', paddingVertical: 14 },
-  valor: { color: '#c4c2ba', fontSize: 34, fontWeight: '300' },
-  etiqueta: { color: '#4a5163', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 },
+  grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  // Dos por fila: se reparten lo que queda después del hueco.
+  celda: { flexBasis: '47%', flexGrow: 1, padding: 14 },
+  valor: { ...R.cifra },
+  etiqueta: { ...R.etiqueta, marginTop: 4  },
 
-  seccion: {
-    color: '#8a93a8',
-    fontSize: 11,
-    letterSpacing: 3,
-    textTransform: 'uppercase',
-    marginTop: 18,
-    marginBottom: 12,
-  },
-  nota: { color: '#4a5163', fontSize: 12, lineHeight: 17, marginBottom: 6 },
+  nota: { ...R.nota, marginBottom: 6  },
 
-  cuando: { color: '#8a93a8', fontSize: 12, textAlign: 'right', marginBottom: 8 },
+  cuando: { color: C.sub, fontSize: 12, textAlign: 'right', marginBottom: 8 },
   filaMusculo: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginBottom: 10 },
   rotulo: { width: 90 },
-  dejado: { color: '#4a5163', fontSize: 11, marginTop: 1 },
+  dejado: { color: C.apagado, fontSize: 11, marginTop: 1 },
   // LA SEMANA QUE SE LEE, con las flechas a los costados. Reemplazan a las ocho
   // barras: eran ellas las que dejaban elegir semana, y eran ellas las que no
   // comunicaban nada.
   semana: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginBottom: 14 },
-  flecha: { color: '#8a93a8', fontSize: 22, paddingHorizontal: 2 },
+  flecha: { color: C.sub, fontSize: 22, paddingHorizontal: 2 },
   // LA PISTA: fondo, franja de referencia, y el llenado encima.
-  pista: { flex: 1, height: 12, borderRadius: 6, backgroundColor: '#161b26', overflow: 'hidden' },
+  pista: { flex: 1, height: 12, borderRadius: 999, backgroundColor: C.barraPista, overflow: 'hidden' },
   // La franja NO es un borde: es un bloque más claro, para que se lea como una
   // zona y no como dos líneas sueltas.
-  franja: { position: 'absolute', top: 0, bottom: 0, backgroundColor: '#232b3b' },
-  llenado: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 6 },
+  franja: { position: 'absolute', top: 0, bottom: 0, backgroundColor: C.barraFranja },
+  llenado: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 999 },
   // POR DEBAJO, APAGADO; DENTRO, EL COLOR DE LA APP; POR ENCIMA, un tono más
   // caliente. Nada de rojo: pasarse no es un error.
-  llenadoPoco: { backgroundColor: '#4a5163' },
-  llenadoDentro: { backgroundColor: '#7e8ca8' },
-  llenadoMucho: { backgroundColor: '#c4c2ba' },
-  valorFila: { width: 58, color: '#e8ecf6', fontSize: 14, textAlign: 'right' },
+  llenadoPoco: { backgroundColor: C.barraPoco },
+  llenadoDentro: { backgroundColor: C.barraDentro },
+  llenadoMucho: { backgroundColor: C.claro },
+  valorFila: { width: 58, color: C.tinta, fontSize: 14, textAlign: 'right', fontFamily: L.dato },
 
   fila: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#1d2230',
+    borderBottomWidth: 1,
+    borderBottomColor: C.linea,
     gap: 12,
   },
   filaNombre: { flex: 1 },
-  nombre: { color: '#e8ecf6', fontSize: 15 },
-  fecha: { color: '#4a5163', fontSize: 12, marginTop: 2 },
-  peso: { color: '#8a93a8', fontSize: 13 },
+  nombre: { color: C.tinta, fontSize: 15 },
+  fecha: { color: C.apagado, fontSize: 12, marginTop: 2, fontFamily: L.dato },
+  peso: { color: C.sub, fontSize: 13, fontFamily: L.dato },
   filaDeGrupo: { paddingLeft: 12 },
   otros: { paddingLeft: 12, paddingVertical: 10 },
-  otrosTexto: { color: '#8a93a8', fontSize: 13 },
-  sinMaximo: { color: '#4a5163' },
+  otrosTexto: { color: C.sub, fontSize: 13 },
+  sinMaximo: { color: C.apagado },
   cabeza: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#2a3040',
+    borderBottomWidth: 1,
+    borderBottomColor: C.lineaFuerte,
   },
-  cabezaTexto: { color: '#e8ecf6', fontSize: 14 },
-  cabezaCuenta: { color: '#4a5163', fontSize: 12 },
+  cabezaTexto: { color: C.tinta, fontSize: 14 },
+  cabezaCuenta: { color: C.apagado, fontSize: 12, fontFamily: L.dato },
 
-  error: { color: '#e8705f', fontSize: 13, textAlign: 'center' },
-  enlace: { color: '#8a93a8', fontSize: 13 },
-});
+  error: { color: C.error, fontSize: 13, textAlign: 'center' },
+  enlace: { color: C.sub, fontSize: 13 },
+}));

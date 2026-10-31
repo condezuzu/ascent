@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import FondoOctogonal from './FondoOctogonal';
+import Tocable from './Tocable';
 
 /**
  * EL GLOBO DE CÓMIC (15/10, aprobado en la galería): el globito de siempre, del
@@ -28,6 +32,7 @@ export default function GloboComic({
   subir?: number;
   testID?: string;
 }) {
+  useTema();
   const opacidad = useRef(new Animated.Value(0)).current;
   const cerrando = useRef(false);
   const [ancho, setAncho] = useState(0);
@@ -55,7 +60,7 @@ export default function GloboComic({
   return (
     <View style={estilos.ancla} pointerEvents="box-none">
       <Animated.View style={[estilos.capa, { top: 9 - subir, opacity: opacidad }]} pointerEvents="box-none" onLayout={(e) => setAncho(e.nativeEvent.layout.width)}>
-        <Pressable
+        <Tocable
           testID={testID}
           onLayout={(e) => setAnchoGlobo(e.nativeEvent.layout.width)}
           style={[estilos.globo, { left: izquierda, maxWidth: ancho || undefined }]}
@@ -63,6 +68,7 @@ export default function GloboComic({
           accessibilityRole="button"
           accessibilityHint={T.general.entendido}
         >
+          <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={8} luz={C.claro} />
           <Text style={estilos.texto} numberOfLines={1}>
             {texto}
           </Text>
@@ -71,7 +77,7 @@ export default function GloboComic({
             <View style={[estilos.raya, { transform: [{ rotate: '45deg' }] }]} />
             <View style={[estilos.raya, { transform: [{ rotate: '-45deg' }] }]} />
           </View>
-        </Pressable>
+        </Tocable>
         {/* La cola: un cuadrado girado con el borde en los dos lados de afuera, encima del borde del globo. */}
         <View pointerEvents="none" style={[estilos.cola, { left: colaX - 6 }]} />
       </Animated.View>
@@ -79,7 +85,7 @@ export default function GloboComic({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   ancla: { height: 0, zIndex: 30, elevation: 30 },
   capa: { position: 'absolute', top: 9, left: 0, right: 0 },
   globo: {
@@ -90,14 +96,6 @@ const estilos = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.lineaFuerte,
-    backgroundColor: C.hoja,
-    shadowColor: '#000',
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
   },
   texto: { color: C.tinta, fontSize: 13, flexShrink: 1 },
   cruz: { width: 12, height: 12, alignItems: 'center', justifyContent: 'center' },
@@ -108,9 +106,9 @@ const estilos = StyleSheet.create({
     width: 12,
     height: 12,
     backgroundColor: C.hoja,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
     borderColor: C.lineaFuerte,
     transform: [{ rotate: '45deg' }],
   },
-});
+}));

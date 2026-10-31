@@ -3,6 +3,9 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
+      "expo-font": [
+        "./node_modules/expo/node_modules/expo-font"
+      ],
       "@nucleo/*": [
         "../nucleo/*"
       ],

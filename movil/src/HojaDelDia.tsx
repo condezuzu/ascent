@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { supabase } from './supabase';
 import { miId } from '@compartido/quienSoy';
 import { DIAS_SEMANA_LARGO, deISO, fechaLinda, hoyISO } from '@nucleo/fechas';
@@ -17,7 +17,12 @@ import { cargarDia, corregirDia, destinoActual, queHacer, revisarCarga, type Des
 import { plataforma } from '@plataforma';
 import EtiquetaDeCarga from './EtiquetaDeCarga';
 import Hoja from './Hoja';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * UN DÍA, ABIERTO: qué hiciste, y corregirlo si está mal. La misma hoja que la
@@ -43,6 +48,7 @@ export default function HojaDelDia({
   alRevisar?: () => void;
   alCerrar: () => void;
 }) {
+  useTema();
   const [resumen, setResumen] = useState<ResumenDelDia | null>(null);
   const [noCargo, setNoCargo] = useState(false);
   const [foto, setFoto] = useState<string | null>(null);
@@ -196,8 +202,8 @@ export default function HojaDelDia({
                         width: `${(v.series / maxSeries) * 100}%`,
                         height: '100%',
                         backgroundColor: principal,
-                        borderTopRightRadius: 4,
-                        borderBottomRightRadius: 4,
+                        borderTopRightRadius: 1,
+                        borderBottomRightRadius: 1,
                       }}
                     />
                   </View>
@@ -227,9 +233,9 @@ export default function HojaDelDia({
                   </View>
                   <View style={estilos.acciones}>
                     <EtiquetaDeCarga carga={b.carga} ejercicio={b.ejercicio} alElegir={(c) => revisar(b.sesion, b.orden, c)} />
-                    <Pressable hitSlop={8} onPress={() => revisar(b.sesion, b.orden, b.carga)}>
+                    <Tocable hitSlop={8} onPress={() => revisar(b.sesion, b.orden, b.carga)}>
                       <Text style={estilos.botonTexto}>{T.volumen.estaBien}</Text>
-                    </Pressable>
+                    </Tocable>
                   </View>
                 </View>
               ))}
@@ -253,7 +259,7 @@ export default function HojaDelDia({
               <Text style={estilos.rotulo}>{T.resumen.corregir}</Text>
               <View style={estilos.selector}>
                 {(['fui', 'descanso', 'nada'] as Destino[]).map((d) => (
-                  <Pressable
+                  <Tocable
                     key={d}
                     disabled={ocupado}
                     onPress={() => corregir(d)}
@@ -264,18 +270,18 @@ export default function HojaDelDia({
                     <Text style={[estilos.opcionTexto, actual === d && estilos.opcionTextoActivo]}>
                       {d === 'fui' ? T.resumen.marcarFui : d === 'descanso' ? T.resumen.marcarDescanso : T.resumen.marcarNada}
                     </Text>
-                  </Pressable>
+                  </Tocable>
                 ))}
               </View>
               {porConfirmar && (
                 <View style={estilos.confirmar}>
                   <Text style={estilos.sub}>{T.resumen.borraSesion}</Text>
-                  <Pressable hitSlop={8} onPress={() => corregir(porConfirmar, true)}>
+                  <Tocable hitSlop={8} onPress={() => corregir(porConfirmar, true)}>
                     <Text style={[estilos.botonTexto, { color: C.error }]}>{T.resumen.siCambiar}</Text>
-                  </Pressable>
-                  <Pressable hitSlop={8} onPress={() => setPorConfirmar(null)}>
+                  </Tocable>
+                  <Tocable hitSlop={8} onPress={() => setPorConfirmar(null)}>
                     <Text style={estilos.botonTexto}>{T.album.no}</Text>
-                  </Pressable>
+                  </Tocable>
                 </View>
               )}
               {!!error && <Text style={estilos.error}>{error}</Text>}
@@ -284,24 +290,24 @@ export default function HojaDelDia({
         </>
       )}
 
-      <Pressable hitSlop={8} onPress={alCerrar} style={{ marginTop: 18 }}>
+      <Tocable hitSlop={8} onPress={alCerrar} style={{ marginTop: 18 }}>
         <Text style={estilos.botonTexto}>{T.general.cerrar}</Text>
-      </Pressable>
+      </Tocable>
     </Hoja>
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   titulo: { color: C.tinta, fontSize: 20, marginBottom: 14 },
   estado: { color: C.tinta, fontSize: 15, marginBottom: 16 },
   sub: { color: C.sub, fontSize: 13 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginBottom: 12 },
+  nota: { ...R.nota, marginBottom: 12  },
   bloque: { marginBottom: 14 },
-  rotulo: { color: C.apagado, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
+  rotulo: { ...R.etiqueta, marginBottom: 10  },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
   nombre: { color: C.tinta, fontSize: 14 },
-  pesos: { color: C.apagado, fontSize: 12, marginTop: 2, fontVariant: ['tabular-nums'] },
-  cuantas: { color: C.sub, fontSize: 13, fontVariant: ['tabular-nums'] },
+  pesos: { color: C.apagado, fontSize: 12, marginTop: 2, fontFamily: L.dato },
+  cuantas: { color: C.sub, fontSize: 13, fontFamily: L.dato },
   filaMusculo: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   musculo: { width: 84, textTransform: 'capitalize' },
   barra: { flex: 1, height: 6 },
@@ -312,18 +318,18 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     borderColor: C.linea,
   },
   acciones: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  foto: { width: '100%', aspectRatio: 1, maxHeight: 360, marginTop: 4, marginBottom: 18, borderRadius: 4 },
+  foto: { width: '100%', aspectRatio: 1, maxHeight: 360, marginTop: 4, marginBottom: 18, borderRadius: 1},
   selector: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   opcion: {
     flex: 1,
     alignItems: 'center',
     paddingVertical: 10,
     borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
   },
   opcionActiva: { borderColor: C.sub },
@@ -332,4 +338,4 @@ const estilos = StyleSheet.create({
   confirmar: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 8 },
   botonTexto: { color: C.claro, fontSize: 14 },
   error: { color: C.error, fontSize: 13 },
-});
+}));

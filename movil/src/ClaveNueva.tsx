@@ -1,11 +1,15 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
 import { T } from '@nucleo/textos';
 import { claveNuevaInvalida, porQueNoCambio } from '@nucleo/clave';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { supabase } from './supabase';
 import CampoTexto from './CampoTexto';
-import { C } from './colores';
+import { C, DESHABILITADO, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import Tocable from './Tocable';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * ELEGIR LA CONTRASEÑA NUEVA, después de tocar el enlace del correo (4/10).
@@ -22,6 +26,7 @@ import { C } from './colores';
  * enlace se tocó por error, la persona no puede quedar encerrada acá.
  */
 export default function ClaveNueva({ alTerminar }: { alTerminar: () => void }) {
+  useTema();
   const [clave, setClave] = useState('');
   const [repetida, setRepetida] = useState('');
   const [error, setError] = useState('');
@@ -71,15 +76,16 @@ export default function ClaveNueva({ alTerminar }: { alTerminar: () => void }) {
               textContentType="newPassword"
               accessibilityLabel={T.clave.repetir}
             />
-            <Pressable style={[estilos.solido, guardando && estilos.apagado]} onPress={() => guardar()} disabled={guardando}>
+            <Tocable style={[estilos.solido, guardando && estilos.apagado]} onPress={() => guardar()} disabled={guardando}>
+<FondoOctogonal relleno={C.claro} luz={C.claro} />
               <Text style={estilos.solidoTexto}>{guardando ? T.sesion.guardando : T.general.guardar}</Text>
-            </Pressable>
+            </Tocable>
             {error !== '' && <Text style={estilos.error}>{error}</Text>}
             {/* Apagado mientras guarda: cerrar acá no frena el cambio, y la
                 contraseña cambiaba igual un segundo después, sin aviso. */}
-            <Pressable onPress={alTerminar} hitSlop={10} style={[estilos.despues, guardando && estilos.apagado]} disabled={guardando}>
+            <Tocable onPress={alTerminar} hitSlop={10} style={[estilos.despues, guardando && estilos.apagado]} disabled={guardando}>
               <Text style={estilos.despuesTexto}>{T.clave.ahoraNo}</Text>
-            </Pressable>
+            </Tocable>
           </>
         )}
       </ScrollView>
@@ -87,7 +93,7 @@ export default function ClaveNueva({ alTerminar }: { alTerminar: () => void }) {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Opaco y por encima: debajo sigue la app, y no se tiene que ver ni tocar.
   todo: { ...StyleSheet.absoluteFillObject, backgroundColor: C.fondo, zIndex: 50 },
   centro: { flexGrow: 1, justifyContent: 'center', padding: 24, maxWidth: 420, width: '100%', alignSelf: 'center' },
@@ -101,11 +107,11 @@ const estilos = StyleSheet.create({
     paddingVertical: 10,
     marginBottom: 20,
   },
-  solido: { backgroundColor: C.claro, borderRadius: 2, paddingVertical: 15, alignItems: 'center', marginTop: 8 },
+  solido: { paddingVertical: 15, alignItems: 'center', marginTop: 8 },
   solidoTexto: { color: C.fondo, fontSize: 15, letterSpacing: 1 },
-  apagado: { opacity: 0.5 },
+  apagado: { opacity: DESHABILITADO },
   error: { color: C.error, fontSize: 14, marginTop: 14, textAlign: 'center' },
   aviso: { color: C.tinta, fontSize: 15, textAlign: 'center' },
   despues: { marginTop: 26, alignSelf: 'center' },
   despuesTexto: { color: C.sub, fontSize: 14 },
-});
+}));

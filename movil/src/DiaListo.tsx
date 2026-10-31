@@ -1,7 +1,10 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import { R } from './roles';
 
 /**
  * EL DÍA YA ESTÁ: lo que queda es sumarle la foto o el peso.
@@ -29,6 +32,7 @@ export default function DiaListo({
   /** Cuánto duró el entrenamiento de hoy, si hubo. */
   minutos?: number | null;
 }) {
+  useTema();
   // SIN EMPUJÓN A LA FOTO (16/10, a pedido): ni la frase ni la pastilla resaltada.
   return (
     <View>
@@ -67,6 +71,7 @@ function Accion({
   alTocar: () => void;
   children: React.ReactNode;
 }) {
+  useTema();
   return (
     <Pressable
       // El hundido al tocar es el de la web (`transform: scale(0.96)`): dice
@@ -84,6 +89,7 @@ function Accion({
 
 // Los mismos trazos que la web (`IconoFoto` / `IconoPeso` en `app/page.tsx`).
 function IconoFoto() {
+  useTema();
   return (
     <Svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke={C.sub} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
       <Path d="M4 8.5h3l1.4-2h7.2L17 8.5h3v10H4z" />
@@ -93,6 +99,7 @@ function IconoFoto() {
 }
 
 function IconoPeso() {
+  useTema();
   return (
     <Svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke={C.sub} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
       <Path d="M7 6h10l2.5 13H4.5z" />
@@ -101,10 +108,10 @@ function IconoPeso() {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   fila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 10, paddingBottom: 4 },
   cuando: { flexShrink: 1, gap: 3 },
-  cartel: { color: C.sub, fontSize: 11, letterSpacing: 2.4, textTransform: 'uppercase' },
+  cartel: { ...R.etiqueta },
   minutos: { color: C.tinta, fontSize: 15 },
   acciones: { flexDirection: 'row', gap: 8 },
   pildora: {
@@ -117,8 +124,9 @@ const estilos = StyleSheet.create({
     borderWidth: 1,
     borderColor: C.linea,
     borderRadius: 999,
+    backgroundColor: C.placa,
   },
   hundida: { transform: [{ scale: 0.96 }], borderColor: C.lineaFuerte },
   redondo: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
-  rotulo: { color: C.apagado, fontSize: 10, letterSpacing: 1.6, textTransform: 'uppercase' },
-});
+  rotulo: { ...R.etiqueta },
+}));

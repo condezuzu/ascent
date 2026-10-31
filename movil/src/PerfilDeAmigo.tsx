@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { cargarAmigosDe, cargarPerfilDeAmigo, DIAS_VISIBLES, NO_SE_PUDO, type PerfilDeAmigo as Datos } from '@compartido/perfil';
 import type { UsuarioPublico } from '@nucleo/tipos';
@@ -21,9 +21,15 @@ import Avatar from './Avatar';
 import FondoEspacial from './FondoEspacial';
 import FotosQueVen from './FotosQueVen';
 import Insignia from './Insignia';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
 import { volverOInicio } from './volver';
 import { useArriba } from './zonaSegura';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import { R } from './roles';
+import Tocable from './Tocable';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * EL PERFIL DE OTRO: su racha, su semana y lo que comparte.
@@ -45,6 +51,7 @@ import { useArriba } from './zonaSegura';
  * propio perfil, que es donde está la lista.
  */
 export default function PerfilDeAmigo() {
+  useTema();
   const router = useRouter();
   const arriba = useArriba(60);
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -131,9 +138,9 @@ export default function PerfilDeAmigo() {
   // falla — con mala señal, tardar mucho es lo normal. Lo encontró el barrido
   // del 25/9 en el perfil propio, y esta pantalla tenía la mitad del problema.
   const salida = (
-    <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={[estilos.volverSuelto, { paddingTop: arriba }]}>
+    <Tocable onPress={() => volverOInicio(router)} hitSlop={8} style={[estilos.volverSuelto, { paddingTop: arriba }]}>
       <Text style={estilos.enlace}>{T.general.volver}</Text>
-    </Pressable>
+    </Tocable>
   );
 
   if (!cargado) {
@@ -157,9 +164,9 @@ export default function PerfilDeAmigo() {
               que se mueve según lo que haya pasado. */}
           <Text style={estilos.error}>{noCargo ? T.inicio.noCargo : error || T.social.noExiste}</Text>
           {noCargo && (
-            <Pressable onPress={cargar} hitSlop={8} style={{ marginTop: 14 }}>
+            <Tocable onPress={cargar} hitSlop={8} style={{ marginTop: 14 }}>
               <Text style={estilos.enlace}>{T.inicio.reintentar}</Text>
-            </Pressable>
+            </Tocable>
           )}
         </View>
       </View>
@@ -186,14 +193,14 @@ export default function PerfilDeAmigo() {
         ajeno
       />
       <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]}>
-        <Pressable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volver}>
+        <Tocable onPress={() => volverOInicio(router)} hitSlop={8} style={estilos.volver}>
           <Text style={estilos.enlace}>{T.general.volver}</Text>
-        </Pressable>
+        </Tocable>
 
         <View style={estilos.cabecera}>
           {/* LA FOTO SE ABRE GRANDE (8/10). Sin foto no hay nada que abrir: la
               inicial no es un botón. */}
-          <Pressable
+          <Tocable
             testID="abrir-foto-de-perfil"
             disabled={!usuario.avatar_url}
             onPress={() => setFotoGrande(true)}
@@ -201,7 +208,7 @@ export default function PerfilDeAmigo() {
             accessibilityLabel={T.social.verFoto(usuario.username ?? '')}
           >
             <Avatar url={usuario.avatar_url} nombre={usuario.username} tam={52} />
-          </Pressable>
+          </Tocable>
           <View style={{ flex: 1 }}>
             {/* SUS MEDALLAS, al lado de su nombre y del mismo alto, igual que
                 en tu perfil. Se pueden tocar: es la única forma de saber qué
@@ -245,7 +252,7 @@ export default function PerfilDeAmigo() {
                   {T.social.amigos} {amigosDe.length}
                 </Text>
                 {amigosDe.map((a) => (
-                  <Pressable
+                  <Tocable
                     key={a.id}
                     style={estilos.amigo}
                     onPress={() => router.push(a.id === yoId ? '/yo' : `/perfil/${a.id}`)}
@@ -256,7 +263,7 @@ export default function PerfilDeAmigo() {
                       {a.username}
                     </Text>
                     <Text style={estilos.amigoRacha}>{a.racha_actual}</Text>
-                  </Pressable>
+                  </Tocable>
                 ))}
               </View>
             )}
@@ -264,17 +271,19 @@ export default function PerfilDeAmigo() {
         ) : (
           <>
             {pedidoRecibido ? (
-              <Pressable style={estilos.solido} onPress={() => aceptarPedido()}>
+              <Tocable style={estilos.solido} onPress={() => aceptarPedido()}>
+<FondoOctogonal relleno={C.claro} luz={C.claro} />
                 <Text style={estilos.solidoTexto}>{T.social.aceptar}</Text>
-              </Pressable>
+              </Tocable>
             ) : pedidoPendiente ? (
               <View style={estilos.boton}>
                 <Text style={estilos.botonTexto}>{T.social.pedidoDeAmistad}</Text>
               </View>
             ) : (
-              <Pressable style={estilos.solido} onPress={() => mandarPedido()}>
+              <Tocable style={estilos.solido} onPress={() => mandarPedido()}>
+<FondoOctogonal relleno={C.claro} luz={C.claro} />
                 <Text style={estilos.solidoTexto}>{T.social.agregar}</Text>
-              </Pressable>
+              </Tocable>
             )}
             <Text style={estilos.nota}>{T.social.cuandoSeanAmigos}</Text>
           </>
@@ -283,9 +292,9 @@ export default function PerfilDeAmigo() {
         {/* Denunciar o bloquear: al alcance en el perfil de cualquiera, sea
             amigo o no. Bloquear también sirve para frenar a alguien que todavía
             no es amigo pero insiste con solicitudes. */}
-        <Pressable onPress={() => setAccion(true)} hitSlop={8} style={estilos.reportar}>
+        <Tocable onPress={() => setAccion(true)} hitSlop={8} style={estilos.reportar}>
           <Text style={estilos.reportarTexto}>{T.social.denunciarOBloquear}</Text>
-        </Pressable>
+        </Tocable>
       </ScrollView>
 
       <AccionesDeUsuario
@@ -298,7 +307,7 @@ export default function PerfilDeAmigo() {
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Sin fondo propio: el motor está detrás del stack (ver `app/_layout.tsx`).
   raiz: { flex: 1 },
   pantalla: { padding: 24, paddingTop: 60, paddingBottom: 60 },
@@ -312,22 +321,22 @@ const estilos = StyleSheet.create({
   nombre: { color: C.tinta, fontSize: 18, fontWeight: '500' },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 },
   metaTexto: { color: C.sub, fontSize: 13 },
-  dots: { color: C.sub, fontSize: 12, letterSpacing: 1, marginTop: 4 },
-  dotsNumero: { color: C.tinta, fontSize: 15, fontVariant: ['tabular-nums'] },
+  dots: { color: C.sub, fontSize: 12, marginTop: 4, fontFamily: L.dato },
+  dotsNumero: { color: C.tinta, fontSize: 15, fontFamily: L.dato },
   tira: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 26 },
   tiraDia: { alignItems: 'center', gap: 7 },
   punto: { width: 26, height: 26, borderRadius: 13 },
-  lleno: { backgroundColor: '#7e8ca8' },
-  vacio: { borderWidth: 1, borderColor: '#2a3040' },
+  lleno: { backgroundColor: C.diaLleno },
+  vacio: { borderWidth: 1, borderColor: C.lineaFuerte },
   puntoHoy: { borderWidth: 1, borderColor: C.claro },
-  letra: { color: '#4a5163', fontSize: 11 },
-  rotulo: { color: C.apagado, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
-  solido: { backgroundColor: C.claro, borderRadius: 2, paddingVertical: 15, alignItems: 'center', marginTop: 10 },
+  letra: { color: C.apagado, fontSize: 11, fontFamily: L.dato },
+  rotulo: { ...R.etiqueta, marginBottom: 10  },
+  solido: { paddingVertical: 15, alignItems: 'center', marginTop: 10 },
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   boton: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
-    borderRadius: 10,
+    borderRadius: 999,
     paddingVertical: 13,
     alignItems: 'center',
     marginTop: 10,
@@ -341,5 +350,5 @@ const estilos = StyleSheet.create({
   amigos: { marginTop: 28 },
   amigo: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
   amigoNombre: { color: C.tinta, fontSize: 15, flex: 1 },
-  amigoRacha: { color: C.sub, fontSize: 14, fontVariant: ['tabular-nums'] },
-});
+  amigoRacha: { color: C.sub, fontSize: 14, fontFamily: L.dato },
+}));

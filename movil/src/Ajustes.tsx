@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { supabase } from './supabase';
 import { DIAS_SEMANA } from '@nucleo/fechas';
 import { cuerpoDe } from '@nucleo/rangos';
@@ -30,6 +30,11 @@ import Bloqueados from './ajustes/Bloqueados';
 import Diagnostico from './ajustes/Diagnostico';
 import Interruptor from './Interruptor';
 import { useArriba } from './zonaSegura';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import { R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * AJUSTES — lo que se puede cambiar, en la app nativa.
@@ -74,6 +79,7 @@ export default function Ajustes({
   alCambiar: (parcial: Partial<Perfil>) => void;
   alSalir: () => void;
 }) {
+  useTema();
   const router = useRouter();
   const arriba = useArriba(60);
   const [fallo, setFallo] = useState('');
@@ -234,7 +240,7 @@ export default function Ajustes({
       <Text style={estilos.seccion}>{T.ajustes.diasDescanso}</Text>
       <View style={estilos.fila}>
         {DIAS_SEMANA.map((d, i) => (
-          <Pressable
+          <Tocable
             key={i}
             onPress={() => alternarDia(i)}
             style={[estilos.pastilla, perfil.dias_descanso.includes(i) && estilos.prendida]}
@@ -247,7 +253,7 @@ export default function Ajustes({
             >
               {d}
             </Text>
-          </Pressable>
+          </Tocable>
         ))}
       </View>
 
@@ -274,12 +280,12 @@ export default function Ajustes({
 
       {/* TU PERFIL, arriba de todo en Perfil: Ajustes es donde se lo
           busca cuando no se lo encontró en Inicio. */}
-      <Pressable style={estilos.tuPerfil} onPress={() => router.push('/yo')} accessibilityRole="button">
+      <Tocable style={estilos.tuPerfil} onPress={() => router.push('/yo')} accessibilityRole="button">
         <Avatar url={perfil.avatar_url} nombre={perfil.username} tam={40} />
         <View style={{ flex: 1 }}>
           <Text style={estilos.tuNombre}>{perfil.username}</Text>
         </View>
-      </Pressable>
+      </Tocable>
 
       {/* EL GIMNASIO VA PRIMERO EN PERFIL, igual que en la web: es lo que diferencia a
           la app, y en una lista de interruptores al fondo no lo marca nadie. */}
@@ -369,7 +375,7 @@ export default function Ajustes({
       {/* AJUSTES AVANZADOS: todo lo que no se toca seguido, detrás de un solo
           pliegue. Adentro va cada cosa con su propio contexto —incluida cuentas
           bloqueadas— así ninguna aparece suelta en medio de la lista. */}
-      <Pressable
+      <Tocable
         style={estilos.avanzadoCabe}
         onPress={() => setAvanzado(!avanzado)}
         accessibilityRole="button"
@@ -377,7 +383,7 @@ export default function Ajustes({
       >
         <Text style={estilos.avanzadoTitulo}>{T.ajustes.avanzados}</Text>
         <Text style={estilos.avanzadoSigno}>{avanzado ? '−' : '+'}</Text>
-      </Pressable>
+      </Tocable>
 
       {avanzado && (
         <>
@@ -407,44 +413,46 @@ export default function Ajustes({
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   tuPerfil: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, marginBottom: 4 },
-  tuNombre: { color: '#e8ecf6', fontSize: 17 },
+  tuNombre: { color: C.tinta, fontSize: 17 },
   // EL FONDO VA EN EL SCROLLVIEW, NO SOLO EN EL CONTENIDO (29/9). El
   // `contentContainerStyle` pinta el ALTO DEL CONTENIDO; con Ajustes corto (todo
   // plegado en avanzados) el rebote de iOS tiraba de más y dejaba ver el motor
   // detrás —el rectángulo negro se terminaba y aparecía el sol—. El fondo en el
   // ScrollView mismo llega hasta el borde con el contenido corto, largo, y con
   // el rebote. `pantalla` mantiene su fondo por si el contenido no llena.
-  scroll: { flex: 1, backgroundColor: '#05060a' },
-  pantalla: { flexGrow: 1, backgroundColor: '#05060a', padding: 24, paddingTop: 60 },
+  scroll: { flex: 1, backgroundColor: C.fondo },
+  pantalla: { flexGrow: 1, backgroundColor: C.fondo, padding: 24, paddingTop: 60 },
   titulo: {
-    color: '#8a93a8',
+    color: C.sub,
     fontSize: 11,
     letterSpacing: 4,
     textTransform: 'uppercase',
+    fontWeight: '500',
     marginBottom: 26,
   },
   seccion: {
-    color: '#8a93a8',
+    color: C.sub,
     fontSize: 11,
     letterSpacing: 2,
     textTransform: 'uppercase',
+    fontWeight: '500',
     marginTop: 26,
     marginBottom: 10,
   },
   // Entrenamiento, Perfil y General (21/10): más claros que las secciones de adentro y con
   // la misma hairline que "Ajustes avanzados", para que se lea dónde empieza cada uno.
   grupo: {
-    color: '#c4c2ba',
+    color: C.claro,
     fontSize: 12,
     fontWeight: '600',
     letterSpacing: 3,
     textTransform: 'uppercase',
     marginTop: 40,
     paddingTop: 18,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#1d2230',
+    borderTopWidth: 1,
+    borderTopColor: C.linea,
   },
   grupoPrimero: { marginTop: 0, paddingTop: 0, borderTopWidth: 0 },
   // El pliegue de "Ajustes avanzados": una línea con su signo, separada arriba
@@ -455,19 +463,19 @@ const estilos = StyleSheet.create({
     justifyContent: 'space-between',
     minHeight: 48,
     marginTop: 30,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#1d2230',
+    borderTopWidth: 1,
+    borderTopColor: C.linea,
     paddingTop: 18,
   },
-  avanzadoTitulo: { color: '#8a93a8', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' },
-  avanzadoSigno: { color: '#8a93a8', fontSize: 18 },
+  avanzadoTitulo: { ...R.etiqueta },
+  avanzadoSigno: { color: C.sub, fontSize: 18 },
   fila: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   pastilla: {
     width: 40,
     paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#2a3040',
+    borderColor: C.lineaFuerte,
     alignItems: 'center',
   },
   ancha: {
@@ -476,19 +484,19 @@ const estilos = StyleSheet.create({
     paddingVertical: 11,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#2a3040',
+    borderColor: C.lineaFuerte,
     alignItems: 'center',
   },
   // Cuatro en una fila: con el ancho mínimo de las otras, el cuarto bajaba solo.
   umbral: { minWidth: 0 },
-  prendida: { borderColor: '#7e8ca8' },
-  textoPastilla: { color: '#8a93a8', fontSize: 13 },
-  textoPrendido: { color: '#c4c2ba' },
-  nota: { color: '#4a5163', fontSize: 12, marginTop: 8, lineHeight: 18 },
+  prendida: { borderColor: C.principal },
+  textoPastilla: { color: C.sub, fontSize: 13 },
+  textoPrendido: { color: C.claro },
+  nota: { color: C.apagado, fontSize: 12, marginTop: 8, lineHeight: 18 },
   filaOpcion: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18 },
   textoOpcion: { flex: 1 },
-  opcion: { color: '#e8ecf6', fontSize: 15 },
-  error: { color: '#e8705f', fontSize: 13, marginTop: 18, lineHeight: 19 },
-  enlace: { color: '#8a93a8', fontSize: 13 },
+  opcion: { color: C.tinta, fontSize: 15 },
+  error: { color: C.error, fontSize: 13, marginTop: 18, lineHeight: 19 },
+  enlace: { color: C.sub, fontSize: 13 },
   salir: { marginTop: 48, alignItems: 'center' },
-});
+}));

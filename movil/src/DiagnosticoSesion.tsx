@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { subioLoDeLaSesion } from '@compartido/antesDePreguntar';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { T } from '@nucleo/textos';
 import { leerSesionCache } from '@compartido/sesionCache';
 import { cuantasPendientes } from '@compartido/cola';
@@ -9,6 +9,10 @@ import * as Updates from 'expo-updates';
 import { aplicar, buscarYTraer, hayCanal, queEstoyCorriendo } from './actualizaciones';
 import { loVisible } from './loVisible';
 import { supabase } from './supabase';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * LAS TRES FUENTES DE LA SESIÓN, ADENTRO DEL DIAGNÓSTICO (22/9).
@@ -35,6 +39,7 @@ type Lectura = { series: number | null; bloque: string | null; detalle: string |
 const VACIA: Lectura = { series: null, bloque: null, detalle: null };
 
 export default function DiagnosticoSesion() {
+  useTema();
   const [cache, setCache] = useState<Lectura | null>(null);
   const [base, setBase] = useState<Lectura | null>(null);
   const [cola, setCola] = useState<number | null>(null);
@@ -135,9 +140,9 @@ export default function DiagnosticoSesion() {
       />
 
       <Text style={estilos.cola}>{cola === null ? T.diagnostico.leyendo : cola === 0 ? T.diagnostico.colaVacia : T.diagnostico.colaCon(cola)}</Text>
-      <Pressable onPress={leer} hitSlop={8}>
+      <Tocable onPress={leer} hitSlop={8}>
         <Text style={estilos.releer}>{T.diagnostico.releer}</Text>
-      </Pressable>
+      </Tocable>
 
       {/* QUÉ JS ESTÁ CORRIENDO. Con actualizaciones por el aire, "la versión
           que tenés" dejó de ser obvia: la app puede estar corriendo el JS que
@@ -150,7 +155,7 @@ export default function DiagnosticoSesion() {
             segunda es la que hace reportar bugs de código viejo. */}
         {esperando && <Text style={estilos.nota}>{T.diagnostico.hayEsperando}</Text>}
         {hayCanal() && (
-          <Pressable
+          <Tocable
             hitSlop={8}
             onPress={async () => {
               setBuscando(true);
@@ -164,7 +169,7 @@ export default function DiagnosticoSesion() {
             }}
           >
             <Text style={estilos.releer}>{buscando ? T.diagnostico.buscando : T.diagnostico.buscar}</Text>
-          </Pressable>
+          </Tocable>
         )}
         {novedad !== null && <Text style={estilos.nota}>{novedad}</Text>}
       </View>
@@ -173,6 +178,7 @@ export default function DiagnosticoSesion() {
 }
 
 function Fila({ rotulo, valor, detalle }: { rotulo: string; valor: string; detalle: string | null }) {
+  useTema();
   return (
     <View style={estilos.fila}>
       <Text style={estilos.rotulo}>{rotulo}</Text>
@@ -204,16 +210,16 @@ function textoDe(l: Lectura | null): string {
 
 // Los mismos colores escritos a mano que el resto del diagnóstico: vive al
 // lado de la caja negra y no puede depender de la paleta de la app.
-const estilos = StyleSheet.create({
-  caja: { borderWidth: StyleSheet.hairlineWidth, borderColor: '#2a3040', padding: 12, marginBottom: 14 },
-  titulo: { color: '#e8ecf6', fontSize: 15, marginBottom: 2 },
-  nota: { color: '#8a93a8', fontSize: 12, lineHeight: 17, marginBottom: 10 },
+const estilos = conTema(() => StyleSheet.create({
+  caja: { borderWidth: 1, borderColor: C.lineaFuerte, padding: 12, marginBottom: 14 },
+  titulo: { color: C.tinta, fontSize: 15, marginBottom: 2 },
+  nota: { color: C.sub, fontSize: 12, lineHeight: 17, marginBottom: 10 },
   fila: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6, gap: 10 },
-  rotulo: { color: '#4a5163', fontSize: 11, width: 92, paddingTop: 2 },
+  rotulo: { color: C.apagado, fontSize: 11, width: 92, paddingTop: 2 },
   valores: { flex: 1 },
-  valor: { color: '#c4c2ba', fontSize: 13, fontFamily: 'Menlo' },
-  detalle: { color: '#8a93a8', fontSize: 11, fontFamily: 'Menlo', marginTop: 1 },
-  cola: { color: '#8a93a8', fontSize: 12, marginTop: 8 },
-  releer: { color: '#8a93a8', fontSize: 12, textDecorationLine: 'underline', marginTop: 8 },
-  actualizar: { marginTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#2a3040', paddingTop: 10 },
-});
+  valor: { color: C.claro, fontSize: 13, fontFamily: 'Menlo' },
+  detalle: { color: C.sub, fontSize: 11, fontFamily: 'Menlo', marginTop: 1 },
+  cola: { color: C.sub, fontSize: 12, marginTop: 8 },
+  releer: { color: C.sub, fontSize: 12, textDecorationLine: 'underline', marginTop: 8 },
+  actualizar: { marginTop: 12, borderTopWidth: 1, borderColor: C.lineaFuerte, paddingTop: 10 },
+}));

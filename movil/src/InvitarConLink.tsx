@@ -1,7 +1,10 @@
-import { Pressable, Share, StyleSheet, Text } from 'react-native';
+import { Share, StyleSheet } from 'react-native';
 import { enlaceDeAmigo } from '@nucleo/enlace';
 import { T } from '@nucleo/textos';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import Tocable from './Tocable';
 
 /**
  * INVITAR CON TU LINK (8/10/2026). Abre la hoja de compartir del teléfono con
@@ -11,9 +14,10 @@ import { C } from './colores';
  * Sin nombre todavía no hay link que dar, y no se dibuja.
  */
 export default function InvitarConLink({ usuario }: { usuario: string | null | undefined }) {
+  useTema();
   if (!usuario) return null;
   return (
-    <Pressable
+    <Tocable
       testID="invitar-con-link"
       style={estilos.boton}
       accessibilityRole="button"
@@ -21,16 +25,16 @@ export default function InvitarConLink({ usuario }: { usuario: string | null | u
       onPress={() => void Share.share({ message: T.social.invitacion(enlaceDeAmigo(usuario)) }).catch(() => undefined)}
     >
       <Text style={estilos.texto}>{T.social.invitar}</Text>
-    </Pressable>
+    </Tocable>
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // CHICO Y A LA IZQUIERDA (12/10): a todo el ancho y en blanco competía con
   // el nombre de usuario, que es lo que importa en esa pantalla.
   boton: {
     alignSelf: 'flex-start',
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.lineaFuerte,
     borderRadius: 999,
     paddingVertical: 7,
@@ -38,4 +42,4 @@ const estilos = StyleSheet.create({
     marginTop: 12,
   },
   texto: { color: C.sub, fontSize: 13 },
-});
+}));

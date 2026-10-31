@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { cuantosLevantan, type Medalla as Dato } from '@nucleo/medallas';
 import { CURVA } from '@nucleo/deslizar';
 import { T } from '@nucleo/textos';
 import Medalla from './Medalla';
 import MedallaDeRango from './MedallaDeRango';
 import { numeroDeRango } from '@nucleo/rangos';
-import { C } from './colores';
+import { C, conTema } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import FondoOctogonal from './FondoOctogonal';
+import { LLEGA } from './movimiento';
+import Tocable from './Tocable';
 
 /**
  * LAS MEDALLAS AL LADO DEL NOMBRE, y el globo al tocar una.
@@ -62,6 +67,7 @@ export default function Medallas({
   mejorRacha?: number;
   tam?: number;
 }) {
+  useTema();
   const [abierta, setAbierta] = useState<string | null>(null);
   /** Dónde arrancan las medallas dentro de la fila: depende del ancho del nombre. */
   const [desdeX, setDesdeX] = useState(0);
@@ -104,14 +110,14 @@ export default function Medallas({
       Animated.timing(opacidad, {
         toValue: 1,
         duration: ENTRA_MS,
-        easing: Easing.bezier(...CURVA),
+        easing: LLEGA,
         useNativeDriver: true,
       }),
       Animated.delay(QUIETO_MS),
       Animated.timing(opacidad, {
         toValue: 0,
         duration: SALE_MS,
-        easing: Easing.bezier(...CURVA),
+        easing: LLEGA,
         useNativeDriver: true,
       }),
     ]);
@@ -127,7 +133,7 @@ export default function Medallas({
         {nombre}
         <View style={estilos.medallas} onLayout={(e) => setDesdeX(e.nativeEvent.layout.x)}>
           {medallas.map((m) => (
-            <Pressable
+            <Tocable
               key={m.zona}
               onPress={() => setAbierta(abierta === m.zona ? null : m.zona)}
               hitSlop={6}
@@ -135,10 +141,10 @@ export default function Medallas({
               accessibilityLabel={frase(m)}
             >
               <Medalla zona={m.zona} material={m.material} tam={tam} />
-            </Pressable>
+            </Tocable>
           ))}
           {conSaturno && (
-            <Pressable
+            <Tocable
               onPress={() => setAbierta(saturnoAbierto ? null : 'racha')}
               hitSlop={6}
               accessibilityRole="button"
@@ -149,7 +155,7 @@ export default function Medallas({
                   se leía como "llegué a Saturno". Es la misma que muestra
                   Ranking, y sale de la misma escalera que el rango de hoy. */}
               <MedallaDeRango rango={numeroDeRango(mejorRacha ?? 0)} tam={tam} />
-            </Pressable>
+            </Tocable>
           )}
         </View>
       </View>
@@ -162,6 +168,7 @@ export default function Medallas({
               `GloboPrimeraVez`. */}
           <View style={[estilos.punta, { left: desdeX + idxGlobo * (tam + SEPARACION) + tam / 2 - 5 }]} />
           <View style={estilos.cuerpo}>
+            <FondoOctogonal relleno={C.hoja} borde={C.linea} corte={8} />
             <Text style={estilos.texto}>{fraseGlobo}</Text>
           </View>
         </Animated.View>
@@ -205,6 +212,7 @@ function frase(m: Dato): string {
  * para saber qué son, se entra al perfil.
  */
 export function FilaDeMedallas({ medallas, tam = 16 }: { medallas: readonly Dato[]; tam?: number }) {
+  useTema();
   if (medallas.length === 0) return null;
   return (
     <View style={estilos.sueltas} pointerEvents="none">
@@ -215,7 +223,7 @@ export function FilaDeMedallas({ medallas, tam = 16 }: { medallas: readonly Dato
   );
 }
 
-const estilos = StyleSheet.create({
+const estilos = conTema(() => StyleSheet.create({
   // Sin `overflow: hidden` en ningún ancestro de esto, o el globo se corta.
   envoltura: { position: 'relative' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: SEPARACION, flexWrap: 'wrap' },
@@ -241,18 +249,14 @@ const estilos = StyleSheet.create({
     width: 10,
     height: 10,
     backgroundColor: C.hoja,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: C.linea,
     transform: [{ rotate: '45deg' }],
   },
   cuerpo: {
     marginTop: 5,
-    backgroundColor: C.hoja,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
-    borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 13,
   },
   texto: { color: C.tinta, fontSize: 13, lineHeight: 18 },
-});
+}));

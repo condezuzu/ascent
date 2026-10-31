@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from './supabase';
 import { miId } from '@compartido/quienSoy';
@@ -11,7 +11,13 @@ import { T } from '@nucleo/textos';
 import { cargarFuerza, filasDondeEstoy } from '@compartido/fuerza';
 import Avatar from './Avatar';
 import { irAPestana, useRecargarAlVolver } from './irAPestana';
-import { C } from './colores';
+import { C, conTema, conAlfa, luz } from './colores';
+import { useTema } from './useTema';
+import { Text } from './Texto';
+import { L } from './fuentes';
+import FondoOctogonal from './FondoOctogonal';
+import { Caja, Seccion, R } from './roles';
+import Tocable from './Tocable';
 
 /**
  * LA FUERZA DENTRO DE STATS (§16.6), en la app nativa: acá se mira y se
@@ -40,6 +46,7 @@ export default function SeccionFuerza({
   /** El `--pal-claro` de la web. */
   claro: string;
 }) {
+  useTema();
   const [mia, setMia] = useState<MiFuerza | null>(null);
   const [ranking, setRanking] = useState<FilaFuerza[]>([]);
   const [abierto, setAbierto] = useState<string | null>(null);
@@ -80,13 +87,13 @@ export default function SeccionFuerza({
 
   return (
     <View>
-      <Text style={estilos.seccion}>{T.fuerza.titulo}</Text>
+      <Seccion>{T.fuerza.titulo}</Seccion>
 
       {mia.marcas.length === 0 ? (
         <Text style={estilos.sub}>{T.fuerza.sinNada}</Text>
       ) : (
         <>
-          <View style={estilos.contenida}>
+          <Caja style={estilos.contenida}>
             {mia.dots !== null ? (
               <>
                 <Text style={estilos.dots}>{redondear(mia.dots)}</Text>
@@ -114,7 +121,7 @@ export default function SeccionFuerza({
                 )}
               </Text>
             )}
-          </View>
+          </Caja>
 
           {esSexoEstandar(sexo) && pesoCorporal !== null && (
             <DondeEstoy sexo={sexo} pesoCorporal={pesoCorporal} marcas={mia.marcas} unidad={unidad} claro={claro} />
@@ -135,13 +142,13 @@ export default function SeccionFuerza({
 
           {ranking.length > 1 && (
             <>
-              <Text style={[estilos.seccion, { marginTop: 22 }]}>{T.fuerza.entreAmigos}</Text>
+              <Seccion arriba={22}>{T.fuerza.entreAmigos}</Seccion>
               <View style={estilos.tarjeta}>
                 {ranking.map((f, i) => {
                   const desplegado = abierto === f.id;
                   return (
                     <View key={f.id} style={i > 0 && estilos.separada}>
-                      <Pressable
+                      <Tocable
                         style={estilos.rankCabecera}
                         onPress={() => setAbierto(desplegado ? null : f.id)}
                         accessibilityState={{ expanded: desplegado }}
@@ -151,7 +158,7 @@ export default function SeccionFuerza({
                         <Text style={[estilos.nombre, { flex: 1 }]}>{f.id === yo ? T.social.vos : f.username}</Text>
                         {/* El mismo número para todos (§16.7b). */}
                         <Text style={estilos.dato}>{redondear(f.dots)}</Text>
-                      </Pressable>
+                      </Tocable>
                       {desplegado && (
                         <View style={estilos.rankDetalle}>
                           {f.marcas.map((m) => (
@@ -176,11 +183,12 @@ export default function SeccionFuerza({
           viene a MIRAR. Cargar una marca es lo que hace de vez en cuando, y
           un botón de escribir arriba de todo invita a tocarlo por error en
           la pantalla que más se mira. */}
-      <Pressable style={estilos.puerta} onPress={() => router.push('/marcas')}>
+      <Tocable style={estilos.puerta} onPress={() => router.push('/marcas')}>
+        <FondoOctogonal relleno={C.superficie} superficie borde={C.bordeOcto} />
         <Text style={estilos.puertaTexto}>
           {mia.marcas.length === 0 ? T.fuerza.anotarMarca : T.fuerza.misMarcas}
         </Text>
-      </Pressable>
+      </Tocable>
     </View>
   );
 }
@@ -204,6 +212,7 @@ function DondeEstoy({
   unidad: Unidad;
   claro: string;
 }) {
+  useTema();
   const filas = filasDondeEstoy(sexo, pesoCorporal, marcas);
   if (filas.length === 0) return null;
 
@@ -220,7 +229,7 @@ function DondeEstoy({
             </View>
             {/* La escala crece hacia la derecha y la marca cae donde cae. */}
             <View style={estilos.escala}>
-              <View style={[estilos.marca, { left: `${f.u.supera}%`, backgroundColor: claro }]} />
+              <View style={[estilos.marca, { left: `${f.u.supera}%`, backgroundColor: claro }, luz(claro, 0.9, 3)]} />
             </View>
             {f.u.faltaParaPrincipiante !== null && (
               // La distancia motiva sin inventar una categoría que la fuente
@@ -248,48 +257,32 @@ function DondeEstoy({
   );
 }
 
-const estilos = StyleSheet.create({
-  seccion: { color: C.sub, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginTop: 28, marginBottom: 10 },
+const estilos = conTema(() => StyleSheet.create({
   sub: { color: C.sub, fontSize: 14, lineHeight: 21 },
-  nota: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 8 },
+  nota: { ...R.nota, marginTop: 8  },
   apagado: { color: C.apagado, fontSize: 13 },
   nombre: { color: C.tinta, fontSize: 14 },
-  dato: { color: C.sub, fontSize: 13, fontVariant: ['tabular-nums'] },
-  contenida: {
-    backgroundColor: 'rgba(138,147,168,0.06)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
-    borderRadius: 2,
-    padding: 16,
-  },
+  dato: { color: C.sub, fontSize: 13, fontFamily: L.dato },
+  contenida: { padding: 16 },
   puerta: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.lineaFuerte,
-    borderRadius: 10,
     paddingVertical: 13,
     alignItems: 'center',
     marginTop: 22,
   },
   puertaTexto: { color: C.tinta, fontSize: 14 },
-  dots: { color: C.tinta, fontSize: 46, fontWeight: '300', letterSpacing: -1.4, fontVariant: ['tabular-nums'] },
-  dotsPie: { color: C.sub, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 8 },
+  dots: { color: C.tinta, fontSize: 46, fontWeight: '300', letterSpacing: -1.4, fontFamily: L.dato },
+  dotsPie: { ...R.etiqueta, marginTop: 8  },
   tira: { gap: 2, marginTop: 12 },
   tiraItem: { flexDirection: 'row', alignItems: 'baseline', gap: 10, paddingVertical: 5, paddingHorizontal: 2 },
-  tarjeta: {
-    backgroundColor: 'rgba(11,13,19,0.72)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: C.linea,
-    borderRadius: 14,
-    padding: 4,
-  },
-  separada: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea },
+  tarjeta: {},
+  separada: { borderTopWidth: 1, borderColor: C.linea },
   rankCabecera: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 12 },
   rankDetalle: { paddingLeft: 50, paddingRight: 12, paddingBottom: 10 },
-  donde: { marginTop: 16, paddingTop: 14, borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.linea },
-  dondeTitulo: { color: C.sub, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase' },
+  donde: { marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderColor: C.linea },
+  dondeTitulo: { ...R.etiqueta },
   dondeDatos: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginBottom: 6 },
-  pct: { minWidth: 34, textAlign: 'right', color: C.apagado, fontSize: 12 },
-  escala: { height: 3, backgroundColor: 'rgba(160,180,220,0.09)', marginTop: 14 },
+  pct: { minWidth: 34, textAlign: 'right', color: C.apagado, fontSize: 12, fontFamily: L.dato },
+  escala: { height: 3, backgroundColor: conAlfa(C.principal, 0.14), marginTop: 14 },
   marca: { position: 'absolute', top: -3, width: 2, height: 9 },
   falta: { color: C.apagado, fontSize: 12, marginTop: 6 },
-});
+}));
