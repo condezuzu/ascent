@@ -9,6 +9,7 @@ import { C, DESHABILITADO, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text, TextInput } from './Texto';
 import Tocable from './Tocable';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * ELEGIR EL NOMBRE — lo que falta para que una cuenta nueva sirva.
@@ -103,6 +104,7 @@ export default function Onboarding({ alElegir }: { alElegir: () => void }) {
           onPress={guardar}
           disabled={cargando}
         >
+<FondoOctogonal relleno={C.claro} luz={C.claro} />
           {cargando ? (
             <ActivityIndicator color={C.fondo} />
           ) : (
@@ -159,7 +161,7 @@ const estilos = conTema(() => StyleSheet.create({
     paddingVertical: 10,
     marginBottom: 20,
   },
-  solido: { backgroundColor: C.claro, borderRadius: 2, paddingVertical: 15, alignItems: 'center' },
+  solido: { paddingVertical: 15, alignItems: 'center' },
   apagado: { opacity: DESHABILITADO },
   textoSolido: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   error: { color: C.error, fontSize: 13, marginTop: 14, textAlign: 'center', lineHeight: 19 },

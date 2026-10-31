@@ -23,7 +23,7 @@ import { useArriba } from './zonaSegura';
 import { cuentaLaSerie, horaDelToque } from './toques';
 import Aparece from './Aparece';
 import Tocable from './Tocable';
-import { Text, TextInput } from './Texto';
+import { Text, TextInput, CifraJunta } from './Texto';
 import { L } from './fuentes';
 import FondoOctogonal from './FondoOctogonal';
 import { Fantasma } from './roles';
@@ -236,7 +236,7 @@ export default function Descanso({
               />
             </Svg>
             <Text testID="descanso-reloj" style={estilos.numero} accessibilityLiveRegion="polite">
-              <RelojPartido texto={cuentaAtras(falta)} />
+              <CifraJunta texto={cuentaAtras(falta)} apretar={-16.5} />
             </Text>
             {terminado && (
               <Text testID="descanso-de-mas" style={estilos.deMas} accessibilityLabel={`${cuentaAtras(pasadoDe(vivo.fin, ahora))} ${T.descanso.deMas}`}>
@@ -353,19 +353,6 @@ const RADIO = 128;
 const LADO = RADIO * 2 + 16;
 const LARGO = 2 * Math.PI * RADIO;
 
-function RelojPartido({ texto }: { texto: string }) {
-  useTema();
-  const dos = texto.indexOf(':');
-  if (dos < 1) return <>{texto}</>;
-  return (
-    <>
-      {texto.slice(0, dos - 1)}
-      <Text style={estilos.juntoALosPuntos}>{texto.slice(dos - 1, dos + 1)}</Text>
-      {texto.slice(dos + 1)}
-    </>
-  );
-}
-
 const estilos = conTema(() => StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: C.fondo, paddingHorizontal: 24, paddingTop: 56, paddingBottom: 30 },
   cerrar: { position: 'absolute', top: 48, right: 16, minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
@@ -379,8 +366,6 @@ const estilos = conTema(() => StyleSheet.create({
   // Girado un cuarto: el arco arranca arriba, como un reloj.
   dibujo: { position: 'absolute', top: 0, left: 0, transform: [{ rotate: '-90deg' }] },
   numero: { color: C.tinta, fontSize: 78, fontWeight: '200', fontFamily: L.dato, letterSpacing: -4 },
-  // Geist Mono les da a los dos puntos el ancho de un número: a este tamaño quedaban dos huecos.
-  juntoALosPuntos: { letterSpacing: -4 - 12.5 },
   // En la esquina del cuadrado del arco, afuera del círculo.
   deMas: { position: 'absolute', right: 4, bottom: 4, color: C.sub, fontSize: 15, fontFamily: L.dato },
   abajo: { alignItems: 'stretch' },

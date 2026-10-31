@@ -61,7 +61,8 @@ const ancho = async (page, id) => (await page.getByTestId(id).first().boundingBo
 
 const A = await cuenta('a');
 const B = await cuenta('b');
-const nav = await chromium.launch();
+// Con la GPU de la máquina: con el motor por CPU, las muestras de la burbuja tardan más que la invitación entera.
+const nav = await chromium.launch({ args: ['--enable-gpu', '--ignore-gpu-blocklist', '--use-angle=d3d11', '--enable-unsafe-swiftshader=false'] });
 try {
   const { data: am } = await A.s.from('friendships').insert({ solicitante: A.id, destinatario: B.id }).select('id').single();
   await B.s.from('friendships').update({ estado: 'aceptada' }).eq('id', am.id);

@@ -71,7 +71,7 @@ export function Fantasma({
       accessibilityState={accesibilidad}
       style={[estilos.fantasma, { alignSelf: alinear }, estilo]}
     >
-      <View style={[estilos.fantasmaLinea, { borderBottomColor: conAlfa(color, 0.45) }]}>
+      <View style={[estilos.fantasmaLinea, { borderBottomColor: conAlfa(color, 0.45) }, !enHoja && estilos.fantasmaPlaca]}>
         <Text style={estiloTexto}>{texto}</Text>
       </View>
     </Tocable>
@@ -109,5 +109,7 @@ const estilos = conTema(() => StyleSheet.create({
   // El toque sigue siendo de 44 puntos aunque se vea chico.
   fantasma: { paddingVertical: 12, minHeight: 44, justifyContent: 'center' },
   fantasmaLinea: { paddingBottom: 3, borderBottomWidth: 1 },
+  // En reposo el planeta le pasa por detrás, y el anillo del agujero negro no deja llegar al piso sin esto.
+  fantasmaPlaca: { backgroundColor: C.placa, paddingHorizontal: 6 },
   fantasmaTexto: { fontSize: 13.5 },
 }));

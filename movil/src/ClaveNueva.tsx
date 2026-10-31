@@ -9,6 +9,7 @@ import { C, DESHABILITADO, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import Tocable from './Tocable';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * ELEGIR LA CONTRASEÑA NUEVA, después de tocar el enlace del correo (4/10).
@@ -76,6 +77,7 @@ export default function ClaveNueva({ alTerminar }: { alTerminar: () => void }) {
               accessibilityLabel={T.clave.repetir}
             />
             <Tocable style={[estilos.solido, guardando && estilos.apagado]} onPress={() => guardar()} disabled={guardando}>
+<FondoOctogonal relleno={C.claro} luz={C.claro} />
               <Text style={estilos.solidoTexto}>{guardando ? T.sesion.guardando : T.general.guardar}</Text>
             </Tocable>
             {error !== '' && <Text style={estilos.error}>{error}</Text>}
@@ -105,7 +107,7 @@ const estilos = conTema(() => StyleSheet.create({
     paddingVertical: 10,
     marginBottom: 20,
   },
-  solido: { backgroundColor: C.claro, borderRadius: 2, paddingVertical: 15, alignItems: 'center', marginTop: 8 },
+  solido: { paddingVertical: 15, alignItems: 'center', marginTop: 8 },
   solidoTexto: { color: C.fondo, fontSize: 15, letterSpacing: 1 },
   apagado: { opacity: DESHABILITADO },
   error: { color: C.error, fontSize: 14, marginTop: 14, textAlign: 'center' },

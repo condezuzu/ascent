@@ -1400,5 +1400,5 @@ const estilos = conTema(() => StyleSheet.create({
   // "Ver lo que hiciste hoy": tenue, debajo de los botones de foto/peso.
   verResumen: { paddingVertical: 10, marginTop: 2, alignSelf: 'flex-start' },
   verResumenTexto: { color: C.sobreMotor, fontSize: 13, ...HALO },
-  subrayado: { paddingBottom: 3, borderBottomWidth: 1, borderBottomColor: conAlfa(C.sobreMotor, 0.45) },
+  subrayado: { paddingBottom: 3, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: conAlfa(C.sobreMotor, 0.45), backgroundColor: C.placa },
 }));

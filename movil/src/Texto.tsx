@@ -62,6 +62,22 @@ export const TextInput = forwardRef<ComponentRef<typeof CampoDeRN>, TextInputPro
 
 export const TextoAnimado = Animated.createAnimatedComponent(Text);
 
+/**
+ * Geist Mono le da a la puntuación el ancho de un número: a tamaño grande, los dos puntos de un reloj
+ * y la coma de un peso quedan con un hueco a cada lado. Esto acerca lo que tienen al lado.
+ */
+export function CifraJunta({ texto, apretar }: { texto: string; apretar: number }) {
+  const i = texto.search(/[:,]/);
+  if (i < 1) return <>{texto}</>;
+  return (
+    <>
+      {texto.slice(0, i - 1)}
+      <Text style={{ letterSpacing: apretar }}>{texto.slice(i - 1, i + 1)}</Text>
+      {texto.slice(i + 1)}
+    </>
+  );
+}
+
 // Los mismos nombres como tipo: `useRef<TextInput>` sigue valiendo.
 export type Text = ComponentRef<typeof TextoDeRN>;
 export type TextInput = ComponentRef<typeof CampoDeRN>;

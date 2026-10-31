@@ -19652,7 +19652,7 @@ console.log('\n272. El descanso al terminar: el reloj grande queda en 0:00 y lo 
   const { EN } = await import('../nucleo/textos-en.ts');
   const d = sinComentarios(deBug('movil', 'src', 'Descanso.tsx'));
   chequear('terminado, el reloj grande dice 0:00 y lo de más se escribe +0:40', [cuentaAtras(0), '+' + cuentaAtras(40)], ['0:00', '+0:40']);
-  chequear('el número grande es siempre la cuenta atrás (en 0 dice 0:00)', /<Text testID="descanso-reloj" style=\{estilos\.numero\}[^>]*>\s*<RelojPartido texto=\{cuentaAtras\(falta\)\} \/>\s*<\/Text>/.test(d), true);
+  chequear('el número grande es siempre la cuenta atrás (en 0 dice 0:00)', /<Text testID="descanso-reloj" style=\{estilos\.numero\}[^>]*>\s*<CifraJunta texto=\{cuentaAtras\(falta\)\} apretar=\{-16\.5\} \/>\s*<\/Text>/.test(d), true);
   chequear('lo de más: solo al terminar, chico, abajo a la derecha del arco', [
     /\{terminado && \(\s*<Text testID="descanso-de-mas" style=\{estilos\.deMas\}/.test(d),
     /deMas: \{ position: 'absolute', right: 4, bottom: 4, color: C\.sub, fontSize: 15/.test(d),

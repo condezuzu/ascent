@@ -78,6 +78,22 @@ try {
     return salida;
   }, FAMILIAS.source);
 
+  // Lo que quedó cortado con «…»: Inter es más ancha que la del sistema y un rótulo que entraba, deja de entrar.
+  const cortados = () => page.evaluate(() => {
+    const salida = [];
+    for (const el of document.querySelectorAll('body *')) {
+      if (![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue;
+      const cs = getComputedStyle(el);
+      const c = el.getBoundingClientRect();
+      if (c.width < 1 || c.height < 1 || cs.visibility === 'hidden' || cs.display === 'none') continue;
+      if (c.right < 0 || c.left > innerWidth) continue;
+      const enUnaLinea = cs.textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth + 1;
+      const enVarias = cs.webkitLineClamp !== 'none' && cs.webkitLineClamp !== '' && el.scrollHeight > el.clientHeight + 1;
+      if (enUnaLinea || enVarias) salida.push(el.textContent.trim().slice(0, 30));
+    }
+    return salida;
+  });
+
   await page.goto('http://localhost:8090', { waitUntil: 'domcontentloaded', timeout: 240000 });
   await page.evaluate(([u]) => localStorage.setItem(`ascent:guia:${u}`, JSON.stringify({ uid: u, recorrido: true, paso: 0, globos: ['elegir', 'series', 'descanso', 'peso', 'terminar', 'carga', 'sugerido', 'mas'] })), [uid]);
   await pasarLaEntradaNativa(page);
@@ -109,6 +125,7 @@ try {
 
   // ---- INICIO ----
   chequear('Inicio: nada en la fuente del sistema', await delSistema(), []);
+  chequear('Inicio: nada cortado', await cortados(), []);
   const racha = page.getByText('3', { exact: true }).first();
   chequear('el número de la racha es Outfit', await familia(racha), 'Outfit_300Light');
   chequear('el nombre es Inter 600', await familia(page.getByText(`le_${sello.slice(-6)}`, { exact: true }).first()), 'Inter_600SemiBold');
@@ -121,6 +138,7 @@ try {
   await mas.waitFor({ timeout: 60000 });
   await page.waitForTimeout(1200);
   chequear('entrenando: nada en la fuente del sistema', await delSistema(), []);
+  chequear('entrenando: nada cortado', await cortados(), []);
   chequear('las metas son datos', await familia(page.getByText('×3', { exact: true }).first()), 'GeistMono_400Regular');
   await page.getByText('×3', { exact: true }).first().click({ timeout: 20000 });
   await page.waitForTimeout(300);
@@ -150,10 +168,25 @@ try {
   await texto(TX.nav.stats).click({ timeout: 30000 });
   await page.waitForTimeout(2000);
   chequear('Stats: nada en la fuente del sistema', await delSistema(), []);
+  chequear('Stats: nada cortado', await cortados(), []);
   chequear('y la de las cifras cargó', await sinCargar(['GeistMono_300Light']), []);
   chequear('las cifras de Stats son Geist Mono liviana', await familia(page.getByTestId('stats-cifra').first()), 'GeistMono_300Light');
   chequear('la etiqueta de una cifra es Inter 500', await familia(page.getByText(TX.stats.mejorRacha, { exact: true }).first()), 'Inter_500Medium');
   chequear('«día N» es un dato', await familia(page.getByText(TX.stats.diaN(6), { exact: true }).first()), 'GeistMono_400Regular');
+  for (const [nombre, pestana] of [['Entrenamiento', TX.stats.pestanaEntrenamiento], ['Social', TX.nav.social], ['Álbum', TX.nav.album], ['Ajustes', TX.nav.ajustes]]) {
+    await texto(pestana).click({ timeout: 20000 });
+    await page.waitForTimeout(1500);
+    chequear(`${nombre}: nada en la fuente del sistema`, await delSistema(), []);
+    chequear(`${nombre}: nada cortado`, await cortados(), []);
+  }
+  // Ajustes sigue más abajo, donde están los controles de varias opciones.
+  await page.mouse.move(195, 500);
+  await page.mouse.wheel(0, 500);
+  await page.waitForTimeout(600);
+  chequear('Ajustes, más abajo: nada cortado', await cortados(), []);
+  await page.mouse.wheel(0, 700);
+  await page.waitForTimeout(600);
+  chequear('Ajustes, al final: nada cortado', await cortados(), []);
 } finally {
   await nav.close();
   await s.rpc('terminar_sesion').then(() => {}, () => {});

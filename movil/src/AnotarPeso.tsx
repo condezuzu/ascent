@@ -8,7 +8,7 @@ import { useEnVuelo } from '@compartido/useEnVuelo';
 import { T } from '@nucleo/textos';
 import { supabase } from './supabase';
 import { FIJO } from './coloresFijos';
-import { Text } from './Texto';
+import { Text, CifraJunta } from './Texto';
 import { L } from './fuentes';
 import FondoOctogonal from './FondoOctogonal';
 import Tocable from './Tocable';
@@ -82,7 +82,7 @@ export default function AnotarPeso({ unidad, alGuardar }: { unidad: Unidad; alGu
     <View style={estilos.todo} testID="anotar-peso">
       <View style={estilos.cifra}>
         <Text style={estilos.numero} testID="anotar-peso-valor">
-          {conComa(valor.toFixed(1))}
+          <CifraJunta texto={conComa(valor.toFixed(1))} apretar={-13} />
         </Text>
         <Text style={estilos.unidad}>{unidad}</Text>
       </View>

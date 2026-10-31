@@ -8,6 +8,7 @@ import { C, DESHABILITADO, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text, TextInput } from './Texto';
 import Tocable from './Tocable';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * ENTRAR — TANDA 2, y la primera pantalla de verdad de la app nativa.
@@ -145,6 +146,7 @@ export default function Login({ alEntrar, modoInicial = 'entrar' }: { alEntrar: 
           onPress={enviar}
           disabled={cargando}
         >
+<FondoOctogonal relleno={C.claro} luz={C.claro} />
           {cargando ? (
             <ActivityIndicator color={C.fondo} />
           ) : (
@@ -218,8 +220,6 @@ const estilos = conTema(() => StyleSheet.create({
     marginBottom: 20,
   },
   solido: {
-    backgroundColor: C.claro,
-    borderRadius: 2,
     paddingVertical: 15,
     alignItems: 'center',
     marginTop: 8,

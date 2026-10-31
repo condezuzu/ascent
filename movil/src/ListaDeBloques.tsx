@@ -18,6 +18,7 @@ import { Text } from './Texto';
 import { L } from './fuentes';
 import { R } from './roles';
 import Tocable from './Tocable';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * LO QUE LLEVÁS HOY, Y CÓMO CORREGIRLO. La misma hoja que la web: cada bloque
@@ -196,6 +197,7 @@ function ListaDeBloques({
       )}
 
       <Tocable style={estilos.listo} onPress={cerrar}>
+<FondoOctogonal relleno={C.claro} luz={C.claro} />
         <Text style={estilos.listoTexto}>{T.sesion.listo}</Text>
       </Tocable>
       {cambiando !== null && estado.cerrados[cambiando] && (
@@ -237,6 +239,6 @@ const estilos = conTema(() => StyleSheet.create({
   boton: { minHeight: 40, paddingHorizontal: 10, justifyContent: 'center' },
   botonTexto: { color: C.tinta, fontSize: 14 },
   pesos: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 14, marginTop: 6 },
-  listo: { backgroundColor: C.claro, borderRadius: 2, paddingVertical: 14, alignItems: 'center', marginTop: 18 },
+  listo: { paddingVertical: 14, alignItems: 'center', marginTop: 18 },
   listoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
 }));

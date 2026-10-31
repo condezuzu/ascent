@@ -29,6 +29,7 @@ import { Text } from './Texto';
 import { L } from './fuentes';
 import { R } from './roles';
 import Tocable from './Tocable';
+import FondoOctogonal from './FondoOctogonal';
 
 /**
  * EL PERFIL DE OTRO: su racha, su semana y lo que comparte.
@@ -271,6 +272,7 @@ export default function PerfilDeAmigo() {
           <>
             {pedidoRecibido ? (
               <Tocable style={estilos.solido} onPress={() => aceptarPedido()}>
+<FondoOctogonal relleno={C.claro} luz={C.claro} />
                 <Text style={estilos.solidoTexto}>{T.social.aceptar}</Text>
               </Tocable>
             ) : pedidoPendiente ? (
@@ -279,6 +281,7 @@ export default function PerfilDeAmigo() {
               </View>
             ) : (
               <Tocable style={estilos.solido} onPress={() => mandarPedido()}>
+<FondoOctogonal relleno={C.claro} luz={C.claro} />
                 <Text style={estilos.solidoTexto}>{T.social.agregar}</Text>
               </Tocable>
             )}
@@ -328,7 +331,7 @@ const estilos = conTema(() => StyleSheet.create({
   puntoHoy: { borderWidth: 1, borderColor: C.claro },
   letra: { color: C.apagado, fontSize: 11, fontFamily: L.dato },
   rotulo: { ...R.etiqueta, marginBottom: 10  },
-  solido: { backgroundColor: C.claro, borderRadius: 2, paddingVertical: 15, alignItems: 'center', marginTop: 10 },
+  solido: { paddingVertical: 15, alignItems: 'center', marginTop: 10 },
   solidoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
   boton: {
     borderWidth: 1,

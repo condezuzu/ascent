@@ -51,9 +51,9 @@ const estilos = conTema(() => StyleSheet.create({
     borderRadius: 999,
     overflow: 'hidden',
   },
-  parte: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 11, paddingHorizontal: 6 },
+  parte: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 11, paddingHorizontal: 2 },
   separada: { borderLeftWidth: 1, borderLeftColor: C.lineaFuerte },
   elegida: { backgroundColor: conAlfa(C.claro, 0.14) },
-  texto: { color: C.apagado, fontSize: 14 },
-  textoElegido: { color: C.tinta, fontWeight: '600' },
+  texto: { color: C.apagado, fontSize: 13 },
+  textoElegido: { color: C.tinta, fontWeight: '500' },
 }));

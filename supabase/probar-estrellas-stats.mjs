@@ -59,7 +59,8 @@ try {
   const forma = await linea.evaluate((el) => ({
     hijos: el.children.length,
     estrellas: [...el.children].filter((h) => h.querySelector('path')?.getAttribute('d')?.startsWith('M0,-48')).length,
-    circulos: el.querySelectorAll('circle, ellipse').length + [...el.querySelectorAll('div')].filter((d) => parseFloat(getComputedStyle(d).borderRadius) > 0).length,
+    // El halo de la estrella es un círculo con degradé: es su luz, no su forma (30/10).
+    circulos: el.querySelectorAll('circle:not([fill="url(#halo)"]), ellipse').length + [...el.querySelectorAll('div')].filter((d) => parseFloat(getComputedStyle(d).borderRadius) > 0).length,
   }));
   console.log('  --   ' + JSON.stringify(forma));
   chequear('cada vida es la estrella y ninguna es un círculo', [forma.hijos > 0 && forma.estrellas === forma.hijos, forma.circulos], [true, 0]);

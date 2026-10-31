@@ -1,4 +1,3 @@
-import { loadAsync } from 'expo-font';
 import type { TextStyle } from 'react-native';
 
 /** Las familias que un estilo nombra. Inter es lo que hay si no nombra ninguna. */
@@ -28,7 +27,9 @@ export function fuentesListas() {
  * app (si llega después, se usa desde el próximo dibujo).
  */
 export function cargarFuentes(topeMs = 2500) {
-  const carga = loadAsync(ARCHIVOS).then(
+  // Adentro y no arriba del archivo: si el módulo nativo faltara en una build, importarlo tiraría toda
+  // la app abajo, y sin fuentes la app funciona igual.
+  const carga = new Promise<void>((listo) => listo(require('expo-font').loadAsync(ARCHIVOS))).then(
     () => {
       listas = true;
     },

@@ -167,14 +167,9 @@ try {
       const boton = page.getByText(TX.peso.anotar, { exact: true }).last();
       await boton.waitFor({ timeout: 20000 });
       await page.waitForTimeout(500);
-      const fondoDelBoton = await boton.evaluate((n) => {
-        for (let a = n; a; a = a.parentElement) {
-          const c = getComputedStyle(a).backgroundColor;
-          if (c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') return c;
-        }
-        return null;
-      });
-      chequear(`rango ${r}: la hoja de anotar el peso sigue con sus colores fijos`, hexDe(fondoDelBoton), '#c4c2ba');
+      // El botón es un octágono: su color es el del dibujo, el polígono que tiene relleno.
+      const fondoDelBoton = await boton.evaluate((n) => [...n.parentElement.querySelectorAll('polygon')].find((p) => p.getAttribute('fill') !== 'none')?.getAttribute('fill') ?? null);
+      chequear(`rango ${r}: la hoja de anotar el peso sigue con sus colores fijos`, fondoDelBoton?.toLowerCase(), '#c4c2ba');
       await page.reload({ waitUntil: 'domcontentloaded' });
       await iniciar().waitFor({ timeout: 120000 });
     }
