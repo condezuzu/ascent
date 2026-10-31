@@ -43,6 +43,18 @@ que ya están en la calle. Se junta con `main` recién cuando la build exista.
 - **Que la tarjeta suene sola al terminar, sin notificación.** Pide un servidor
   que la empuje (APNs). No entra en esta build.
 
+## Lo que la vuelta visual dejó para la 1.2.0 (31/10)
+
+Las seis técnicas salieron por OTA. Lo que necesita una build, y por eso no se hizo a medias:
+
+- **Reanimated**: que las filas se reacomoden solas cuando una se va (`layout`) y arrastrar
+  una hoja con el dedo en el hilo de la interfaz. No está en el binario y no se agregó: entra
+  con la build, junto con su plugin de Babel. `movil/src/movimiento.ts` ya tiene las curvas y
+  los tiempos, así que Reanimated los toma de ahí.
+- **La tarjeta de la pantalla bloqueada** (`targets/descanso`): sigue con los colores fijos de
+  `FIJO` y la fuente del sistema. Para que siga al rango hay que pasarle el color en los
+  atributos y sumar las fuentes al target. Es Swift y acá no se compila: no se tocó.
+
 ## Los pasos que son del humano, sí o sí
 
 1. **El sonido ya está elegido** (corte 1). Lo único que queda es oírlo con
