@@ -172,6 +172,7 @@ export default function VidasExplicadas({
           <View key={i} style={[estilos.dia, c === 'lleno' && estilos.lleno, c === 'futuro' && estilos.futuro, c === 'falta' && estilos.falta]} testID={c === 'falta' ? 'vidas-dia-que-falto' : undefined}>
             {c === 'falta' && !cubierto && (
               <Animated.View
+                testID="vidas-llama"
                 style={[estilos.llama, { opacity: llamada.interpolate({ inputRange: [0, 1], outputRange: [0.9, 0] }), transform: [{ scale: llamada.interpolate({ inputRange: [0, 1], outputRange: [0.75, 1.3] }) }] }]}
               />
             )}
@@ -215,6 +216,6 @@ const estilos = conTema(() => StyleSheet.create({
   lleno: { backgroundColor: C.diaLleno },
   futuro: { borderWidth: 1, borderColor: C.diaFuturo },
   falta: { borderWidth: 1, borderColor: C.claro },
-  llama: { position: 'absolute', left: -5, top: -5, width: DIA, height: DIA, borderRadius: DIA / 2, borderWidth: 1, borderColor: C.claro },
+  llama: { position: 'absolute', left: -5, right: -5, top: -5, bottom: -5, borderRadius: 999, borderWidth: 1, borderColor: C.claro },
   vuela: { position: 'absolute', left: 0, top: 0, width: TAM, height: TAM, zIndex: 3 },
 }));

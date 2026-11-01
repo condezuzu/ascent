@@ -141,6 +141,10 @@ try {
   await page.getByTestId('vidas-explicadas').first().waitFor({ timeout: 30000 });
   await page.waitForTimeout(1200);
   chequear('la nota ya no se lee', [await seLee(TX.impulso.nota), await page.getByText(TX.impulso.notaJuntas).filter({ visible: true }).count()], [0, 0]);
+  const centro = (n) => { const c = n.getBoundingClientRect(); return [c.left + c.width / 2, c.top + c.height / 2]; };
+  const [aroX, aroY] = await page.getByTestId('vidas-llama').first().evaluate(centro);
+  const [diaX, diaY] = await page.getByTestId('vidas-dia-que-falto').first().evaluate(centro);
+  chequear('el aro que llama está centrado en el día que faltó', Math.abs(aroX - diaX) <= 1 && Math.abs(aroY - diaY) <= 1, true);
   chequear('VoiceOver la sigue teniendo', /30 días/.test(await etiquetaDe('vidas-explicadas')), true);
   const rachaAntes = await page.getByTestId('vidas-racha').first().innerText();
   await foto('a-vidas');
