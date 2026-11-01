@@ -91,6 +91,8 @@
 //      la punta de la barra, el sólido, la pestaña y la neblina del descanso (30/10), en la nativa.
 //  40. probar-movimiento — cuadro por cuadro: la hoja sube y se va más corto con el velo quieto, las cifras
 //      cuentan, el pulgar viaja, los chips se cruzan, lo tocable se hunde, y con «reducir movimiento» nada (30/10).
+//  41. probar-menos-texto — las once de la sección 12: la explicación ya no se lee, el dibujo hace lo que
+//      dice y VoiceOver sigue teniendo el texto (31/10), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -151,6 +153,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'octágono o píldora', archivo: 'probar-forma.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'luz de color y bordes de 1 pt', archivo: 'probar-profundidad.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'llega con la curva, se va más corto', archivo: 'probar-movimiento.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'menos texto, más visual', archivo: 'probar-menos-texto.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

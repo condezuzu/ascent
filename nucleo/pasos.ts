@@ -39,6 +39,9 @@ export function hayQueFestejar(pasos: number, meta: number, festejadoEl: string 
 export const META_PASOS_MIN = 1000;
 export const META_PASOS_MAX = 100000;
 
+/** Lo que abarca la barra que se arrastra. Una meta más alta, que ya estaba, se respeta hasta que se la mueve. */
+export const META_DESLIZADOR = { min: 1000, max: 30000, paso: 500 };
+
 /**
  * Lo guardado, o la de omisión. Un valor roto —de otra versión, escrito a
  * mano— se trata como si no estuviera: es una preferencia de dibujo, y el peor

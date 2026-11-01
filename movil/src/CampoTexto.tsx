@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import { TextInput } from './Texto';
 
@@ -25,10 +25,15 @@ import { TextInput } from './Texto';
  */
 export default function CampoTexto({
   contenedorStyle,
+  pedirFoco,
   ...props
-}: TextInputProps & { contenedorStyle?: StyleProp<ViewStyle> }) {
+}: TextInputProps & { contenedorStyle?: StyleProp<ViewStyle>; pedirFoco?: number }) {
   const ref = useRef<TextInput>(null);
   const [enfocado, setEnfocado] = useState(false);
+  // Cada vez que sube, se enfoca: otro lugar de la pantalla puede traer al dedo hasta acá.
+  useEffect(() => {
+    if (pedirFoco) ref.current?.focus();
+  }, [pedirFoco]);
   return (
     <View style={contenedorStyle}>
       <TextInput

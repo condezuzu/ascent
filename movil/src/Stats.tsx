@@ -41,7 +41,7 @@ import { eventos } from '@compartido/eventos';
 import { ABRIR_ENTRENAMIENTO, seAcabaDePedir } from './abrirEntrenamiento';
 import { paletaDe } from '@nucleo/paletas';
 import { useArriba } from './zonaSegura';
-import { C, conTema } from './colores';
+import { C, conTema, conAlfa } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
@@ -308,7 +308,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
         <Estancamiento registradoHoy={entrenados.some((l) => l.fecha === hoy)} paleta={pal} />
       )}
 
-      {pestana === 'general' && datos.vidas && <LineaDeVidas vidas={datos.vidas} />}
+      {pestana === 'general' && datos.vidas && <LineaDeVidas vidas={datos.vidas} racha={racha} />}
 
       {pestana === 'general' && (
         <View style={estilos.grilla}>
@@ -390,6 +390,22 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                 </Tocable>
               </View>
 
+              {/* LA FRANJA SE LEE SOLA (propuesta B): 10 y 20 arriba de las barras, y prendida en la fila
+                  que está adentro. VoiceOver sigue leyendo lo que antes eran dos notas. */}
+              <View
+                style={estilos.filaEscala}
+                testID="escala-de-series"
+                accessible
+                accessibilityLabel={`${T.volumen.notaRango} ${T.volumen.notaRangoPorque}`}
+              >
+                <View style={estilos.rotulo} />
+                <View style={estilos.escala}>
+                  {[SERIES_POR_SEMANA.minimo, SERIES_POR_SEMANA.maximo].map((n) => (
+                    <Text key={n} style={[estilos.marcaEscala, { left: `${(n / TOPE_DE_PISTA) * 100}%` }]}>{n}</Text>
+                  ))}
+                </View>
+                <View style={estilos.valorFila} />
+              </View>
               {filas.map((f) => {
                 const hechas = f.semanas[indice].series;
                 const como = comoVaElMusculo(hechas);
@@ -407,8 +423,10 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                         no significar nada. */}
                     <View style={estilos.pista}>
                       <View
+                        testID={como === 'dentro' ? 'franja-viva' : 'franja'}
                         style={[
                           estilos.franja,
+                          como === 'dentro' && estilos.franjaViva,
                           {
                             left: `${(SERIES_POR_SEMANA.minimo / TOPE_DE_PISTA) * 100}%`,
                             width: `${((SERIES_POR_SEMANA.maximo - SERIES_POR_SEMANA.minimo) / TOPE_DE_PISTA) * 100}%`,
@@ -423,8 +441,6 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                   </View>
                 );
               })}
-              <Text style={estilos.nota}>{T.volumen.notaRango}</Text>
-              <Text style={estilos.nota}>{T.volumen.notaRangoPorque}</Text>
               {/* EL PESO TOTAL POR SEMANA (15/10): uno solo, y elige la misma semana que las filas. */}
               <KilosPorSemana
                 semanas={totales}
@@ -557,6 +573,10 @@ const estilos = conTema(() => StyleSheet.create({
   // La franja NO es un borde: es un bloque más claro, para que se lea como una
   // zona y no como dos líneas sueltas.
   franja: { position: 'absolute', top: 0, bottom: 0, backgroundColor: C.barraFranja },
+  franjaViva: { backgroundColor: conAlfa(C.claro, 0.22) },
+  filaEscala: { flexDirection: 'row', gap: 10, height: 16, marginBottom: 4 },
+  escala: { flex: 1 },
+  marcaEscala: { position: 'absolute', width: 24, marginLeft: -12, textAlign: 'center', color: C.apagado, fontSize: 10.5, fontFamily: L.dato },
   llenado: { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 999 },
   // POR DEBAJO, APAGADO; DENTRO, EL COLOR DE LA APP; POR ENCIMA, un tono más
   // caliente. Nada de rojo: pasarse no es un error.

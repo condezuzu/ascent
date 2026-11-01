@@ -68,10 +68,10 @@ import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
 import { Fantasma, R } from './roles';
-import Svg, { Circle, Path } from 'react-native-svg';
 import Cruce from './Cruce';
 import { MS } from './movimiento';
 import Surgir from './Surgir';
+import GimnasioExplicado from './GimnasioExplicado';
 import { fijarExtras } from '@compartido/tarjeta';
 import { unidadDeDistancia } from '@nucleo/distancia';
 
@@ -902,19 +902,12 @@ export default function Inicio({
           son ruido. */}
       {!perfil.gimnasio_lat && !sesion.estado.corriendo && !insistirGimnasio && (
         <Aparece>
-          <Tocable
-            style={estilos.globoQuieto}
-            onPress={() => {
+          <GimnasioExplicado
+            alMarcar={() => {
               irAPestana('ajustes');
               pedirResaltarGimnasio();
             }}
-          >
-            <Svg width={14} height={17} viewBox="0 0 14 17" fill="none" stroke={C.sub} strokeWidth={1.4}>
-              <Path d="M7 16s6-5.4 6-10A6 6 0 0 0 1 6c0 4.6 6 10 6 10Z" />
-              <Circle cx={7} cy={6} r={2} />
-            </Svg>
-            <Text style={estilos.globoTexto}>{T.inicio.gimnasioRecordatorioNativo}</Text>
-          </Tocable>
+          />
         </Aparece>
       )}
 
@@ -1345,19 +1338,6 @@ const estilos = conTema(() => StyleSheet.create({
   sinNada: { marginTop: 26, marginBottom: 10, gap: 6 },
   vacioTitulo: { color: C.tinta, fontSize: 20, fontWeight: '300' },
   vacioPie: { color: C.sub, fontSize: 14, lineHeight: 20 },
-  // Sin caja, pero con placa: en reposo pasa por encima del planeta.
-  globoQuieto: {
-    marginTop: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 4,
-    paddingVertical: 11,
-    borderTopWidth: 1,
-    borderTopColor: C.linea,
-    backgroundColor: C.placa,
-  },
-  globoTexto: { flex: 1, color: C.sub, fontSize: 13, lineHeight: 18 },
   aviso: { color: C.sub, fontSize: 13, marginTop: 20, textAlign: 'center', lineHeight: 19, alignSelf: 'center', backgroundColor: C.placa, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 4 },
   error: { color: C.error, fontSize: 13, textAlign: 'center' },
   enlace: { color: C.sobreMotor, fontSize: 13, ...HALO },

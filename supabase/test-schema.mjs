@@ -10256,7 +10256,7 @@ console.log('\n143. El grafico de pasos en Stats');
   // a dos pantallas de la unica donde el numero significa algo.
   chequear('la meta se toca en el grafico', /alTocar=\{\(\) => setCambiandoMeta\(true\)\}/.test(gra143), true);
   chequear('y abre la misma pieza que Ajustes', /<MetaDePasos/.test(gra143), true);
-  chequear('que avisa al cambiarla', /alCambiar\?\.\(Math\.round\(n\)\)/.test(de143('movil', 'src', 'ajustes', 'MetaDePasos.tsx')), true);
+  chequear('que avisa al cambiarla', /alCambiar\?\.\(valor\)/.test(de143('movil', 'src', 'ajustes', 'MetaDePasos.tsx')), true);
   // Y YA NO EN AJUSTES (27/9): se movió a Stats, al lado del gráfico, que es la
   // única pantalla donde el número significa algo. En Ajustes era un campo
   // suelto que parecía un enlace.
@@ -20636,10 +20636,11 @@ console.log('\n303. En Estadísticas las vidas también son estrellas (21/10)');
 {
   // La prueba de verdad es la de test:real (probar-estrellas), que las cuenta en pantalla.
   const sinCom303 = (t) => t.replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
-  const sg = sinCom303(deBug('movil', 'src', 'StatsGeneral.tsx'));
+  // Desde la propuesta A (31/10) las dibuja VidasExplicadas.
+  const sg = sinCom303(deBug('movil', 'src', 'VidasExplicadas.tsx'));
   chequear('la misma estrella que Inicio, llena la que queda y en contorno la usada, y ni un punto', [
-    /modosDeLasVidas\(vidas\)\.map\(\(modo, i\) => \(\s*<(Estrella key=\{i\} tam=\{16\}|EstrellaQueTitila key=\{i\} indice=\{i\}) modo=\{modo\} \/>/.test(sg),
-    /estilos\.vidaViva|vida: \{ width: 9/.test(sg),
+    /modos = modosDeLasVidas\(vidas\)/.test(sg) && /<EstrellaQueTitila indice=\{i\} modo=\{modo\}/.test(sg),
+    /estilos\.vidaViva|vida: \{ width: 9/.test(sg + sinCom303(deBug('movil', 'src', 'StatsGeneral.tsx'))),
   ], [true, false]);
 }
 console.log('\n304. La revisión del 21/10: nada escrito a mano en la nativa, y la celda de la próxima vida');
@@ -21435,7 +21436,7 @@ console.log('\n324. Las letras de la nativa: Inter, Outfit solo para la racha, G
   chequear('nadie usa el Text de React Native: pasaría por la fuente del sistema', conTextoDeRN.map((r) => r.slice(raiz324.length + 1)), []);
   chequear('ni Animated.Text', fuentes324.filter((r) => !RN324.test(r) && /Animated\.Text(?![A-Za-z0-9_])/.test(leer324(r, 'utf8'))).map((r) => r.slice(raiz324.length + 1)), []);
   const conRacha = fuentes324.filter((r) => /L\.racha/.test(leer324(r, 'utf8')) && !/[\\/]Texto\.tsx$/.test(r)).map((r) => r.split(/[\\/]/).pop()).sort();
-  chequear('Outfit es solo el número de la racha', conRacha, ['Inicio.tsx', 'RachaConRotulo.tsx']);
+  chequear('Outfit es solo el número de la racha', conRacha, ['Inicio.tsx', 'RachaConRotulo.tsx', 'VidasExplicadas.tsx']);
 
   const fu324 = leer324(join(raiz324, 'movil', 'src', 'fuentes.ts'), 'utf8');
   const archivos324 = [...fu324.matchAll(/require\('\.\.\/assets\/fuentes\/([A-Za-z0-9_]+)\.ttf'\)/g)].map((m) => m[1]);
@@ -21531,6 +21532,53 @@ console.log('\n327. El movimiento de la nativa: llega con una curva, se va más 
   chequear('todo lo tocable se hunde', fuentes327.filter((r) => !FUERA327.test(r) && /<Pressable(?![A-Za-z])/.test(sinComentarios(leer327(r, 'utf8'))) && !SIN_HUNDIR327.has(r.split(/[\\/]/).pop())).map((r) => r.split(/[\\/]/).pop()), []);
   const paq327 = JSON.parse(leer327(join(raiz327, 'movil', 'package.json'), 'utf8'));
   chequear('sin Reanimated: lo que lo necesita queda para la 1.2.0, y esto sale por OTA', 'react-native-reanimated' in paq327.dependencies, false);
+}
+console.log('\n328. Menos texto, más visual: lo que se dejó de leer, VoiceOver lo sigue diciendo (31/10)');
+{
+  // La vista web no dibuja accessibilityHint: esto es lo único que lo mira. El recorrido, en test:real (probar-menos-texto).
+  const { readFileSync: leer328, readdirSync: dir328 } = await import('node:fs');
+  const raiz328 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const src328 = join(raiz328, 'movil', 'src');
+  const de328 = (a) => sinComentarios(leer328(join(src328, a), 'utf8')).replace(/\r\n/g, '\n');
+  const fuentes328 = dir328(src328, { recursive: true, withFileTypes: true }).filter((e) => e.isFile() && /\.tsx$/.test(e.name)).map((e) => join(e.parentPath, e.name));
+  const QUE328 = [
+    ['T.impulso.nota', 'StatsGeneral.tsx'], ['T.impulso.notaJuntas', 'StatsGeneral.tsx'],
+    ['T.volumen.notaRango', 'Stats.tsx'], ['T.volumen.notaRangoPorque', 'Stats.tsx'],
+    ['T.fuerza.sinNada', 'SeccionFuerza.tsx'], ['T.fuerza.faltanMarcasCorto', 'SeccionFuerza.tsx'],
+    ['T.inicio.gimnasioRecordatorioNativo', 'GimnasioExplicado.tsx'],
+    ['T.sesion.sugeridoNota', 'Bloque.tsx'],
+    ['T.stats.pesoVacio', 'PesoSinDatos.tsx'],
+    ['T.ajustes.mostrarUltimaVezNota', 'Ajustes.tsx'], ['T.ajustes.registrarRepsNota', 'Ajustes.tsx'],
+    ['T.ajustes.metaPasosNota', 'ajustes/MetaDePasos.tsx'],
+    ['T.album.vacioPie', 'AlbumVacio.tsx'],
+    ['T.social.vacioPie', 'SocialVacio.tsx'],
+    ['T.rutina.arrastrarAyuda', 'FilasArrastrables.tsx'],
+  ];
+  const escrita328 = (k) => {
+    const re = new RegExp('<Text[^>]*>\\s*\\{' + k.replace(/\./g, '\\.') + '\\}');
+    return fuentes328.filter((r) => re.test(sinComentarios(leer328(r, 'utf8')))).map((r) => k + ' en ' + r.split(/[\\/]/).pop());
+  };
+  chequear('ninguna de las explicaciones que se fueron volvió a la pantalla', QUE328.flatMap(([k]) => escrita328(k)), []);
+  chequear('y cada una sigue en su pantalla', QUE328.filter(([k, a]) => !de328(a).includes(k)).map(([k]) => k), []);
+  chequear('como etiqueta de lo que se toca, no como código muerto', [
+    /accessibilityLabel=\{explicacion\}/.test(de328('VidasExplicadas.tsx')),
+    /accessibilityLabel=\{dots \?\? explicacion\}/.test(de328('TresMarcas.tsx')),
+    /accessibilityHint=\{esFantasma \? /.test(de328('Bloque.tsx')),
+    /accessibilityHint=\{T\.rutina\.arrastrarAyuda\}/.test(de328('FilasArrastrables.tsx')),
+    /accessibilityHint/.test(de328('Interruptor.tsx')),
+  ], [true, true, true, true, true]);
+  // Lo que se demuestra se ve y no pasa: ni una vida gastada, ni una foto subida, ni un amigo inventado.
+  const DEMOS328 = ['VidasExplicadas.tsx', 'AlbumVacio.tsx', 'SocialVacio.tsx', 'GimnasioExplicado.tsx', 'AjusteQueSeMuestra.tsx', 'PesoSinDatos.tsx'];
+  chequear('una demostración no toca datos', DEMOS328.filter((a) => /supabase|almacenamiento\.guardar|\.rpc\(/.test(de328(a))), []);
+  chequear('y con «reducir movimiento» no se mueve', ['VidasExplicadas.tsx', 'AlbumVacio.tsx', 'SocialVacio.tsx', 'GimnasioExplicado.tsx', 'FilasArrastrables.tsx'].filter((a) => !/sinMovimiento\(\)/.test(de328(a))), []);
+  // El doble de Salud de la sonda no puede llegar a la app publicada.
+  chequear('el doble de Salud, solo en desarrollo', [/saludDeSonda = __DEV__ \? /.test(de328('plataforma/index.ts')), /salud: saludDeSonda \?\? saludNativa/.test(de328('plataforma/index.ts'))], [true, true]);
+  const PA328 = await import('../nucleo/pasos.ts');
+  const { min: min328, max: max328, paso: paso328 } = PA328.META_DESLIZADOR;
+  chequear('la barra se mueve entre metas que se pueden guardar, y la de omisión cae en un paso', [PA328.metaValida(min328), PA328.metaValida(max328), PA328.META_PASOS_POR_OMISION >= min328 && PA328.META_PASOS_POR_OMISION <= max328, (PA328.META_PASOS_POR_OMISION - min328) % paso328], [true, true, true, 0]);
+  const des328 = de328('Deslizador.tsx');
+  chequear('y se arrastra con lo que trae React Native, y con VoiceOver', [/PanResponder\.create/.test(des328), /accessibilityRole="adjustable"/.test(des328), /gesture-handler|reanimated/.test(des328)], [true, true, false]);
+  chequear('el recorrido está en test:real', /probar-menos-texto\.mjs/.test(leer328(join(raiz328, 'supabase', 'pruebas-reales.mjs'), 'utf8')), true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

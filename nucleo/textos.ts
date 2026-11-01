@@ -618,6 +618,9 @@ const ES = {
     // En Stats no hay cuántas van cargadas a mano, así que ahí va la corta.
     faltanMarcasCorto: 'Faltan marcas: el número sale de las tres, y con dos no se compara con nada.',
     // Partido en dos porque en el medio va el link a Mis marcas.
+    sentadillaCorto: 'Sentadilla',
+    bancaCorto: 'Banca',
+    pesoMuertoCorto: 'Peso muerto',
     faltaPesoEnMarcas: 'Falta tu peso corporal, que se anota en',
     faltaPesoEnMarcasFin: '. Solo lo ves tú.',
     loDemas: 'Lo demás',
@@ -666,6 +669,7 @@ const ES = {
     sonidoAlTerminar: 'Sonido al terminar',
     // Al entrenar, debajo del ejercicio (20/10). Apagado de fábrica.
     mostrarUltimaVez: 'Mostrar la última vez',
+    muestraEjercicio: 'Press de banca',
     mostrarUltimaVezNota: 'Al entrenar, debajo del ejercicio: lo que hiciste la última vez.',
     // Al lado del peso, una por serie (21/10). Apagado de fábrica.
     registrarReps: 'Registrar repeticiones',
@@ -1524,7 +1528,6 @@ const ES = {
     y: 'y',
     // ARRASTRAR (15/10): lo que dice el lector de pantalla; con el dedo, se aprieta largo.
     arrastrarAyuda: 'Mantén apretado y arrastra para cambiar el orden.',
-    arrastrarPista: 'Mantén apretado un ejercicio para moverlo.',
     subir: 'Subir',
     bajar: 'Bajar',
     // EN INICIO (15/10): el renglón que abre la rutina.

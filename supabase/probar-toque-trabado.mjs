@@ -41,7 +41,8 @@ await s.from('profiles').update({ username: `tt_${sello.slice(-6)}` }).eq('id', 
 const enLaBase = async () => (await s.from('sesiones').select('series').eq('user_id', uid).eq('estado', 'corriendo')).data?.[0]?.series ?? null;
 
 console.log('Dos toques con el teléfono trabado');
-const nav = await chromium.launch();
+// Con GPU: por CPU, y frenada 4x, el motor demora el segundo toque y el caso no llega a pasar.
+const nav = await chromium.launch({ args: ['--enable-gpu', '--ignore-gpu-blocklist', '--use-angle=d3d11', '--enable-unsafe-swiftshader=false'] });
 try {
   const ctx = await nav.newContext({ viewport: { width: 390, height: 900 }, locale: 'es-UY', timezoneId: 'America/Montevideo' });
   const page = await ctx.newPage();

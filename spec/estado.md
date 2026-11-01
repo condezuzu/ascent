@@ -61,6 +61,19 @@ pantalla bloqueada sigue con `FIJO`: es Swift, necesita build.
 **`expo-font` no va en `package.json`**: está en el binario anidado adentro de `expo`, y
 sumarlo movería su ruta de autolinking. Se resuelve por alias en `metro.config.js`.
 
+## Menos texto, más visual (31/10, por OTA, sin build)
+
+Las once propuestas de la sección 12 de la galería, de la A a la K: lo que se explicaba con
+una oración ahora se ve, y VoiceOver sigue leyendo la oración. `probar-menos-texto` las recorre
+por pantalla, y la sección 328 de `test:db` pinea lo que la vista web no dibuja
+(`accessibilityHint`). Lo que demuestra (`VidasExplicadas`, `AlbumVacio`, `SocialVacio`,
+`GimnasioExplicado`) no toca datos. La meta de pasos se arrastra entre 1.000 y 30.000 y se
+guarda con el botón; una meta mayor, ya guardada, se respeta hasta moverla. El doble de Salud
+de la sonda existe solo con `__DEV__`.
+
+**El gráfico de progreso por ejercicio espera aprobación** en la sección 13 de la galería:
+todavía no tiene pantalla.
+
 ## Lo que cambió el 15/10 (OTA a `telefono` esa noche)
 
 - **La entrada nueva** en las dos apps: cuatro pantallas (los pesos, el día que

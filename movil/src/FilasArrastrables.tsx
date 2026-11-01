@@ -1,9 +1,12 @@
-import { useRef, useState, type ReactNode } from 'react';
-import { Animated, PanResponder, Pressable, StyleSheet, type GestureResponderEvent } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Animated, PanResponder, Pressable, StyleSheet, type GestureResponderEvent, View } from 'react-native';
 import { plataforma } from '@plataforma';
 import { T } from '@nucleo/textos';
 import { C, conTema, luz } from './colores';
+import { LLEGA, MS, SE_VA, sinMovimiento } from './movimiento';
 import { useTema } from './useTema';
+
+const CLAVE_ENSENADO = 'ascent:arrastrar-ensenado';
 
 /**
  * ARRASTRAR PARA ORDENAR (15/10). Apretar largo levanta la fila como un globito
@@ -15,6 +18,9 @@ import { useTema } from './useTema';
  *
  * Las filas tienen todas el mismo `alto`: con eso se sabe sobre cuál está el
  * dedo sin medir nada.
+ *
+ * EL GESTO SE MUESTRA (propuesta K, aprobada el 31/10): cada fila lleva su agarradera, y la primera
+ * vez que se ven, la del medio se levanta y vuelve, sola. Después no se repite.
  */
 export default function FilasArrastrables<T>({
   filas,
@@ -110,6 +116,30 @@ export default function FilasArrastrables<T>({
     })
   ).current;
 
+  // La del medio se levanta y vuelve, una sola vez en la vida de la app.
+  const laQueEnsena = Math.floor((filas.length - 1) / 2);
+  const ensena = useRef(new Animated.Value(0)).current;
+  const hayFilas = filas.length >= 2;
+  useEffect(() => {
+    if (!hayFilas) return;
+    let vivo = true;
+    const espera = setTimeout(() => {
+      void Promise.all([plataforma.almacenamiento.leer(CLAVE_ENSENADO).catch(() => '1'), sinMovimiento()]).then(([visto, quieto]) => {
+        if (!vivo || visto || quieto) return;
+        void plataforma.almacenamiento.guardar(CLAVE_ENSENADO, '1').catch(() => {});
+        Animated.sequence([
+          Animated.timing(ensena, { toValue: 1, duration: 460, easing: LLEGA, useNativeDriver: true }),
+          Animated.delay(320),
+          Animated.timing(ensena, { toValue: 0, duration: MS.sale, easing: SE_VA, useNativeDriver: true }),
+        ]).start();
+      });
+    }, 700);
+    return () => {
+      vivo = false;
+      clearTimeout(espera);
+    };
+  }, [hayFilas, ensena]);
+
   return (
     <Animated.View testID={testID} {...gestos.panHandlers}>
       {filas.map((f, i) => {
@@ -121,7 +151,9 @@ export default function FilasArrastrables<T>({
               { height: alto },
               esta
                 ? [estilos.globo, { transform: [{ translateY: dy }, { scale: escala }] }]
-                : { transform: [{ translateY: corrimientos.current[i] }] },
+                : i === laQueEnsena
+                  ? { zIndex: 5, transform: [{ translateY: Animated.add(corrimientos.current[i], ensena.interpolate({ inputRange: [0, 1], outputRange: [0, -14] })) }, { scale: ensena.interpolate({ inputRange: [0, 1], outputRange: [1, 1.02] }) }] }
+                  : { transform: [{ translateY: corrimientos.current[i] }] },
             ]}
           >
             <Pressable
@@ -146,7 +178,15 @@ export default function FilasArrastrables<T>({
                 if (ev.nativeEvent.actionName === 'bajar' && i < filas.length - 1) alMover(i, i + 1);
               }}
             >
-              {dibujar(f, i)}
+              <View style={estilos.agarradera} testID="agarradera" pointerEvents="none">
+                {[0, 1, 2].map((k) => (
+                  <View key={k} style={estilos.parDePuntos}>
+                    <View style={estilos.puntito} />
+                    <View style={estilos.puntito} />
+                  </View>
+                ))}
+              </View>
+              <View style={estilos.contenido}>{dibujar(f, i)}</View>
             </Pressable>
           </Animated.View>
         );
@@ -156,7 +196,12 @@ export default function FilasArrastrables<T>({
 }
 
 const estilos = conTema(() => StyleSheet.create({
-  fila: { flex: 1, justifyContent: 'center' },
+  fila: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  contenido: { flex: 1 },
+  // Se ve qué se agarra, sin decirlo.
+  agarradera: { gap: 3 },
+  parDePuntos: { flexDirection: 'row', gap: 3 },
+  puntito: { width: 2.5, height: 2.5, borderRadius: 1.25, backgroundColor: C.apagado },
   globo: {
     zIndex: 10,
     backgroundColor: C.hoja,

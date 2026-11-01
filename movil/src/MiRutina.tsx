@@ -272,7 +272,6 @@ export default function MiRutina({
     const con = (dias: DiaDeSemana[]) => void cambiar({ ...actual, dias });
     return (
       <View style={estilos.editor}>
-        {dia.ejercicios.length > 1 && <Text style={estilos.nota}>{T.rutina.arrastrarPista}</Text>}
         <FilasArrastrables
           testID={`rutina-filas-${d}`}
           filas={dia.ejercicios}

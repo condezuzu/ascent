@@ -31,11 +31,12 @@ export const R = {
 };
 
 /** El título de una sección: se sale del margen y cuelga de una línea. */
-export function Seccion({ children, arriba = 32, style }: { children: ReactNode; arriba?: number; style?: StyleProp<ViewStyle> }) {
+export function Seccion({ children, arriba = 32, style, derecha }: { children: ReactNode; arriba?: number; style?: StyleProp<ViewStyle>; derecha?: ReactNode }) {
   useTema();
   return (
     <View style={[estilos.seccion, { marginTop: arriba }, style]}>
       <Text style={estilos.seccionTexto}>{children}</Text>
+      {derecha}
     </View>
   );
 }
@@ -104,7 +105,7 @@ export function Caja({
 }
 
 const estilos = conTema(() => StyleSheet.create({
-  seccion: { marginLeft: -12, paddingBottom: 9, marginBottom: 14, borderBottomWidth: 1, borderBottomColor: C.linea },
+  seccion: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginLeft: -12, paddingBottom: 9, marginBottom: 14, borderBottomWidth: 1, borderBottomColor: C.linea },
   seccionTexto: { ...R.etiqueta },
   // El toque sigue siendo de 44 puntos aunque se vea chico.
   fantasma: { paddingVertical: 12, minHeight: 44, justifyContent: 'center' },
