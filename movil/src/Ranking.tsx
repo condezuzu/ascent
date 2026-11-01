@@ -51,6 +51,7 @@ import Tocable from './Tocable';
 import { Text } from './Texto';
 import { L } from './fuentes';
 import { R } from './roles';
+import SocialVacio from './SocialVacio';
 
 /**
  * RANKING — tanda 4.
@@ -85,6 +86,8 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   const [noCargo, setNoCargo] = useState(false);
   const [cargado, setCargado] = useState(false);
   const [busqueda, setBusqueda] = useState('');
+  // La constelación vacía lleva al buscador: es donde se agrega a alguien.
+  const [pedirFoco, setPedirFoco] = useState(0);
   const [resultados, setResultados] = useState<UsuarioPublico[]>([]);
   const [mandados, setMandados] = useState<Set<string>>(new Set());
   // Las medallas de cada amigo, para mostrarlas en la fila. Se traen APARTE y
@@ -257,6 +260,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
         <View style={estilos.buscador}>
           <Text style={estilos.lupa}>⌕</Text>
           <CampoTexto
+            pedirFoco={pedirFoco}
             testID="buscar-gente"
             style={estilos.campo}
             placeholder={T.social.buscarGente}
@@ -394,10 +398,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
         ) : (
           cargado &&
           !noCargo && (
-            <View style={estilos.vacio}>
-              <Text style={estilos.vacioTexto}>{T.social.vacioTitulo}</Text>
-              <Text style={estilos.vacioTexto}>{T.social.vacioPie}</Text>
-            </View>
+            <SocialVacio alBuscar={() => setPedirFoco((n) => n + 1)} />
           )
         )}
 

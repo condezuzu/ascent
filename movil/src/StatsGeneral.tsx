@@ -33,6 +33,9 @@ import { L } from './fuentes';
 import { Fantasma, Seccion, R } from './roles';
 import { LLEGA, MS, sinMovimiento } from './movimiento';
 import Relleno from './Relleno';
+import VidasExplicadas from './VidasExplicadas';
+import Candado from './Candado';
+import PesoSinDatos from './PesoSinDatos';
 
 /**
  * STATS → GENERAL, lo que va además de los cuatro números. Las mismas
@@ -58,25 +61,28 @@ import Relleno from './Relleno';
 export type Vidas = { quedan: number; total: number; tope?: number; vuelve: string | null; falta: number | null };
 export type PesoAnotado = { fecha: string; valor: number };
 
-export function LineaDeVidas({ vidas }: { vidas: Vidas }) {
+export function LineaDeVidas({ vidas, racha }: { vidas: Vidas; racha: number }) {
   useTema();
   // Con la 79 vuelven todas juntas; antes, de a una (y el texto dice cada cosa).
   const juntas = disponible('vidasDeUna', useVersionDelEsquema());
   const usadas = Math.max(0, vidas.total - vidas.quedan);
+  // Se dejó de leer, pero VoiceOver lo sigue diciendo: es lo que la demostración cuenta sin palabras.
+  const explicacion = [
+    `${vidas.quedan} de ${vidas.total}.`,
+    juntas ? T.impulso.notaJuntas : T.impulso.nota,
+    vidas.vuelve ? (juntas ? T.impulso.vuelvenJuntas(fechaLinda(vidas.vuelve), usadas) : T.impulso.vuelve(fechaLinda(vidas.vuelve))) : '',
+    vidas.falta !== null && vidas.falta > 0 ? T.impulso.seGanaEn(vidas.falta) : '',
+  ].filter(Boolean).join(' ');
+  // Lo que falta para la próxima, en días: ganarla, o que vuelvan.
+  const dias = vidas.falta !== null && vidas.falta > 0
+    ? vidas.falta
+    : vidas.vuelve
+      ? Math.max(0, Math.round((deISO(vidas.vuelve).getTime() - deISO(hoyISO()).getTime()) / 86400000))
+      : null;
   return (
     <View style={estilos.vidas}>
       <Text style={estilos.et}>{T.impulso.titulo}</Text>
-      {/* La misma estrella que Inicio y el aviso (21/10): llena la que queda, en contorno la usada. */}
-      <View style={estilos.puntos} accessibilityLabel={`${vidas.quedan} de ${vidas.total}`} testID="vidas-stats">
-        {modosDeLasVidas(vidas).map((modo, i) => (
-          <EstrellaQueTitila key={i} indice={i} modo={modo} />
-        ))}
-      </View>
-      <Text style={estilos.nota}>
-        {juntas ? T.impulso.notaJuntas : T.impulso.nota}
-        {vidas.vuelve ? ' ' + (juntas ? T.impulso.vuelvenJuntas(fechaLinda(vidas.vuelve), usadas) : T.impulso.vuelve(fechaLinda(vidas.vuelve))) : ''}
-        {vidas.falta !== null && vidas.falta > 0 ? ' ' + T.impulso.seGanaEn(vidas.falta) : ''}
-      </Text>
+      <VidasExplicadas vidas={vidas} racha={racha} dias={dias} explicacion={explicacion} />
     </View>
   );
 }
@@ -217,7 +223,7 @@ export default function StatsGeneral({
       {/* Los tres casos de la web: con dos pesos o más, la tendencia; con uno,
           el número solo —decirle "anota tu peso" a quien acaba de anotarlo
           parece un error—; sin ninguno, la invitación. */}
-      <Seccion>{pesos.length >= 2 ? T.stats.pesoTendencia : T.stats.peso}</Seccion>
+      <Seccion derecha={<Candado />}>{pesos.length >= 2 ? T.stats.pesoTendencia : T.stats.peso}</Seccion>
       {pesos.length >= 2 && <GraficoPeso pesos={pesos} unidad={unidad} claro={pal.claro} />}
       {pesos.length === 1 && (
         <Text style={estilos.pesoSolo}>
@@ -225,8 +231,7 @@ export default function StatsGeneral({
           <Text style={estilos.unidad}> {unidad}</Text>
         </Text>
       )}
-      {pesos.length === 1 && <Text style={estilos.nota}>{T.stats.pesoUnoMas}</Text>}
-      {pesos.length === 0 && <Text style={estilos.nota}>{T.stats.pesoVacio}</Text>}
+      {pesos.length < 2 && <PesoSinDatos conUno={pesos.length === 1} />}
       {/* La pantalla de anotar el peso (20/10) es una hoja: la misma que se abre desde Inicio. */}
       <Fantasma testID="abrir-anotar-peso" texto={T.peso.anotarPeso} alinear="flex-start" alTocar={() => setPesoAbierto(true)} />
       <PesoHoja visible={pesoAbierto} unidad={unidad} alCerrar={() => setPesoAbierto(false)} alGuardar={alCambiar} />

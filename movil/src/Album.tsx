@@ -30,6 +30,7 @@ import { L } from './fuentes';
 import { R } from './roles';
 import { LLEGA } from './movimiento';
 import Tocable from './Tocable';
+import AlbumVacio from './AlbumVacio';
 
 /**
  * ÁLBUM — tanda 4.
@@ -367,10 +368,7 @@ export default function Album({ alSalir }: { alSalir: () => void }) {
           })
         ) : (
           cargado && (
-            <View style={estilos.vacio}>
-              <Text style={estilos.vacioTexto}>{T.album.vacioTitulo}</Text>
-              <Text style={estilos.vacioTexto}>{T.album.vacioPie}</Text>
-            </View>
+            <AlbumVacio />
           )
         )}
       </ScrollView>
@@ -574,8 +572,6 @@ const estilos = conTema(() => StyleSheet.create({
     marginTop: 10,
   },
   textoBoton: { color: C.tinta, fontSize: 14 },
-  vacio: { alignItems: 'center', paddingVertical: 36, gap: 6 },
-  vacioTexto: { color: C.sub, fontSize: 14, textAlign: 'center' },
   // OPACO, no al 96 % (25/9). Ese 4 % de más no dejaba pasar atmósfera: dejaba
   // pasar EL ÁLBUM —el título, el mes, las miniaturas—, que se veía de fantasma
   // detrás de la foto abierta y se lee como que algo quedó a medio dibujar. Lo

@@ -51,6 +51,7 @@ import { L } from './fuentes';
 import { Fantasma, R } from './roles';
 import Tic from './Tic';
 import { LLEGA } from './movimiento';
+import Svg, { Line } from 'react-native-svg';
 
 /**
  * QUÉ ESTÁS HACIENDO, CUÁNTAS TE PROPUSISTE, CUÁNTAS VAN — en nativo.
@@ -329,7 +330,15 @@ export default function Bloque({
   return (
     <View style={estilos.bloque}>
       <View style={estilos.fila}>
-        <Tocable style={estilos.ejercicio} onPress={() => setEligiendo(true)} accessibilityRole="button">
+        {/* LO SUGERIDO SE VE (propuesta E): la línea punteada se vuelve firme con la primera serie. La
+            etiqueta y la nota se fueron; VoiceOver las sigue diciendo. */}
+        <Tocable
+          style={[estilos.ejercicio, esFantasma && estilos.ejercicioSugerido]}
+          onPress={() => setEligiendo(true)}
+          accessibilityRole="button"
+          accessibilityHint={esFantasma ? `${T.sesion.sugerido}. ${T.sesion.sugeridoNota}` : undefined}
+          testID={esFantasma ? 'ejercicio-sugerido' : 'ejercicio-elegido'}
+        >
           <Text
             style={[estilos.ejercicioTexto, !estado.ejercicio && estilos.apagadoTexto, esFantasma && estilos.fantasmaTexto]}
             numberOfLines={1}
@@ -340,10 +349,13 @@ export default function Bloque({
                 ? T.ejercicios.propioAjeno
                 : T.sesion.sinEjercicio}
           </Text>
+          {esFantasma && (
+            <Svg width="100%" height={2} style={estilos.rayas} pointerEvents="none" testID="linea-punteada">
+              <Line x1={0} y1={1} x2="100%" y2={1} stroke={C.lineaFuerte} strokeWidth={1} strokeDasharray="4 5" />
+            </Svg>
+          )}
         </Tocable>
-        {esFantasma && <Text style={estilos.badgeSugerido}>{T.sesion.sugerido}</Text>}
       </View>
-      {esFantasma && <Text style={estilos.sugeridoNota}>{T.sesion.sugeridoNota}</Text>}
       {/* LA ÚLTIMA VEZ (19/10, bug del gimnasio): series, pesos y el modo (un lado por vez,
           por mancuerna…); la máquina ya la dice el nombre. Desde el 20/10, solo con «Mostrar
           la última vez» prendido en Ajustes: sale al entrar a entrenar y al elegir otro. */}
@@ -767,21 +779,9 @@ const estilos = conTema(() => StyleSheet.create({
   // FANTASMA (sugerido sin confirmar): tenue y en cursiva, distinto del confirmado.
   fantasmaTexto: { color: C.sub, fontStyle: 'italic' },
   fantasmaPeso: { opacity: DESHABILITADO },
-  // La etiqueta "sugerido": una píldora chica al lado del ejercicio, imposible
-  // de confundir con un bloque ya cargado.
-  badgeSugerido: {
-    color: C.fondo,
-    backgroundColor: C.sub,
-    fontSize: 10,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    fontWeight: '500',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 999,
-    marginLeft: 8,
-    overflow: 'hidden',
-  },
+  // La línea de abajo se apaga y la dibujan las rayas: en iOS, un borde punteado de un solo lado no se dibuja.
+  ejercicioSugerido: { borderBottomColor: 'transparent' },
+  rayas: { position: 'absolute', left: 0, right: 0, bottom: -1 },
   sugeridoNota: { color: C.apagado, fontSize: 12, lineHeight: 16, marginTop: 6 },
   metas: { flexDirection: 'row', gap: 8, marginTop: 12 },
   meta: { flex: 1, borderWidth: 1, borderColor: C.bordeMeta, borderRadius: 999, paddingVertical: 9, alignItems: 'center' },

@@ -9,6 +9,10 @@ import { pantallaNativa } from './pantalla';
 import { saludNativa } from './salud';
 import { ubicacionNativa } from './ubicacion';
 
+// EL TELÉFONO DE LA SONDA: ningún navegador ve los pasos, y sin esto el gráfico y la meta de pasos no
+// se pueden recorrer en la vista web. Solo en desarrollo: en una OTA `__DEV__` es falso y ni se mira.
+const saludDeSonda = __DEV__ ? (globalThis as { __saludDePrueba?: Plataforma['salud'] }).__saludDePrueba : undefined;
+
 /**
  * LOS DIEZ PUERTOS, del lado nativo.
  *
@@ -37,7 +41,7 @@ export const plataformaNativa: Plataforma = {
   efimero: efimeroNativo,
   ubicacion: ubicacionNativa,
   audio: audioNativo,
-  salud: saludNativa,
+  salud: saludDeSonda ?? saludNativa,
   avisos: avisosNativos,
   enVivo: enVivoNativo,
   haptica: hapticaNativa,

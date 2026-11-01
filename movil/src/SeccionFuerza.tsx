@@ -18,6 +18,7 @@ import { L } from './fuentes';
 import FondoOctogonal from './FondoOctogonal';
 import { Caja, Seccion, R } from './roles';
 import Tocable from './Tocable';
+import TresMarcas from './TresMarcas';
 
 /**
  * LA FUERZA DENTRO DE STATS (§16.6), en la app nativa: acá se mira y se
@@ -89,56 +90,48 @@ export default function SeccionFuerza({
     <View>
       <Seccion>{T.fuerza.titulo}</Seccion>
 
-      {mia.marcas.length === 0 ? (
-        <Text style={estilos.sub}>{T.fuerza.sinNada}</Text>
-      ) : (
+      <TresMarcas
+        marcas={mia.marcas}
+        dots={mia.dots !== null ? String(redondear(mia.dots)) : null}
+        unidad={unidad}
+        alTocar={() => router.push('/marcas')}
+        explicacion={mia.marcas.length === 0 ? T.fuerza.sinNada : T.fuerza.faltanMarcasCorto}
+      />
+      {mia.marcas.length > 0 && (
         <>
-          <Caja style={estilos.contenida}>
-            {mia.dots !== null ? (
-              <>
-                <Text style={estilos.dots}>{redondear(mia.dots)}</Text>
-                <Text style={estilos.dotsPie}>
-                  {T.fuerza.dotsPie(mia.total !== null ? pesoLindo(mia.total, unidad) : '')}
-                </Text>
-                {/* El número exacto lo ven los amigos (migración 28): se dice
-                    acá y no solo al activarlo. */}
-                <Text style={estilos.nota}>{T.fuerza.loVenTusAmigos}</Text>
-              </>
-            ) : (
-              <Text style={estilos.sub}>
-                {mia.falta === 'marcas' && T.fuerza.faltanMarcasCorto}
-                {mia.falta === 'sexo' && (
-                  <>
-                    {T.fuerza.faltaSexo} {aAjustes}
-                    {T.fuerza.faltaSexoFin}
-                  </>
-                )}
-                {mia.falta === 'peso' && (
-                  <>
-                    {T.fuerza.faltaPesoEnMarcas} {T.fuerza.misMarcas}
-                    {T.fuerza.faltaPesoEnMarcasFin}
-                  </>
-                )}
+          {mia.dots !== null ? (
+            <>
+              <Text style={estilos.dotsPie}>
+                {T.fuerza.dotsPie(mia.total !== null ? pesoLindo(mia.total, unidad) : '')}
               </Text>
-            )}
-          </Caja>
+              {/* El número exacto lo ven los amigos (migración 28): se dice
+                  acá y no solo al activarlo. */}
+              <Text style={estilos.nota}>{T.fuerza.loVenTusAmigos}</Text>
+            </>
+          ) : (
+            mia.falta !== 'marcas' && (
+              <Caja style={estilos.contenida}>
+                <Text style={estilos.sub}>
+                  {mia.falta === 'sexo' && (
+                    <>
+                      {T.fuerza.faltaSexo} {aAjustes}
+                      {T.fuerza.faltaSexoFin}
+                    </>
+                  )}
+                  {mia.falta === 'peso' && (
+                    <>
+                      {T.fuerza.faltaPesoEnMarcas} {T.fuerza.misMarcas}
+                      {T.fuerza.faltaPesoEnMarcasFin}
+                    </>
+                  )}
+                </Text>
+              </Caja>
+            )
+          )}
 
           {esSexoEstandar(sexo) && pesoCorporal !== null && (
             <DondeEstoy sexo={sexo} pesoCorporal={pesoCorporal} marcas={mia.marcas} unidad={unidad} claro={claro} />
           )}
-
-          <View style={estilos.tira}>
-            {mia.marcas
-              .filter((m) => m.cuenta_dots)
-              .map((m) => (
-                <View key={m.ejercicio} style={estilos.tiraItem}>
-                  <Text style={[estilos.dato, { color: C.tinta }]}>{pesoLindo(m.kg, unidad)}</Text>
-                  <Text style={[estilos.sub, { flex: 1 }]}>{m.nombre}</Text>
-                  {/* la fecha va siempre pegada al número (§16.5) */}
-                  <Text style={estilos.apagado}>{fechaDeMarca(m.fecha)}</Text>
-                </View>
-              ))}
-          </View>
 
           {ranking.length > 1 && (
             <>
@@ -263,7 +256,7 @@ const estilos = conTema(() => StyleSheet.create({
   apagado: { color: C.apagado, fontSize: 13 },
   nombre: { color: C.tinta, fontSize: 14 },
   dato: { color: C.sub, fontSize: 13, fontFamily: L.dato },
-  contenida: { padding: 16 },
+  contenida: { padding: 16, marginTop: 12 },
   puerta: {
     paddingVertical: 13,
     alignItems: 'center',

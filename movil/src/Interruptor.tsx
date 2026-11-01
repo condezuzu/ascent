@@ -17,10 +17,12 @@ export default function Interruptor({
   value,
   onValueChange,
   accessibilityLabel,
+  accessibilityHint,
 }: {
   value: boolean;
   onValueChange: (v: boolean) => void;
   accessibilityLabel?: string;
+  accessibilityHint?: string;
 }) {
   useTema();
   const t = useRef(new Animated.Value(value ? 1 : 0)).current;
@@ -45,6 +47,7 @@ export default function Interruptor({
       accessibilityRole="switch"
       accessibilityState={{ checked: value }}
       accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
     >
       <Animated.View style={[estilos.via, { backgroundColor: fondo }]}>
         <Animated.View style={[estilos.perilla, { left: izq, backgroundColor: perilla }]} />
