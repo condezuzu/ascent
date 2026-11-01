@@ -55,6 +55,11 @@ Las seis técnicas salieron por OTA. Lo que necesita una build, y por eso no se 
   `FIJO` y la fuente del sistema. Para que siga al rango hay que pasarle el color en los
   atributos y sumar las fuentes al target. Es Swift y acá no se compila: no se tocó.
 
+Las once de «Menos texto, más visual» (31/10) también salieron por OTA: ninguna necesita build.
+Con Reanimated, dos cosas que hoy corren en JavaScript podrían pasar al hilo de la interfaz: el
+deslizador de la meta de pasos (`Deslizador.tsx`) y arrastrar una fila de la rutina
+(`FilasArrastrables.tsx`). No es un pendiente: así andan.
+
 ## Los pasos que son del humano, sí o sí
 
 1. **El sonido ya está elegido** (corte 1). Lo único que queda es oírlo con
