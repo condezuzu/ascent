@@ -221,7 +221,8 @@ try {
     // Las que se quedaron sin caja (30/10): lo que se lee va directo sobre el fondo.
     for (const [nombre, pestana] of [['social', TX.nav.social], ['album', TX.nav.album], ['ajustes', TX.nav.ajustes]]) {
       await texto(pestana).click({ timeout: 30000 });
-      await page.waitForTimeout(1500);
+      // La foto del álbum vacío cae sola: en el aire, su texto se compararía con lo que tenía debajo un cuadro antes.
+      await page.waitForTimeout(nombre === 'album' ? 2600 : 1500);
       await medir(page, r, nombre);
     }
     await texto(TX.nav.inicio).click({ timeout: 30000 });

@@ -132,7 +132,8 @@ try {
   chequear(`se va en menos de lo que tarda en llegar: ${Math.round(seVaEn)} ms contra 340 (llegó al último píxel en ${Math.round(llegaEn)})`, seVaEn > 90 && seVaEn < 340, true);
 
   // ---- LAS CIFRAS CUENTAN ----
-  await grabar(page, () => document.querySelector('[data-testid="stats-cifra"]')?.textContent ?? null);
+  // La mejor racha: «este mes» da 0 el primer día de cada mes, con los días de la cuenta en el mes anterior.
+  await grabar(page, () => document.querySelectorAll('[data-testid="stats-cifra"]')[2]?.textContent ?? null);
   await page.getByText(TX.nav.stats, { exact: true }).last().click({ timeout: 30000 });
   await page.waitForTimeout(1500);
   const cuenta = (await parar(page)).map(([, v]) => v).filter((v) => v !== null);
