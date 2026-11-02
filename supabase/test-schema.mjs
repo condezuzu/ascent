@@ -8965,7 +8965,8 @@ console.log('\n125. Lo que se dibuja con SVG se escribe una vez: las dos apps lo
     ['nativa', ['movil', 'src', 'GraficoPeso.tsx']],
   ]) {
     const c = de(...ruta);
-    chequear(`gráfico ${cual}: usa trazarPeso`, c.includes('trazarPeso('), true);
+    // La nativa, con el tiempo a escala desde el 1/11: la misma media móvil, otra forma de repartir los puntos.
+    chequear(`gráfico ${cual}: usa la cuenta del peso`, c.includes(cual === 'web' ? 'trazarPeso(' : 'trazarPesoEnElTiempo('), true);
     chequear(`gráfico ${cual}: no suaviza por su cuenta`, c.includes('suavizarPorFecha('), false);
   }
 }
@@ -10239,7 +10240,7 @@ console.log('\n143. El grafico de pasos en Stats');
   // ---- EL GRAFICO ----
   const gra143 = sinComentarios143(de143('movil', 'src', 'GraficoPasos.tsx'));
   chequear('el grafico de pasos existe', gra143.length > 0, true);
-  chequear('usa la cuenta compartida', /trazarSerie/.test(gra143), true);
+  chequear('usa la cuenta compartida', /trazarTendencia/.test(gra143), true);
   // YA NO SON LAS DEL PESO (25/9). Eran mes / tres meses / todo por parecido de
   // pantalla, y el parecido era lo unico que las sostenia: en siete dias, la
   // media movil de siete dias es UN punto. La linea suavizada no puede decir
@@ -10262,7 +10263,7 @@ console.log('\n143. El grafico de pasos en Stats');
   // suelto que parecía un enlace.
   chequear('la meta ya no está en Ajustes', /<MetaDePasos \/>/.test(de143('movil', 'src', 'Ajustes.tsx')), false);
   // ARRASTRAR PARA LEER UN DIA, igual que el peso.
-  chequear('y se arrastra el dedo', /onResponderMove=\{alMover\}/.test(gra143), true);
+  chequear('y se arrastra el dedo', /useLectura\(xs, tocado, setTocado\)/.test(gra143) && /onResponderMove:/.test(de143('movil', 'src', 'PiezasDeGrafico.tsx')), true);
   // EL ID DEL DEGRADADO ES OTRO. Los dos graficos viven en la misma pantalla,
   // y un id repetido lo resuelve el motor de SVG callado y mal.
   chequear('el degradado no comparte id con el del peso',
@@ -10851,7 +10852,7 @@ console.log('\n149. Los pasos: por que salia vacio, y la meta del dia');
   const gp149 = sinComentarios149(de149('movil', 'src', 'GraficoPasos.tsx'));
   // LA LINEA DE LA META, detras del trazo: es la referencia contra la que se
   // mira la linea, no un dato mas.
-  chequear('el grafico dibuja la meta', /strokeDasharray="3 4"/.test(gp149), true);
+  chequear('el grafico dibuja la meta', /referencia=\{referencia\}/.test(gp149) && /strokeDasharray="3 4"/.test(de149('movil', 'src', 'PiezasDeGrafico.tsx')), true);
   // Y SOLO SI CAE ADENTRO: una linea pegada al borde no dice nada.
   chequear('y solo si cae adentro del grafico', /y >= 2 && y <= ALTO - 2/.test(gp149), true);
   chequear('y dice cuanto falta', /T\.stats\.pasosFaltan/.test(gp149), true);
@@ -20648,7 +20649,7 @@ console.log('\n310. El peso máximo de cada ejercicio, con las repeticiones con 
   const st310 = deBug('movil', 'src', 'Stats.tsx');
   chequear('Stats las pide de las marcas y las muestra al lado del peso', [
     /from\('prs'\)\.select\('ejercicio, peso, reps, fecha'\)/.test(st310),
-    /\+ \(f\.maximo\.reps \? T\.volumen\.conReps\(f\.maximo\.reps\) : ''\)/.test(st310),
+    /\+\s+\(f\.maximo\.reps \? T\.volumen\.conReps\(f\.maximo\.reps\) : ''\)/.test(st310),
   ], [true, true]);
 }
 console.log('\n311. El descanso de otro, terminado: «+0:08» contando, no tres puntitos (21/10)');
@@ -21363,6 +21364,137 @@ console.log('\n328. Menos texto, más visual: lo que se dejó de leer, VoiceOver
   const des328 = de328('Deslizador.tsx');
   chequear('y se arrastra con lo que trae React Native, y con VoiceOver', [/PanResponder\.create/.test(des328), /accessibilityRole="adjustable"/.test(des328), /gesture-handler|reanimated/.test(des328)], [true, true, false]);
   chequear('el recorrido está en test:real', /probar-menos-texto\.mjs/.test(leer328(join(raiz328, 'supabase', 'pruebas-reales.mjs'), 'utf8')), true);
+}
+console.log('\n329. Los gráficos de línea: el progreso de un ejercicio y el tiempo a escala (1/11)');
+{
+  // Las cuentas. El recorrido, tocando la pantalla de verdad, en test:real (probar-progreso).
+  const PR329 = await import('../nucleo/progreso.ts');
+  const GR329 = await import('../nucleo/grafico.ts');
+  const TE329 = await import('../nucleo/tendencia.ts');
+  const PE329 = await import('../nucleo/peso.ts');
+  const { readFileSync: leer329, existsSync: hay329 } = await import('node:fs');
+  const raiz329 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const de329 = (...p) => sinComentarios(leer329(join(raiz329, ...p), 'utf8'));
+  const banca = (pesos, reps = [], carga = 'total') => ({ ejercicio: 'press_banca', series: pesos.length, pesos, reps, carga });
+  const prog = (ses, marcas = []) => PR329.progresoPorEjercicio(ses, marcas).get('press_banca');
+
+  // ---- CADA PUNTO ES UN DÍA: SU SERIE MÁS PESADA ----
+  const uno = prog([{ fecha: '2026-10-01', bloques: [banca([40, 60, 60], [10, 8, 9])] }]).sesiones;
+  chequear('el punto es la serie más pesada, no la primera ni la última', [uno.length, uno[0].peso, uno[0].kilos], [1, 60, 60]);
+  chequear('empatadas, se queda con las más repeticiones', uno[0].reps, 9);
+  chequear('una sesión sin un solo peso no dibuja nada: no es cero', PR329.progresoPorEjercicio([{ fecha: '2026-10-02', bloques: [{ ejercicio: 'press_banca', series: 3, carga: 'total' }] }], []).has('press_banca'), false);
+  chequear('con peso corporal, tampoco', PR329.progresoPorEjercicio([{ fecha: '2026-10-02', bloques: [{ ejercicio: 'press_banca', series: 1, pesos: [20], carga: 'corporal' }] }], []).has('press_banca'), false);
+  const dosMismoDia = prog([{ fecha: '2026-10-03', bloques: [banca([50])] }, { fecha: '2026-10-03', bloques: [banca([55])] }, { fecha: '2026-10-01', bloques: [banca([45])] }]).sesiones;
+  chequear('dos sesiones el mismo día son un punto, y salen en el orden del tiempo', dosMismoDia.map((p) => [p.fecha, p.peso]), [['2026-10-01', 45], ['2026-10-03', 55]]);
+  const conMancuernas = prog([{ fecha: '2026-10-04', bloques: [banca([70]), banca([40], [], 'par')] }]).sesiones[0];
+  chequear('se compara lo que se movió: dos de 40 ganan a una barra de 70, y dice lo que se agarró', [conMancuernas.peso, conMancuernas.carga, conMancuernas.kilos], [40, 'par', 80]);
+
+  // ---- LAS MARCAS VAN SUELTAS ----
+  const conMarcas = prog([{ fecha: '2026-10-05', bloques: [banca([60])] }, { fecha: '2026-10-06', bloques: [banca([62.5])] }], [
+    { ejercicio: 'press_banca', peso: 100, reps: 3, fecha: '2026-09-01' },
+    { ejercicio: 'press_banca', peso: 60, reps: 5, fecha: '2026-10-05' },
+    { ejercicio: 'press_banca', peso: 70, reps: 2, fecha: '2026-10-06' },
+    { ejercicio: 'press_banca', peso: 0, reps: 1, fecha: '2026-09-02' },
+    { ejercicio: 'sentadilla', peso: 200, reps: 1, fecha: '2026-09-03' },
+  ]);
+  chequear('una marca anotada a mano no entra en la línea', conMarcas.sesiones.length, 2);
+  chequear('la del día de una sesión que ya la dice se va; la más pesada que la sesión queda', conMarcas.marcas.map((m) => [m.fecha, m.peso]), [['2026-09-01', 100], ['2026-10-06', 70]]);
+  chequear('y un ejercicio con solo una marca también existe', PR329.progresoPorEjercicio([], [{ ejercicio: 'sentadilla', peso: '120', reps: 3, fecha: '2026-09-03' }]).get('sentadilla').marcas[0].kilos, 120);
+
+  // ---- LOS RANGOS ----
+  const HOY329 = '2026-11-01';
+  const fechas329 = (atras) => atras.map((a) => { const d = new Date(HOY329 + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - a); return { fecha: d.toISOString().slice(0, 10), bloques: [banca([50 + a])] }; });
+  chequear('la ventana mira desde hoy, no desde lo último anotado', PR329.ventanaDeProgreso(prog(fechas329([40, 20, 10])), 30, HOY329).sesiones.length, 2);
+  chequear('un solo punto: no hay nada que elegir', PR329.rangosDeProgreso(prog(fechas329([3])), HOY329), []);
+  chequear('un rango con menos de dos sesiones no se ofrece', PR329.rangosDeProgreso(prog(fechas329([200, 100, 60, 1])), HOY329), [90, null]);
+  chequear('uno que muestra lo mismo que el siguiente, tampoco', PR329.rangosDeProgreso(prog(fechas329([50, 20, 10])), HOY329), [30, null]);
+  chequear('y si todos muestran lo mismo, ninguno', PR329.rangosDeProgreso(prog(fechas329([20, 10])), HOY329), []);
+
+  // ---- EL DIBUJO ----
+  const t329 = PR329.trazarProgreso(prog([{ fecha: '2026-10-01', bloques: [banca([60])] }, { fecha: '2026-10-02', bloques: [banca([62.5])] }, { fecha: '2026-10-23', bloques: [banca([65])] }]), 345, 380);
+  const [a329, b329, c329] = t329.sesiones;
+  chequear('el tiempo va a escala: 21 días ocupan 21 veces lo que uno', Math.round((c329.x - b329.x) / (b329.x - a329.x)), 21);
+  chequear('lo más pesado va más arriba', c329.y < b329.y && b329.y < a329.y, true);
+  chequear('el récord y de dónde se salió', [t329.record.peso, t329.primero.peso], [65, 60]);
+  const poco329 = PR329.trazarProgreso(prog([{ fecha: '2026-10-01', bloques: [banca([60])] }, { fecha: '2026-10-08', bloques: [banca([62.5])] }]), 345, 380);
+  chequear('2,5 kg no parecen un abismo: el alto abarca al menos un quinto del peso', Math.abs(poco329.sesiones[0].y - poco329.sesiones[1].y) / (poco329.base - PR329.MARGENES_PROGRESO.arriba) < 0.25, true);
+  const solo329 = PR329.trazarProgreso(prog([{ fecha: '2026-10-01', bloques: [banca([60])] }]), 345, 380);
+  chequear('una sola sesión: sin línea, con lo que va a haber', [solo329.linea, solo329.area, solo329.fantasma !== '', solo329.tiempo.length, solo329.primero], ['', '', true, 1, null]);
+  chequear('sin nada, no hay dibujo', PR329.trazarProgreso({ sesiones: [], marcas: [] }, 345, 380), null);
+  const conMarca329 = PR329.trazarProgreso(conMarcas, 345, 380);
+  chequear('el récord es la marca: la lista y el gráfico dicen lo mismo', [conMarca329.record.tipo, conMarca329.record.peso], ['marca', 100]);
+  chequear('el dedo las lee en el orden del tiempo, marcas incluidas', conMarca329.puntos.map((p) => p.fecha), ['2026-09-01', '2026-10-05', '2026-10-06', '2026-10-06']);
+  chequear('el guion del trazo alcanza para la línea entera', t329.largo >= GR329.largoDe(t329.sesiones), true);
+  chequear('el cambio: en lo que se agarra, salvo que cambie el modo', [
+    PR329.cambioDeProgreso({ peso: 10, kilos: 20, carga: 'par' }, { peso: 18, kilos: 36, carga: 'par' }),
+    PR329.cambioDeProgreso({ peso: 30, kilos: 30, carga: 'total' }, { peso: 20, kilos: 40, carga: 'par' }),
+  ], [8, 10]);
+  chequear('la línea chiquita pide dos sesiones', [PR329.trazarLineaChiquita(prog(fechas329([3])), 46, 18), PR329.trazarLineaChiquita(prog(fechas329([9, 3])), 46, 18) !== null], [null, true]);
+
+  // ---- LA CURVA NO INVENTA ----
+  const puntos329 = [[0, 50], [40, 10], [80, 60], [120, 60], [160, 20]].map(([x, y]) => ({ x, y }));
+  const tramos329 = GR329.curvaSuave(puntos329).split(' C').slice(1).map((s) => s.trim().split(' ').map((q) => q.split(',').map(Number)));
+  let seSale329 = 0;
+  tramos329.forEach((tr, i) => {
+    const y0 = puntos329[i].y;
+    const y3 = tr[2][1];
+    for (let k = 0; k <= 20; k++) {
+      const u = k / 20;
+      const y = (1 - u) ** 3 * y0 + 3 * (1 - u) ** 2 * u * tr[0][1] + 3 * (1 - u) * u ** 2 * tr[1][1] + u ** 3 * y3;
+      if (y < Math.min(y0, y3) - 0.11 || y > Math.max(y0, y3) + 0.11) seSale329++;
+    }
+  });
+  chequear('la curva pasa por cada punto', tramos329.map((tr) => tr[2][1]), [10, 60, 60, 20]);
+  chequear('y nunca se pasa de largo: dibujaría un peso que nadie pesó', seSale329, 0);
+  chequear('con dos puntos, una recta', GR329.curvaSuave([{ x: 0, y: 0 }, { x: 10, y: 5 }]), 'M0.0,0.0 L10.0,5.0');
+
+  // ---- LOS EJES ----
+  const esc329 = GR329.marcasDeEscala(78.2, 82.6);
+  chequear('los números de la escala son redondos y caen adentro', esc329.every((v) => v >= 78.2 && v <= 82.6 && Number.isInteger(v * 2)) && esc329.length >= 2, true);
+  chequear('una serie plana no tiene escala', GR329.marcasDeEscala(5, 5), []);
+  const xDe329 = (desde, total, ancho) => (f) => (GR329.diasEntre(desde, f) / total) * ancho;
+  const dias329 = GR329.marcasDeTiempo('2026-10-01', '2026-10-29', xDe329('2026-10-01', 28, 300), 300);
+  chequear('hasta mes y medio, días', dias329.every((m) => /^\d+ [a-z]{3}$/.test(m.texto)), true);
+  const meses329 = GR329.marcasDeTiempo('2026-06-10', '2026-10-29', xDe329('2026-06-10', 141, 300), 300);
+  chequear('después, meses, en el lugar de su fecha', meses329.map((m) => m.texto), ['jul', 'ago', 'set', 'oct']);
+  chequear('ni contra el borde ni encimados', meses329.every((m, i) => m.x >= 14 && m.x <= 286 && (i === 0 || m.x - meses329[i - 1].x >= 40)), true);
+  const anos329 = GR329.marcasDeTiempo('2025-03-10', '2027-02-20', xDe329('2025-03-10', 712, 340), 340);
+  chequear('con años, enero dice cuál', anos329.some((m) => m.texto === '2026') && anos329.length <= 8, true);
+  chequear('el dedo: el más cercano', [GR329.masCercano([0, 10, 100], 40), GR329.masCercano([0, 10, 100], 60)], [1, 2]);
+  chequear('VoiceOver: de a uno, sin salirse, y arranca en lo más nuevo', [GR329.pasoDeVoiceOver(5, null, false), GR329.pasoDeVoiceOver(5, 4, true), GR329.pasoDeVoiceOver(5, 0, false), GR329.pasoDeVoiceOver(5, 2, true)], [3, 4, 0, 3]);
+
+  // ---- LA TENDENCIA, CON EL TIEMPO A ESCALA ----
+  const pesos329 = [{ fecha: '2026-09-01', valor: 80 }, { fecha: '2026-09-02', valor: 90 }, { fecha: '2026-09-23', valor: 70 }];
+  const te329 = TE329.trazarTendencia(pesos329, null, 300, 150, { ventana: 1 });
+  chequear('tres semanas sin pesarse ocupan tres semanas', Math.round((te329.puntos[2].x - te329.puntos[1].x) / (te329.puntos[1].x - te329.puntos[0].x)), 21);
+  chequear('la escala la manda la tendencia: un día raro no aplasta la línea (§9)', TE329.trazarTendencia([{ fecha: '2026-09-01', valor: 80 }, { fecha: '2026-09-02', valor: 80 }, { fecha: '2026-09-03', valor: 120 }, { fecha: '2026-09-04', valor: 80 }], null, 300, 150).escala.every((e) => e.valor < 92), true);
+  chequear('y deja lugar a la derecha para los números', Math.max(...te329.puntos.map((p) => p.x)), 266);
+  chequear('el cálculo de y es el mismo para todo: la meta cae en su lugar', Math.round(te329.yDe(90) - te329.puntos[1].y), 0);
+  const suave329 = TE329.trazarTendencia(pesos329, null, 300, 150);
+  chequear('se dibuja lo suavizado y se conserva lo crudo', [suave329.serie[1].valor, suave329.serie[1].suave], [90, 85]);
+  chequear('con menos de dos, nada', TE329.trazarTendencia(pesos329.slice(0, 1), null, 300, 150), null);
+  chequear('en libras, antes de suavizar', Math.round(PE329.trazarPesoEnElTiempo(pesos329, 'lb', null, 300, 150).serie[0].valor), Math.round(PE329.deKilos(80, 'lb')));
+
+  // ---- EN LA PANTALLA ----
+  const st329 = de329('movil', 'src', 'Stats.tsx');
+  chequear('se entra tocando una fila con peso, y la del guion no lleva a nada', [/router\.push\(.\/progreso\/\$\{f\.ejercicio\}.\)/.test(st329), /!f\.maximo \|\| !progreso/.test(st329)], [true, true]);
+  const ruta329 = join('movil', 'app', 'progreso', '[ejercicio].tsx');
+  chequear('es una pantalla apilada, y arrastrar lee el gráfico en vez de volver', [hay329(join(raiz329, ruta329)), /fullScreenGestureEnabled: false/.test(de329(ruta329))], [true, true]);
+  const pa329 = de329('movil', 'src', 'ProgresoDeEjercicio.tsx');
+  chequear('volver anda siempre, aunque se haya abierto directo', [/volverOInicio\(router\)/.test(pa329), /router\.back\(\)/.test(pa329)], [true, false]);
+  chequear('si Stats no dejó nada, la pantalla lo pide', /tomarProgreso\(ejercicio\)/.test(pa329) && /if \(!datos\) void cargar\(\)/.test(pa329), true);
+  const pz329 = de329('movil', 'src', 'PiezasDeGrafico.tsx');
+  const pe329 = de329('movil', 'src', 'GraficoPeso.tsx');
+  const pp329 = de329('movil', 'src', 'GraficoPasos.tsx');
+  chequear('VoiceOver recorre los tres: el que no ve la línea también la lee', [pa329, pe329, pp329].map((t) => /leerConVoiceOver\(xs\.length/.test(t) && /accessibilityHint=\{T\.progreso\.leer\}/.test(t)), [true, true, true]);
+  chequear('con «reducir movimiento» la línea no se dibuja de a poco', /sinMovimiento\(\)/.test(pz329), true);
+  chequear('un id de degradado por gráfico', [/idRelleno="peso-relleno"/.test(pe329), /idRelleno="pasos-relleno"/.test(pp329), /id="progreso-relleno"/.test(pa329)], [true, true, true]);
+  // «Mes» y «Año» salían en blanco y decían «0 días»: la vista de la línea reusa la de las barras, del
+  // mismo tamaño, y una vista que no cambia de tamaño no avisa nada. Lo encontró probar-progreso.
+  chequear('los pasos miden el ancho también con las barras', (pp329.match(/onLayout=\{\(e\) => setAncho/g) ?? []).length, 2);
+  chequear('la ventana sin dos anotaciones lo dice, con los botones para volver', /T\.stats\.pesoSinVentana/.test(pe329), true);
+  chequear('el objetivo llega a la gráfica', /objetivo=\{objetivoPeso\}/.test(de329('movil', 'src', 'StatsGeneral.tsx')), true);
+  chequear('el recorrido está en test:real', /probar-progreso\.mjs/.test(leer329(join(raiz329, 'supabase', 'pruebas-reales.mjs'), 'utf8')), true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

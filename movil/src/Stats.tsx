@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
 import { ActivityIndicator, ScrollView, StyleSheet, View, Animated } from 'react-native';
+import { useRouter } from 'expo-router';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
 import { aISO, deISO, fechaCorta, fechaLinda, hoyISO } from '@nucleo/fechas';
 import { deKilos, pesoCorto, type Unidad } from '@nucleo/peso';
 import { claveDeEtiqueta } from '@nucleo/carga';
+import { progresoPorEjercicio } from '@nucleo/progreso';
 import { umbralValido } from '@nucleo/estancamiento';
 import {
   SERIES_POR_SEMANA,
@@ -49,6 +51,8 @@ import { Caja, R, Seccion } from './roles';
 import { LLEGA, MS, sinMovimiento } from './movimiento';
 import NumeroQueCuenta from './NumeroQueCuenta';
 import Relleno from './Relleno';
+import LineaChiquita from './LineaChiquita';
+import { dejarProgreso } from './progresoPrecargado';
 
 const SEMANAS = 8;
 
@@ -100,6 +104,7 @@ function celdaFaltados(faltados: number | null): { v: string; e: string }[] {
 
 export default function Stats({ alSalir }: { alSalir: () => void }) {
   useTema();
+  const router = useRouter();
   const arriba = useArriba(64);
   const [datos, setDatos] = useState<Datos | null>(null);
   const [error, setError] = useState('');
@@ -228,6 +233,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     () => maximosDelCatalogo(datos?.sesiones ?? [], datos?.marcas ?? [], datos?.ejercicios ?? []),
     [datos?.sesiones, datos?.marcas, datos?.ejercicios]
   );
+  const progresos = useMemo(() => progresoPorEjercicio(datos?.sesiones ?? [], datos?.marcas ?? []), [datos?.sesiones, datos?.marcas]);
 
   // El cartel, solo si no hay nada que mostrar: una recarga que falla no tapa
   // lo que ya estaba en pantalla.
@@ -489,23 +495,44 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
                       </Text>
                     </Tocable>
                     {abierto &&
-                      (conVacios ? g.filas : conPeso).map((f) => (
-                        <View key={f.ejercicio} style={[estilos.fila, estilos.filaDeGrupo]}>
-                          <View style={estilos.filaNombre}>
-                            <Text style={[estilos.nombre, !f.maximo && estilos.sinMaximo]}>{f.nombre}</Text>
-                            {f.maximo && <Text style={estilos.fecha}>{fechaLinda(f.maximo.fecha)}</Text>}
-                          </View>
-                          <Text style={[estilos.peso, !f.maximo && estilos.sinMaximo]}>
-                            {f.maximo
-                              ? T.resumen.pesosDeSeries(
-                                  pesoCorto(f.maximo.peso, unidad),
-                                  unidad,
-                                  claveDeEtiqueta(f.maximo.carga, f.ejercicio)
-                                ) + (f.maximo.reps ? T.volumen.conReps(f.maximo.reps) : '')
-                              : T.volumen.nada}
-                          </Text>
-                        </View>
-                      ))}
+                      (conVacios ? g.filas : conPeso).map((f) => {
+                        const progreso = progresos.get(f.ejercicio);
+                        // LA LÍNEA CHIQUITA ES LO QUE DICE QUE SE TOCA. Las del guion no llevan a nada.
+                        if (!f.maximo || !progreso) {
+                          return (
+                            <View key={f.ejercicio} style={[estilos.fila, estilos.filaDeGrupo]}>
+                              <View style={estilos.filaNombre}>
+                                <Text style={[estilos.nombre, estilos.sinMaximo]}>{f.nombre}</Text>
+                              </View>
+                              <Text style={[estilos.peso, estilos.sinMaximo]}>{T.volumen.nada}</Text>
+                            </View>
+                          );
+                        }
+                        const texto =
+                          T.resumen.pesosDeSeries(pesoCorto(f.maximo.peso, unidad), unidad, claveDeEtiqueta(f.maximo.carga, f.ejercicio)) +
+                          (f.maximo.reps ? T.volumen.conReps(f.maximo.reps) : '');
+                        return (
+                          <Tocable
+                            key={f.ejercicio}
+                            testID={`fila-maximo-${f.ejercicio}`}
+                            style={[estilos.fila, estilos.filaDeGrupo]}
+                            onPress={() => {
+                              dejarProgreso({ ejercicio: f.ejercicio, nombre: f.nombre, progreso, unidad, rango: datos.rango, planeta: datos.planeta });
+                              router.push(`/progreso/${f.ejercicio}`);
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${f.nombre}: ${texto}`}
+                            accessibilityHint={T.progreso.abrir}
+                          >
+                            <View style={estilos.filaNombre}>
+                              <Text style={estilos.nombre}>{f.nombre}</Text>
+                              <Text style={estilos.fecha}>{fechaLinda(f.maximo.fecha)}</Text>
+                            </View>
+                            <LineaChiquita progreso={progreso} />
+                            <Text style={[estilos.peso, estilos.pesoDeFila]}>{texto}</Text>
+                          </Tocable>
+                        );
+                      })}
                     {abierto && faltan > 0 && conPeso.length > 0 && (
                       <Tocable
                         style={estilos.otros}
@@ -598,6 +625,7 @@ const estilos = conTema(() => StyleSheet.create({
   nombre: { color: C.tinta, fontSize: 15 },
   fecha: { color: C.apagado, fontSize: 12, marginTop: 2, fontFamily: L.dato },
   peso: { color: C.sub, fontSize: 13, fontFamily: L.dato },
+  pesoDeFila: { maxWidth: 118, textAlign: 'right' },
   filaDeGrupo: { paddingLeft: 12 },
   otros: { paddingLeft: 12, paddingVertical: 10 },
   otrosTexto: { color: C.sub, fontSize: 13 },
