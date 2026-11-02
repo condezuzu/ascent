@@ -78,8 +78,34 @@ El peso se muestra como tendencia suavizada (media de siete días), no como dato
 crudo diario. El peso oscila un kilo por razones ajenas al entrenamiento y la línea
 cruda solo genera ruido.
 
+La gráfica, en la nativa (1/11): esa línea con el tiempo a escala —tres semanas sin
+pesarse se ven como tres semanas—, las fechas abajo y una regla de números redondos a
+la derecha. Cada anotación es un punto sobre la línea, y tocarlo dice lo que pesaste
+ese día, crudo: la línea afirma la tendencia y el número contesta "cuánto pesaba". Lo
+tocado queda elegido hasta tocarlo de nuevo. Los pasos se dibujan con las mismas piezas
+(`PiezasDeGrafico.tsx`). La web sigue con su gráfica de siempre.
+
 Es el único lugar donde se muestran los ocho rangos con nombre: cuáles ya se
 pasaron y cuál viene.
+
+### El progreso de un ejercicio
+
+Propuesta 13 de la galería, aprobada el 1/11. Solo en la nativa: `/progreso/<ejercicio>`,
+apilada, y se entra tocando una fila de «Peso máximo por ejercicio». Cada fila con peso
+lleva su línea chiquita, que es lo que dice que se toca; las del guion no llevan a nada.
+
+Una línea con el peso máximo de cada sesión (`nucleo/progreso.ts`):
+
+- Cada punto es un día: su serie más pesada. Se compara por lo que se movió y se muestra lo
+  que se agarró: 18 por mancuerna son 36.
+- Una sesión sin peso no dibuja nada, porque no es cero. La línea arranca cuando se empezó a
+  anotar.
+- Una marca anotada a mano no es una sesión: va como punto hueco, suelto. Sin ella, la lista
+  diría 120 y el gráfico 110. La que guarda «¿La guardo como marca?» ya la dice su sesión.
+- El alto abarca al menos un quinto del peso: 2,5 kg sobre 60 no pueden parecer un abismo.
+- Los rangos son 1 mes, 3 meses y Todo, desde hoy. Uno con menos de dos sesiones no se
+  ofrece, ni uno que muestra lo mismo que el siguiente.
+- Arrastrar lee el gráfico, así que en esta pantalla volver deslizando es solo desde el borde.
 
 ### Mi perfil
 

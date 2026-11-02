@@ -13,11 +13,14 @@ import { chromium } from 'playwright';
 import { createClient } from '@supabase/supabase-js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
+import { mkdirSync } from 'node:fs';
 import { pasarLaEntradaNativa, borrarCuentaDePrueba, limiteDeSonda } from './utiles.mjs';
 
 limiteDeSonda(6);
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
+const SALIDA = join(AQUI, '..', 'capturas', 'toque-trabado');
+mkdirSync(SALIDA, { recursive: true });
 const { TEXTOS_ES: TX } = await import(pathToFileURL(join(AQUI, '..', 'nucleo', 'textos.ts')).href);
 const { TOQUE_REPETIDO_MS } = await import(pathToFileURL(join(AQUI, '..', 'movil', 'src', 'toques.ts')).href);
 const sello = Date.now().toString(36);
@@ -43,9 +46,10 @@ const enLaBase = async () => (await s.from('sesiones').select('series').eq('user
 console.log('Dos toques con el teléfono trabado');
 // Con GPU: por CPU, y frenada 4x, el motor demora el segundo toque y el caso no llega a pasar.
 const nav = await chromium.launch({ args: ['--enable-gpu', '--ignore-gpu-blocklist', '--use-angle=d3d11', '--enable-unsafe-swiftshader=false'] });
+let page = null;
 try {
   const ctx = await nav.newContext({ viewport: { width: 390, height: 900 }, locale: 'es-UY', timezoneId: 'America/Montevideo' });
-  const page = await ctx.newPage();
+  page = await ctx.newPage();
   await page.goto('http://localhost:8090', { waitUntil: 'domcontentloaded', timeout: 240000 });
   await pasarLaEntradaNativa(page);
   await page.locator('input[type=email], input[inputmode=email]').first().fill(correo, { timeout: 90000 });
@@ -105,7 +109,10 @@ try {
   chequear('dos toques a un cuarto de segundo siguen contando uno', (await total()) - antes2, 1);
 } catch (e) {
   fallos++;
-  console.log('  FALLA ' + String(e).split('\n')[0].slice(0, 200));
+  // El final del registro dice qué frenó el toque; la primera línea dice solo que se acabó el tiempo.
+  const lineas = String(e).split('\n');
+  for (const l of [lineas[0], ...lineas.slice(1).slice(-8)]) console.log('  FALLA ' + l.slice(0, 200));
+  await page?.screenshot({ path: join(SALIDA, 'error.png'), timeout: 10000 }).catch(() => {});
 }
 await nav.close();
 await s.rpc('terminar_sesion');
