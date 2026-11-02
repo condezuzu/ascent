@@ -93,6 +93,8 @@
 //      cuentan, el pulgar viaja, los chips se cruzan, lo tocable se hunde, y con «reducir movimiento» nada (30/10).
 //  41. probar-menos-texto — las once de la sección 12: la explicación ya no se lee, el dibujo hace lo que
 //      dice y VoiceOver sigue teniendo el texto (31/10), en la nativa.
+//  42. probar-progreso — la pantalla del progreso de un ejercicio y las gráficas de línea: el tiempo a
+//      escala, cada anotación sobre la línea, leer tocando y arrastrando (1/11), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -154,6 +156,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'luz de color y bordes de 1 pt', archivo: 'probar-profundidad.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'llega con la curva, se va más corto', archivo: 'probar-movimiento.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'menos texto, más visual', archivo: 'probar-menos-texto.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'las gráficas de línea', archivo: 'probar-progreso.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

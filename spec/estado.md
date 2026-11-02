@@ -71,6 +71,17 @@ por pantalla, y la sección 328 de `test:db` pinea lo que la vista web no dibuja
 guarda con el botón; una meta mayor, ya guardada, se respeta hasta moverla. El doble de Salud
 de la sonda existe solo con `__DEV__`.
 
+## Las gráficas de línea (1/11, por OTA, sin build)
+
+La pantalla del progreso de un ejercicio, y las gráficas de peso y de pasos rehechas con las
+mismas piezas (`spec/pantallas.md`). Las cuentas, en `nucleo/grafico.ts` y `nucleo/progreso.ts`,
+las pinea la sección 329 de `test:db`; el recorrido, `probar-progreso`. La web no se tocó: sigue
+con su gráfica, y `trazarSerie` sigue siendo suya.
+
+Encontrado de paso: en los pasos, «Mes» y «Año» salían en blanco y decían «0 días». La vista de la
+línea reusaba la de las barras, del mismo tamaño, y una vista que no cambia de tamaño no dispara
+`onLayout`, así que el ancho quedaba en 0. Visto en la vista web; en el iPhone no se pudo mirar.
+
 **El gráfico de progreso por ejercicio espera aprobación** en la sección 13 de la galería:
 todavía no tiene pantalla.
 

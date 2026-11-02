@@ -77,12 +77,13 @@ export function esUnidad(v: unknown): v is Unidad {
  * Se reexporta todo para que nada de lo que ya importaba de `peso.ts` —la web,
  * la nativa y los tests— tuviera que cambiar de línea.
  */
-import { trazarSerie, type PuntoDia } from './tendencia.ts';
+import { trazarSerie, trazarTendencia, type PuntoDia } from './tendencia.ts';
 
 export {
   suavizarPorFecha,
   ultimosDias,
   trazarSerie,
+  trazarTendencia,
   puntoMasCercano,
   type PuntoDia,
 } from './tendencia.ts';
@@ -114,5 +115,23 @@ export function trazarPeso(
     // 0,4 de aire cuando la serie es plana: cuatro décimas de kilo es lo que
     // se mueve una balanza sin que haya pasado nada.
     0.4
+  );
+}
+
+/** Lo mismo con el tiempo a escala: lo que dibuja la nativa. */
+export function trazarPesoEnElTiempo(
+  pesos: { fecha: string; valor: number }[],
+  unidad: Unidad,
+  dias: number | null,
+  ancho: number,
+  alto: number,
+  ventana = 7
+) {
+  return trazarTendencia(
+    pesos.map((p) => ({ fecha: p.fecha, valor: deKilos(p.valor, unidad) })),
+    dias,
+    ancho,
+    alto,
+    { ventana, luzMinima: 0.4 }
   );
 }

@@ -1,7 +1,6 @@
-import { useState } from 'react';
-import { StyleSheet, View, type GestureResponderEvent } from 'react-native';
-import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
-import { puntoMasCercano, trazarSerie } from '@nucleo/tendencia';
+import { useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { trazarTendencia } from '@nucleo/tendencia';
 import { faltanPasos, pasosDeHoy } from '@nucleo/pasos';
 import { DIAS_SEMANA, aISO, deISO, fechaLinda, hoyISO } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
@@ -12,6 +11,7 @@ import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
 import Tocable from './Tocable';
+import { EjeDeTiempo, LineaDeTendencia, PuntoElegido, leerConVoiceOver, useLectura } from './PiezasDeGrafico';
 
 /**
  * LOS PASOS, COMO TENDENCIA. El mismo gráfico que el del peso —la misma media
@@ -34,7 +34,7 @@ import Tocable from './Tocable';
  * tampoco existen.
  */
 
-const ALTO = 84;
+const ALTO = 130;
 const VENTANA = 7;
 
 /**
@@ -59,6 +59,8 @@ const RANGOS: { dias: number; etiqueta: () => string }[] = [
 
 /** Con punto cada tres cifras: 12.480 se lee de un vistazo y 12480 no. */
 const conMiles = (n: number) => Math.round(n).toLocaleString(T.general.locale);
+/** En la escala, donde no entra: 7,5k. */
+const enMiles = (n: number) => `${(n / 1000).toLocaleString(T.general.locale)}k`;
 
 export default function GraficoPasos({
   pasos,
@@ -103,25 +105,17 @@ export default function GraficoPasos({
   // LA LUZ MÍNIMA ES 1 Y NO 0,4: acá la unidad es un paso, y cuatro décimas de
   // paso no existen. Solo hace falta que una serie perfectamente plana no
   // divida por cero.
-  const trazo = ancho > 0 ? trazarSerie(pasos, rango, ancho, ALTO, VENTANA, 1) : null;
+  const trazo = useMemo(() => (ancho > 0 ? trazarTendencia(pasos, rango, ancho, ALTO, { ventana: VENTANA, luzMinima: 1 }) : null), [pasos, rango, ancho]);
   const serie = trazo?.serie ?? [];
-  const alMover = (e: GestureResponderEvent) => {
-    if (ancho > 0 && serie.length > 1) setTocado(puntoMasCercano(e.nativeEvent.locationX / ancho, serie.length));
-  };
-  // DÓNDE CAE LA META EN EL DIBUJO. `trazarSerie` no devuelve la escala —los
-  // bordes son de dibujo y mostrarlos como datos fue un error viejo— así que se
-  // deduce de dos puntos que sí devuelve: con dos valores suavizados y sus dos
-  // alturas, la recta que los une da cualquier otro.
-  const yMeta = (() => {
-    if (!trazo || trazo.serie.length < 2) return null;
-    const a = trazo.serie[0].suave;
-    const b = trazo.serie[trazo.serie.length - 1].suave;
-    if (Math.abs(a - b) < 1e-6) return null;
-    const ya = trazo.puntos[0].y;
-    const yb = trazo.puntos[trazo.puntos.length - 1].y;
-    const y = ya + ((meta - a) * (yb - ya)) / (b - a);
-    return y >= 2 && y <= ALTO - 2 ? y : null;
-  })();
+  const xs = useMemo(() => trazo?.puntos.map((p) => p.x) ?? [], [trazo]);
+  const lectura = useLectura(xs, tocado, setTocado);
+  // DÓNDE CAE LA META EN EL DIBUJO. Solo si cae adentro: con una meta muy arriba de lo que
+  // caminás, una línea pegada al borde no dice nada y encima achicaría la escala de todo lo demás.
+  const referencia = useMemo(() => {
+    if (!trazo) return null;
+    const y = trazo.yDe(meta);
+    return y >= 2 && y <= ALTO - 2 ? { y, texto: enMiles(meta) } : null;
+  }, [trazo, meta]);
 
   /** Los de HOY para la meta: el último día con dato solo si es hoy. */
   const ultimoDia = pasosDeHoy(pasos, hoyISO());
@@ -129,7 +123,6 @@ export default function GraficoPasos({
 
   const elegido = tocado === null || !trazo ? null : serie[tocado];
   const posElegido = tocado === null || !trazo ? null : trazo.puntos[tocado];
-  const ultimo = trazo?.puntos[trazo.puntos.length - 1];
 
   // ---- LA SEMANA: SIETE BARRAS ----
   if (rango === 7) {
@@ -140,7 +133,10 @@ export default function GraficoPasos({
     const yMetaBarras = ALTO - (meta / tope) * ALTO;
     return (
       <View style={estilos.grafico}>
-        <View style={[estilos.lienzo, estilos.barras]}>
+        {/* EL ANCHO SE MIDE ACÁ TAMBIÉN. Sin esto, «Mes» y «Año» salían en blanco y decían «0 días»: el
+            lienzo de la línea reusa esta misma vista, del mismo tamaño, y una vista que no cambia de
+            tamaño no avisa nada (`onLayout` no se dispara). Lo encontró probar-progreso. */}
+        <View style={[estilos.lienzo, estilos.barras]} onLayout={(e) => setAncho(e.nativeEvent.layout.width)}>
           {/* LA META CRUZA LAS SIETE, como en el trazo: es la referencia, no
               una barra más. */}
           <View
@@ -194,99 +190,46 @@ export default function GraficoPasos({
   return (
     <View style={estilos.grafico}>
       <View
+        testID="pasos-lienzo"
         style={estilos.lienzo}
         onLayout={(e) => setAncho(e.nativeEvent.layout.width)}
-        onStartShouldSetResponder={() => true}
-        onMoveShouldSetResponder={() => true}
-        onResponderTerminationRequest={() => false}
-        onResponderGrant={alMover}
-        onResponderMove={alMover}
-        onResponderRelease={() => setTocado(null)}
-        onResponderTerminate={() => setTocado(null)}
+        {...lectura}
+        accessible
+        accessibilityLabel={T.stats.pasosTendencia}
+        accessibilityHint={T.progreso.leer}
+        accessibilityValue={elegido ? { text: `${fechaLinda(elegido.fecha)}: ${T.stats.pasosDia(conMiles(elegido.valor))}` } : undefined}
+        {...leerConVoiceOver(xs.length, tocado, setTocado)}
       >
-        {/* Nada de lo dibujado recibe el toque: `locationX` se mide contra la
-            vista que toca el dedo, y si fuera un punto daría otra x. */}
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           {trazo && (
-            <Svg width={ancho} height={ALTO}>
-              <Defs>
-                {/* El `id` es otro que el del peso A PROPÓSITO: los dos gráficos
-                    viven en la misma pantalla, y un `id` repetido lo resuelve
-                    el motor de SVG callado y mal —el segundo degradado se
-                    dibuja con la definición del primero—. Es la misma trampa
-                    que documenta `compartido/insignias.ts`. */}
-                <LinearGradient id="pasos-relleno" x1="0" y1="0" x2="0" y2="1">
-                  <Stop offset="0" stopColor={claro} stopOpacity={0.18} />
-                  <Stop offset="1" stopColor={claro} stopOpacity={0} />
-                </LinearGradient>
-              </Defs>
-              {/* LA META, como línea punteada. Va DETRÁS del trazo: es la
-                  referencia contra la que se mira la línea, no un dato más.
-                  Solo se dibuja si cae adentro del gráfico — con una meta muy
-                  arriba de lo que caminás, una línea pegada al borde no dice
-                  nada y encima achicaría la escala de todo lo demás. */}
-              {yMeta !== null && (
-                <Line
-                  x1={0}
-                  y1={yMeta}
-                  x2={ancho}
-                  y2={yMeta}
-                  stroke={claro}
-                  strokeWidth={0.8}
-                  strokeDasharray="3 4"
-                  opacity={0.35}
-                />
-              )}
-              <Path d={trazo.area} fill="url(#pasos-relleno)" />
-              <Path
-                d={trazo.linea}
-                fill="none"
-                stroke={claro}
-                strokeWidth={1.6}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              {posElegido && (
-                <Line
-                  x1={posElegido.x}
-                  y1={0}
-                  x2={posElegido.x}
-                  y2={ALTO}
-                  stroke={claro}
-                  strokeWidth={1}
-                  opacity={0.45}
-                />
-              )}
-            </Svg>
+            <LineaDeTendencia
+              trazo={trazo}
+              ancho={ancho}
+              alto={ALTO}
+              color={claro}
+              clave={rango}
+              idRelleno="pasos-relleno"
+              rotular={enMiles}
+              referencia={referencia}
+            />
           )}
-          {ultimo && <Punto x={ultimo.x} y={ultimo.y} color={claro} aro={conAlfa(C.fondo, 0.65)} />}
-          {posElegido && <Punto x={posElegido.x} y={posElegido.y} color={claro} aro={conAlfa(claro, 0.22)} />}
+          {posElegido && <PuntoElegido x={posElegido.x} y={posElegido.y} alto={ALTO} ancho={ancho} color={claro} />}
         </View>
       </View>
+      <EjeDeTiempo marcas={trazo?.tiempo ?? []} />
 
-      {trazo &&
-        (elegido ? (
-          <View style={estilos.pie}>
-            <Text style={estilos.cuando}>{fechaLinda(elegido.fecha)}</Text>
-            {/* EL CRUDO DE ESE DÍA, no el suavizado: la pregunta que hace el
-                dedo es "cuántos pasos di ese día". */}
-            <Text style={estilos.hoy}>{T.stats.pasosDia(conMiles(elegido.valor))}</Text>
-          </View>
-        ) : (
-          <View style={estilos.pie}>
-            <Text style={estilos.hoy}>{T.stats.pasosDia(conMiles(ultimoDia))}</Text>
-            {/* En el peso acá va el CAMBIO con signo; en los pasos va el
-                promedio. Un "+300 pasos" contra el primer día de la ventana no
-                dice nada —los pasos no tienen una dirección buena—, y en cambio
-                cuánto caminás por día es exactamente lo que se viene a mirar. */}
-            {/* LO QUE FALTA, que es lo que se vino a mirar. El promedio de la
-                ventana pasó al rótulo de abajo: sigue siendo cierto y deja de
-                competir con la pregunta del día. */}
-            <Text style={estilos.cambio}>
-              {falta === null ? T.stats.pasosLlegaste : T.stats.pasosFaltan(conMiles(falta))}
-            </Text>
-          </View>
-        ))}
+      {trazo && (
+        <View style={estilos.pie}>
+          {/* EL CRUDO DE ESE DÍA, no el suavizado: la pregunta que hace el dedo es "cuántos pasos di
+              ese día". El número no cambia de lugar: lo que se lee queda donde estaba. */}
+          <Text style={estilos.hoy}>{T.stats.pasosDia(conMiles(elegido ? elegido.valor : ultimoDia))}</Text>
+          {/* LO QUE FALTA, que es lo que se vino a mirar. El promedio de la ventana pasó al rótulo
+              de abajo: sigue siendo cierto y deja de competir con la pregunta del día. */}
+          <Text style={estilos.cambio}>
+            {elegido ? fechaLinda(elegido.fecha) : falta === null ? T.stats.pasosLlegaste : T.stats.pasosFaltan(conMiles(falta))}
+          </Text>
+        </View>
+      )}
 
       <Ventanas rango={rango} claro={claro} alElegir={(d) => { setRango(d); setTocado(null); }} />
 
@@ -390,37 +333,12 @@ export function HojaDeMeta({
   );
 }
 
-/**
- * Un punto de 7 px con un aro de 3 px alrededor. En la web el aro es una
- * sombra, que va por FUERA; acá un borde translúcido se mezclaría con el
- * relleno del punto, así que el aro es otra vista, detrás.
- */
-function Punto({ x, y, color, aro }: { x: number; y: number; color: string; aro: string }) {
-  useTema();
-  return (
-    <>
-      <View style={[estilos.aro, { left: x, top: y, backgroundColor: aro }]} />
-      <View style={[estilos.punto, { left: x, top: y, backgroundColor: color }]} />
-    </>
-  );
-}
-
 const estilos = conTema(() => StyleSheet.create({
   grafico: { borderTopWidth: 1, borderColor: C.linea, paddingTop: 26, paddingBottom: 6 },
   lienzo: { height: ALTO },
-  punto: {
-    position: 'absolute',
-    width: 7,
-    height: 7,
-    marginLeft: -3.5,
-    marginTop: -3.5,
-    borderRadius: 3.5,
-  },
-  aro: { position: 'absolute', width: 13, height: 13, marginLeft: -6.5, marginTop: -6.5, borderRadius: 6.5 },
   pie: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 14, marginTop: 16 },
-  hoy: { color: C.tinta, fontSize: 30, fontWeight: '300', fontFamily: L.dato },
-  cambio: { color: C.apagado, fontSize: 11, letterSpacing: 0.7, fontFamily: L.dato },
-  cuando: { flex: 1, color: C.apagado, fontSize: 12, fontFamily: L.dato },
+  hoy: { flexShrink: 0, color: C.tinta, fontSize: 30, fontWeight: '300', fontFamily: L.dato },
+  cambio: { flexShrink: 1, color: C.apagado, fontSize: 11, letterSpacing: 0.7, fontFamily: L.dato, textAlign: 'right' },
   rangos: { flexDirection: 'row', gap: 14, marginTop: 10 },
   rango: { color: C.apagado, fontSize: 12, paddingVertical: 4 },
   nota: { color: C.apagado, fontSize: 11, marginTop: 12, lineHeight: 16 },

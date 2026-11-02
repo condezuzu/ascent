@@ -1300,6 +1300,8 @@ const ES = {
       'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre',
     ],
     delMes: (dia: number, mes: string) => `${dia} de ${mes}`,
+    // Para rotular un eje: «12 oct».
+    diaYMes: (dia: number, mes: string) => `${dia} ${mes}`,
     // Varios días del mismo mes (19/10): «15, 16 y 17 de octubre». Los días llegan ya juntados.
     diasDelMes: (dias: string, mes: string) => `${dias} de ${mes}`,
     hoy: 'Hoy',
@@ -1378,6 +1380,19 @@ const ES = {
   // ---------------------------------------------------------------
   // "¿LO GUARDO COMO MARCA?", al terminar (`nucleo/marcaSugerida.ts`). Con el
   // dato ya escrito: la única pregunta es a cuántas repeticiones.
+  // EL PROGRESO DE UN EJERCICIO (1/11): se abre tocando una fila de los máximos.
+  progreso: {
+    reps: (n: number) => (n === 1 ? '1 rep' : `${n} reps`),
+    sesiones: (n: number) => (n === 1 ? '1 sesión' : `${n} sesiones`),
+    cambio: (n: number, delta: string, unidad: string) => `${n} sesiones · ${delta} ${unidad}`,
+    // Un punto suelto, anotado a mano: no es una sesión.
+    marca: 'Marca',
+    // VoiceOver: quien no ve la línea la recorre punto por punto.
+    abrir: 'Abre tu progreso en este ejercicio.',
+    grafico: (nombre: string) => `${nombre}: el peso máximo de cada sesión.`,
+    leer: 'Desliza hacia arriba o hacia abajo para leer cada punto.',
+  },
+
   marcaSugerida: {
     // NO DICE "más que tu marca", y ese cambio es del 16/9/2026. Antes lo
     // afirmaba porque comparaba el peso crudo contra el 1RM de la marca, o sea
