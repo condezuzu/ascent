@@ -60,6 +60,10 @@ Con Reanimated, dos cosas que hoy corren en JavaScript podrían pasar al hilo de
 deslizador de la meta de pasos (`Deslizador.tsx`) y arrastrar una fila de la rutina
 (`FilasArrastrables.tsx`). No es un pendiente: así andan.
 
+El progreso de un ejercicio y las gráficas de peso y de pasos (1/11) también salieron por OTA: no
+necesitan build. Leer una gráfica arrastrando corre en JavaScript (`PiezasDeGrafico.tsx`), y con
+Reanimated podría pasar al hilo de la interfaz. Tampoco es un pendiente.
+
 ## Los pasos que son del humano, sí o sí
 
 1. **El sonido ya está elegido** (corte 1). Lo único que queda es oírlo con
