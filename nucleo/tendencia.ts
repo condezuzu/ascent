@@ -11,6 +11,7 @@
  * `peso.ts` sigue exportando todo esto, así que nada de lo que ya importaba de
  * ahí tuvo que cambiar.
  */
+import { curvaSuave, diasEntre, largoDe, marcasDeEscala, marcasDeTiempo } from './grafico.ts';
 
 export type PuntoDia = { fecha: string; valor: number; suave: number };
 
@@ -111,6 +112,51 @@ export function trazarSerie(
   const area = `${linea} L${ancho},${alto} L0,${alto} Z`;
   const hoy = serie[serie.length - 1].suave;
   return { serie, puntos, linea, area, hoy, cambio: hoy - serie[0].suave, dias: serie.length };
+}
+
+/**
+ * LA MISMA TENDENCIA, CON EL TIEMPO A ESCALA (1/11): lo que dibuja la nativa. `trazarSerie`
+ * reparte los puntos parejo, que alcanza sin fechas a la vista; con rótulos abajo, tres semanas
+ * sin pesarse no pueden ocupar lo mismo que un día.
+ */
+export function trazarTendencia(
+  datos: { fecha: string; valor: number }[],
+  dias: number | null,
+  ancho: number,
+  alto: number,
+  { ventana = 7, luzMinima = 0.4, derecha = 34, izquierda = 4 }: { ventana?: number; luzMinima?: number; derecha?: number; izquierda?: number } = {}
+) {
+  const serie = ultimosDias(suavizarPorFecha(datos, ventana), dias);
+  if (serie.length < 2) return null;
+
+  const piso = Math.min(...serie.map((p) => p.suave));
+  const techo = Math.max(...serie.map((p) => p.suave));
+  const luz = Math.max(luzMinima, (techo - piso) * 0.14);
+  const min = piso - luz;
+  const max = techo + luz;
+  const desde = serie[0].fecha;
+  const hasta = serie[serie.length - 1].fecha;
+  const total = Math.max(1, diasEntre(desde, hasta));
+  const util = ancho - izquierda - derecha;
+  const xDe = (fecha: string) => izquierda + (diasEntre(desde, fecha) / total) * util;
+  const yDe = (v: number) => alto - ((v - min) / (max - min)) * alto;
+
+  const puntos = serie.map((p) => ({ x: xDe(p.fecha), y: yDe(p.suave) }));
+  const linea = curvaSuave(puntos);
+  const hoy = serie[serie.length - 1].suave;
+  return {
+    serie,
+    puntos,
+    linea,
+    area: `${linea} L${(izquierda + util).toFixed(1)},${alto} L${izquierda},${alto} Z`,
+    largo: largoDe(puntos) * 1.05,
+    yDe,
+    hoy,
+    cambio: hoy - serie[0].suave,
+    dias: serie.length,
+    tiempo: marcasDeTiempo(desde, hasta, xDe, ancho - derecha),
+    escala: marcasDeEscala(min, max).map((v) => ({ valor: v, y: yDe(v) })),
+  };
 }
 
 /**

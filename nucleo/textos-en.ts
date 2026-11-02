@@ -717,6 +717,7 @@ export const EN: Textos = {
     diasAbreviados: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     meses: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
     delMes: (dia: number, mes: string) => `${mes} ${dia}`,
+    diaYMes: (dia: number, mes: string) => `${mes} ${dia}`,
     diasDelMes: (dias: string, mes: string) => `${mes} ${dias}`,
     hoy: 'Today',
     ayer: 'Yesterday',
@@ -769,6 +770,16 @@ export const EN: Textos = {
     peso: 'Weight',
     diaYaRegistrado: 'This day is already logged.',
   },
+  progreso: {
+    reps: (n: number) => (n === 1 ? '1 rep' : `${n} reps`),
+    sesiones: (n: number) => (n === 1 ? '1 session' : `${n} sessions`),
+    cambio: (n: number, delta: string, unidad: string) => `${n} sessions · ${delta} ${unidad}`,
+    marca: 'Record',
+    abrir: 'Opens your progress on this exercise.',
+    grafico: (nombre: string) => `${nombre}: the heaviest weight of each session.`,
+    leer: 'Swipe up or down to read each point.',
+  },
+
   marcaSugerida: {
     puedeSerMarca: (peso: string, unidad: string, nombre: string) => `You did ${peso} ${unidad} on ${minuscula(nombre)}. It may be a new record.`,
     primera: (peso: string, unidad: string, nombre: string) => `You did ${peso} ${unidad} on ${minuscula(nombre)}. Save it as a record?`,

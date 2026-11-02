@@ -224,7 +224,7 @@ export default function StatsGeneral({
           el número solo —decirle "anota tu peso" a quien acaba de anotarlo
           parece un error—; sin ninguno, la invitación. */}
       <Seccion derecha={<Candado />}>{pesos.length >= 2 ? T.stats.pesoTendencia : T.stats.peso}</Seccion>
-      {pesos.length >= 2 && <GraficoPeso pesos={pesos} unidad={unidad} claro={pal.claro} />}
+      {pesos.length >= 2 && <GraficoPeso pesos={pesos} unidad={unidad} claro={pal.claro} objetivo={objetivoPeso} />}
       {pesos.length === 1 && (
         <Text style={estilos.pesoSolo}>
           {conComa(deKilos(pesos[0].valor, unidad).toFixed(1))}

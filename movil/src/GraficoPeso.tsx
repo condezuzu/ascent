@@ -1,36 +1,28 @@
-import { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, type GestureResponderEvent, Animated } from 'react-native';
-import Svg, { Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
-import { conComa, puntoMasCercano, trazarPeso, type Unidad } from '@nucleo/peso';
+import { useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { conComa, deKilos, trazarPesoEnElTiempo, type Unidad } from '@nucleo/peso';
 import { fechaLinda } from '@nucleo/fechas';
 import { T } from '@nucleo/textos';
-import { C, conAlfa, conTema, luz } from './colores';
+import { C, conAlfa, conTema } from './colores';
 import { useTema } from './useTema';
-import { Text } from './Texto';
+import { CifraJunta, Text } from './Texto';
 import { L } from './fuentes';
 import Tocable from './Tocable';
-import { LLENA, MS, sinMovimiento } from './movimiento';
+import { EjeDeTiempo, LineaDeTendencia, PuntoElegido, leerConVoiceOver, useLectura } from './PiezasDeGrafico';
 
 /**
- * LA TENDENCIA DEL PESO, en la app nativa: la misma que la web
- * (`src/components/GraficoPeso.tsx`), con la misma cuenta
- * (`trazarPeso` en `nucleo/peso.ts`, donde están los porqués).
+ * LA TENDENCIA DEL PESO, en la app nativa. La media móvil es la de la web (`nucleo/tendencia.ts`,
+ * donde están los porqués); el dibujo no (1/11): era una línea de 84 px sin fechas ni escala, con
+ * los puntos repartidos parejo, y tres semanas sin pesarse ocupaban lo mismo que un día. Ahora el
+ * tiempo va a escala, abajo dice cuándo, a la derecha dice cuánto, y cada anotación es un punto
+ * sobre la línea.
  *
- * Lo que cambia es solo cómo se dibuja:
- *
- *   - EL SVG SE DIBUJA AL ANCHO DE VERDAD, medido con `onLayout`. La web usa un
- *     viewBox fijo que se estira sin conservar la proporción, y por eso
- *     necesita `non-scaling-stroke` para que la línea no engorde de costado.
- *     Acá no se estira nada: la cuenta recibe el ancho real.
- *   - LEER UN DÍA ES ARRASTRAR EL DEDO, con el sistema de respuesta de toques
- *     de React Native. Mientras se arrastra, el gráfico no le suelta el toque
- *     al scroll: si no, el primer movimiento en diagonal se lo lleva la lista.
- *   - AL TOCAR SE MUESTRA EL PESO CRUDO, no el suavizado, igual que en la web:
- *     el suavizado es una afirmación sobre la tendencia, y esto es la pregunta
- *     "cuánto pesaba ese día".
+ *   - AL TOCAR SE MUESTRA EL PESO CRUDO, no el suavizado, igual que en la web: el suavizado es una
+ *     afirmación sobre la tendencia, y esto es la pregunta "cuánto pesaba ese día".
+ *   - EL NÚMERO VA ARRIBA Y NO SE MUEVE: lo que se lee queda en el mismo lugar, y el dedo no lo tapa.
  */
 
-const ALTO = 84;
+const ALTO = 150;
 const VENTANA = 7;
 
 // Las ventanas de tiempo. `null` es todo el historial.
@@ -44,95 +36,81 @@ export default function GraficoPeso({
   pesos,
   unidad,
   claro,
+  objetivo = null,
 }: {
   pesos: { fecha: string; valor: number }[];
   unidad: Unidad;
   /** El `--pal-claro` de la web: la paleta del rango. */
   claro: string;
+  /** En kilos: la línea a la que se quiere llegar. */
+  objetivo?: number | null;
 }) {
   useTema();
   const [rango, setRango] = useState<number | null>(null);
   const [tocado, setTocado] = useState<number | null>(null);
   const [ancho, setAncho] = useState(0);
 
-  const trazo = ancho > 0 ? trazarPeso(pesos, unidad, rango, ancho, ALTO, VENTANA) : null;
-  const serie = trazo?.serie ?? [];
-  const alMover = (e: GestureResponderEvent) => {
-    if (ancho > 0 && serie.length > 1) setTocado(puntoMasCercano(e.nativeEvent.locationX / ancho, serie.length));
-  };
-  const elegido = tocado === null || !trazo ? null : serie[tocado];
+  const trazo = useMemo(() => (ancho > 0 ? trazarPesoEnElTiempo(pesos, unidad, rango, ancho, ALTO, VENTANA) : null), [pesos, unidad, rango, ancho]);
+  const xs = useMemo(() => trazo?.puntos.map((p) => p.x) ?? [], [trazo]);
+  const lectura = useLectura(xs, tocado, setTocado);
+  const elegido = tocado === null || !trazo ? null : trazo.serie[tocado];
   const posElegido = tocado === null || !trazo ? null : trazo.puntos[tocado];
-  const ultimo = trazo?.puntos[trazo.puntos.length - 1];
+  const referencia = useMemo(() => {
+    if (!trazo || objetivo === null) return null;
+    const enUnidad = deKilos(objetivo, unidad);
+    const y = trazo.yDe(enUnidad);
+    // Solo si cae adentro: pegada al borde no diría nada, y agrandar la escala achicaría lo demás.
+    return y >= 2 && y <= ALTO - 2 ? { y, texto: conComa(Math.round(enUnidad)) } : null;
+  }, [trazo, objetivo, unidad]);
 
   return (
     <View style={estilos.grafico}>
+      {trazo && (
+        <View style={estilos.pie} onStartShouldSetResponder={() => tocado !== null} onResponderRelease={() => setTocado(null)}>
+          <Text testID="peso-cifra" style={estilos.hoy}>
+            <CifraJunta texto={conComa((elegido ? elegido.valor : trazo.hoy).toFixed(1))} apretar={-7} />
+            <Text style={estilos.unidad}> {unidad}</Text>
+          </Text>
+          {/* Con signo, siempre: sin él, "0.4" no dice si subiste o bajaste. */}
+          <Text testID="peso-detalle" style={estilos.cambio}>
+            {elegido
+              ? fechaLinda(elegido.fecha)
+              : T.stats.pesoCambio(trazo.dias, `${trazo.cambio >= 0 ? '+' : '−'}${conComa(Math.abs(trazo.cambio).toFixed(1))}`, unidad)}
+          </Text>
+        </View>
+      )}
+
       <View
+        testID="peso-lienzo"
         style={estilos.lienzo}
         onLayout={(e) => setAncho(e.nativeEvent.layout.width)}
-        onStartShouldSetResponder={() => true}
-        onMoveShouldSetResponder={() => true}
-        onResponderTerminationRequest={() => false}
-        onResponderGrant={alMover}
-        onResponderMove={alMover}
-        onResponderRelease={() => setTocado(null)}
-        onResponderTerminate={() => setTocado(null)}
+        {...lectura}
+        accessible
+        accessibilityLabel={T.stats.pesoTendencia}
+        accessibilityHint={T.progreso.leer}
+        accessibilityValue={trazo ? { text: elegido ? `${fechaLinda(elegido.fecha)}: ${conComa(elegido.valor.toFixed(1))} ${unidad}` : `${conComa(trazo.hoy.toFixed(1))} ${unidad}` } : undefined}
+        {...leerConVoiceOver(xs.length, tocado, setTocado)}
       >
-        {/* Nada de lo dibujado recibe el toque: `locationX` se mide contra la
-            vista que toca el dedo, y si fuera un punto daría otra x. */}
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           {trazo && (
-            <Svg width={ancho} height={ALTO}>
-              <Defs>
-                <LinearGradient id="peso-relleno" x1="0" y1="0" x2="0" y2="1">
-                  <Stop offset="0" stopColor={claro} stopOpacity={0.18} />
-                  <Stop offset="1" stopColor={claro} stopOpacity={0} />
-                </LinearGradient>
-              </Defs>
-              <Path d={trazo.area} fill="url(#peso-relleno)" />
-              <LineaQueSeDibuja d={trazo.linea} color={claro} largo={ancho * 2} />
-              {posElegido && (
-                <Line
-                  x1={posElegido.x}
-                  y1={0}
-                  x2={posElegido.x}
-                  y2={ALTO}
-                  stroke={claro}
-                  strokeWidth={1}
-                  opacity={0.45}
-                />
-              )}
-            </Svg>
+            <LineaDeTendencia
+              trazo={trazo}
+              ancho={ancho}
+              alto={ALTO}
+              color={claro}
+              clave={rango}
+              idRelleno="peso-relleno"
+              conPuntos
+              rotular={conComa}
+              referencia={referencia}
+            />
           )}
-          {ultimo && <Punto x={ultimo.x} y={ultimo.y} color={claro} aro={conAlfa(C.fondo, 0.65)} />}
-          {posElegido && <Punto x={posElegido.x} y={posElegido.y} color={claro} aro={conAlfa(claro, 0.22)} />}
+          {posElegido && <PuntoElegido x={posElegido.x} y={posElegido.y} alto={ALTO} ancho={ancho} color={claro} />}
+          {/* La ventana elegida no tiene dos anotaciones: con los botones para volver, no se va entero. */}
+          {ancho > 0 && !trazo && <Text style={estilos.sinVentana}>{T.stats.pesoSinVentana}</Text>}
         </View>
       </View>
-
-      {trazo &&
-        (elegido ? (
-          <View style={estilos.pie}>
-            <Text style={estilos.cuando}>{fechaLinda(elegido.fecha)}</Text>
-            <Text style={estilos.hoy}>
-              {conComa(elegido.valor.toFixed(1))}
-              <Text style={estilos.unidad}> {unidad}</Text>
-            </Text>
-          </View>
-        ) : (
-          <View style={estilos.pie}>
-            <Text style={estilos.hoy}>
-              {conComa(trazo.hoy.toFixed(1))}
-              <Text style={estilos.unidad}> {unidad}</Text>
-            </Text>
-            {/* Con signo, siempre: sin él, "0.4" no dice si subiste o bajaste. */}
-            <Text style={estilos.cambio}>
-              {T.stats.pesoCambio(
-                trazo.dias,
-                `${trazo.cambio >= 0 ? '+' : '−'}${conComa(Math.abs(trazo.cambio).toFixed(1))}`,
-                unidad
-              )}
-            </Text>
-          </View>
-        ))}
+      <EjeDeTiempo marcas={trazo?.tiempo ?? []} />
 
       {/* La ventana. Con todo el historial, tres meses de una bajada de dos
           kilos se ven planos: la escala la manda el punto más lejano. */}
@@ -147,6 +125,8 @@ export default function GraficoPeso({
                 setRango(r.dias);
                 setTocado(null);
               }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: activo }}
             >
               <Text
                 style={[
@@ -164,62 +144,14 @@ export default function GraficoPeso({
   );
 }
 
-/**
- * Un punto de 7 px con un aro de 3 px alrededor. En la web el aro es una
- * sombra, que va por FUERA; acá un borde translúcido se mezclaría con el
- * relleno del punto, así que el aro es otra vista, detrás.
- */
-const TrazoAnimado = Animated.createAnimatedComponent(Path);
-
-/** La línea se dibuja de izquierda a derecha al aparecer; después es una línea común. */
-function LineaQueSeDibuja({ d, color, largo }: { d: string; color: string; largo: number }) {
-  useTema();
-  const t = useRef(new Animated.Value(0)).current;
-  const [lista, setLista] = useState(false);
-  useEffect(() => {
-    let vivo = true;
-    void sinMovimiento().then((quieto) => {
-      if (!vivo) return;
-      if (quieto) return setLista(true);
-      // Por JS: el trazo de un SVG no va por el motor nativo.
-      Animated.timing(t, { toValue: 1, duration: MS.barra, easing: LLENA, useNativeDriver: false }).start(() => vivo && setLista(true));
-    });
-    return () => {
-      vivo = false;
-    };
-  }, [t]);
-  const comun = { d, fill: 'none', stroke: color, strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
-  if (lista) return <Path {...comun} />;
-  return <TrazoAnimado {...comun} strokeDasharray={[largo, largo]} strokeDashoffset={t.interpolate({ inputRange: [0, 1], outputRange: [largo, 0] })} />;
-}
-
-function Punto({ x, y, color, aro }: { x: number; y: number; color: string; aro: string }) {
-  useTema();
-  return (
-    <>
-      <View style={[estilos.aro, { left: x, top: y, backgroundColor: aro }]} />
-      <View style={[estilos.punto, { left: x, top: y, backgroundColor: color }, luz(color, 0.9, 5)]} />
-    </>
-  );
-}
-
 const estilos = conTema(() => StyleSheet.create({
-  grafico: { borderTopWidth: 1, borderColor: C.linea, paddingTop: 26, paddingBottom: 6 },
+  grafico: { paddingTop: 6, paddingBottom: 6 },
   lienzo: { height: ALTO },
-  punto: {
-    position: 'absolute',
-    width: 7,
-    height: 7,
-    marginLeft: -3.5,
-    marginTop: -3.5,
-    borderRadius: 3.5,
-  },
-  aro: { position: 'absolute', width: 13, height: 13, marginLeft: -6.5, marginTop: -6.5, borderRadius: 6.5 },
-  pie: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 14, marginTop: 16 },
+  pie: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 14, marginBottom: 14 },
   hoy: { color: C.tinta, fontSize: 30, fontWeight: '300', fontFamily: L.dato },
   unidad: { color: C.sub, fontSize: 13 },
-  cambio: { color: C.apagado, fontSize: 11, letterSpacing: 0.7, fontFamily: L.dato },
-  cuando: { flex: 1, color: C.apagado, fontSize: 12, fontFamily: L.dato },
-  rangos: { flexDirection: 'row', gap: 14, marginTop: 10 },
+  cambio: { flexShrink: 1, color: C.apagado, fontSize: 11, letterSpacing: 0.7, fontFamily: L.dato, textAlign: 'right' },
+  sinVentana: { color: C.apagado, fontSize: 12, lineHeight: 17, marginTop: 20, maxWidth: '82%' },
+  rangos: { flexDirection: 'row', gap: 14, marginTop: 8 },
   rango: { color: C.apagado, fontSize: 12, paddingVertical: 4 },
 }));

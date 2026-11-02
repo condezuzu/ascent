@@ -28,6 +28,8 @@ export const MS = {
   hojaSale: 230,
   cuenta: 480,
   barra: 1100,
+  // Una línea de gráfico que se dibuja: se vuelve a ver cada vez que se cambia el rango.
+  trazo: 720,
   pulgar: 340,
   tic: 240,
   // Dos chips que se reemplazan se cruzan sin pisarse.
