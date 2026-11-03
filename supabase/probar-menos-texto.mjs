@@ -248,17 +248,26 @@ try {
   chequear('con los pasos de verdad: una barra por día', await page.getByTestId('meta-semana').first().locator(':scope > div').count(), 8);
   const valorAntes = await page.getByTestId('meta-valor').first().innerText();
   const lineaAntes = await page.getByTestId('meta-linea').first().evaluate((n) => Math.round(n.getBoundingClientRect().top));
-  const barraAntes = await page.getByTestId('meta-barra').first().evaluate((n) => Math.round(n.getBoundingClientRect().width));
   await foto('h-meta');
-  const caja = await page.getByTestId('meta-deslizador').first().boundingBox();
-  await page.mouse.move(caja.x + caja.width * 0.3, caja.y + caja.height / 2);
+  // COMO EL PESO (2/11, a pedido): con − y + a los lados de una regla, no con una barra.
+  chequear('sin barra para arrastrar', [await page.getByTestId('meta-deslizador').count(), await page.getByTestId('meta-regla').count()], [0, 1]);
+  const numeroDeMeta = async () => Number((await page.getByTestId('meta-valor').first().innerText()).replace(/\D/g, ''));
+  const deArranque = await numeroDeMeta();
+  await page.getByTestId('meta-mas').first().click();
+  await page.waitForTimeout(200);
+  chequear('el + sube de a 100', await numeroDeMeta(), deArranque + 100);
+  await page.getByTestId('meta-menos').first().click();
+  await page.waitForTimeout(200);
+  chequear('y el − baja', await numeroDeMeta(), deArranque);
+  const caja = await page.getByTestId('meta-regla').first().boundingBox();
+  await page.mouse.move(caja.x + caja.width * 0.75, caja.y + caja.height / 2);
   await page.mouse.down();
-  await page.mouse.move(caja.x + caja.width * 0.75, caja.y + caja.height / 2, { steps: 8 });
+  await page.mouse.move(caja.x + caja.width * 0.25, caja.y + caja.height / 2, { steps: 8 });
   await page.mouse.up();
   await page.waitForTimeout(400);
   const valorDespues = await page.getByTestId('meta-valor').first().innerText();
-  chequear('al arrastrar, el número cambia', valorDespues !== valorAntes, true);
-  chequear('y se mueven la línea de la semana y la barra de hoy', [await page.getByTestId('meta-linea').first().evaluate((n) => Math.round(n.getBoundingClientRect().top)) !== lineaAntes, await page.getByTestId('meta-barra').first().evaluate((n) => Math.round(n.getBoundingClientRect().width)) !== barraAntes], [true, true]);
+  chequear('arrastrar la regla a la izquierda sube el número', (await numeroDeMeta()) > deArranque, true);
+  chequear('y se mueve la línea de la semana', await page.getByTestId('meta-linea').first().evaluate((n) => Math.round(n.getBoundingClientRect().top)) !== lineaAntes, true);
   await foto('h-meta-movida');
   await page.getByTestId('meta-guardar').first().click({ timeout: 8000 });
   await page.waitForTimeout(800);
@@ -304,14 +313,23 @@ try {
   await texto(TX.nav.social).click({ timeout: 20000 });
   await page.getByTestId('social-vacio').first().waitFor({ timeout: 30000 });
   await page.waitForTimeout(500);
-  chequear('el pie ya no se lee', await seLee(TX.social.vacioPie), 0);
-  chequear('VoiceOver lo sigue teniendo', (await etiquetaDe('social-lugar-0')).includes(TX.social.vacioPie), true);
+  // LA ESTRELLA GUÍA (2/11, a pedido; reemplaza a la constelación).
+  chequear('la estrella es un botón y dice qué hace', [await page.getByTestId('social-estrella').first().getAttribute('role'), await seLee(TX.social.vacioBoton)], ['button', 1]);
+  const anchoDe = (id) => page.getByTestId(id).first().evaluate((n) => n.getBoundingClientRect().width);
+  const vivo = (id) => page.getByTestId(id).first().evaluate((n) => { let o = 1; for (let a = n; a; a = a.parentElement) o *= Number(getComputedStyle(a).opacity); return o; });
+  chequear('hasta tocarla, ni el buscador ni el renglón de invitar se ven', [await vivo('buscar-gente') < 0.05, await vivo('social-invitar') < 0.05], [true, true]);
   await foto('j-social');
-  await page.getByTestId('social-lugar-0').first().click();
-  await page.waitForTimeout(700);
-  chequear('tocar un lugar lo prende', await page.getByTestId('social-lugar-prendido').count(), 1);
-  chequear('y lleva al buscador, que es donde se agrega a alguien', await page.evaluate(() => document.activeElement?.getAttribute('data-testid')), 'buscar-gente');
+  await page.getByTestId('social-estrella').first().click();
+  // Mientras viaja: el buscador se va abriendo.
+  await page.waitForTimeout(620);
+  const abriendo = await page.locator('[data-testid="buscar-gente"]').first().evaluate((n) => { for (let a = n; a; a = a.parentElement) if (getComputedStyle(a).overflow === 'hidden' && a.getBoundingClientRect().width < innerWidth - 48 - 1) return Math.round(a.getBoundingClientRect().width); return null; });
+  chequear('la barra de texto se abre de a poco, no aparece', abriendo !== null && abriendo > 0, true);
+  await foto('j-social-abriendo');
+  await page.waitForTimeout(1500);
+  chequear('la estrella termina al lado de «Invítalos con un link», y el buscador queda listo para escribir', [await vivo('social-invitar') > 0.9, await seLee(TX.social.vacioInvitar), await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))], [true, 1, 'buscar-gente']);
+  chequear('la estrella grande ya no está', await page.getByTestId('social-estrella').count(), 0);
   await foto('j-social-tocado');
+  void anchoDe;
 
   chequear('sin errores de la página', errores, []);
 } finally {

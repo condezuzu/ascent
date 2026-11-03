@@ -11,6 +11,7 @@ Lo que está acá ya está decidido y no se rediscute salvo que se indique.
 
 ### Principal
 
+**Desde el 2/11 la nativa va distinta (sección 14 de la galería): ver "La vuelta grande" en `estado.md`.**
 De arriba abajo: nombre y avatar; la palabra RACHA en chico; el número de racha
 gigante (es lo único grande de la pantalla); barra de progreso al siguiente rango
 **sin etiqueta de texto**; aviso de tiempo restante; botón "Registrar día"; tira

@@ -45,6 +45,24 @@ function escalonar(n: number): number {
   return Math.round(acotado * PASOS) / PASOS;
 }
 
+// En qué pestaña está la tira, con decimales. Va directo al motor, sin pasar por React.
+let enLaTira = 0;
+const oyentesDeLaTira = new Set<(indice: number) => void>();
+
+export function ponerTira(indice: number) {
+  if (indice === enLaTira) return;
+  enLaTira = indice;
+  for (const fn of [...oyentesDeLaTira]) fn(indice);
+}
+
+export function escucharTira(fn: (indice: number) => void): () => void {
+  oyentesDeLaTira.add(fn);
+  fn(enLaTira);
+  return () => {
+    oyentesDeLaTira.delete(fn);
+  };
+}
+
 export function ponerDesenfoque(n: number) {
   const nuevo = escalonar(n);
   if (nuevo === nivel) return;

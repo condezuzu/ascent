@@ -47,9 +47,13 @@ import { C, conTema, conAlfa } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
 import { L } from './fuentes';
-import { Caja, R, Seccion } from './roles';
+import { R, Seccion } from './roles';
 import { LLEGA, MS, sinMovimiento } from './movimiento';
-import NumeroQueCuenta from './NumeroQueCuenta';
+import CifrasDelAno from './CifrasDelAno';
+import Entra from './Entra';
+import PuertaDeMoss, { MossAsomando, TIRON_PARA_ENTRAR } from './PuertaDeMoss';
+import { YA_SE_ABRIO_EL_DIA_MS } from './RutinaPlegada';
+import Surgir from './Surgir';
 import Relleno from './Relleno';
 import LineaChiquita from './LineaChiquita';
 import { dejarProgreso } from './progresoPrecargado';
@@ -93,15 +97,6 @@ type Datos = {
  * arriba del volumen. Los días igual llevan su marca en el calendario, y la
  * revisión se hace adentro de cada día, como en la web.
  */
-/**
- * LA CUARTA CELDA DE LA GRILLA: los días faltados, siempre (28/10). Era la cuenta regresiva
- * de la próxima vida, que ya dice la nota de las vidas («La tercera se gana en N días»), y al
- * máximo un ✓. Sin la migración 97 no ocupa lugar (quedan las tres de siempre).
- */
-function celdaFaltados(faltados: number | null): { v: string; e: string }[] {
-  return faltados === null ? [] : [{ v: String(faltados), e: T.stats.diasFaltados }];
-}
-
 export default function Stats({ alSalir }: { alSalir: () => void }) {
   useTema();
   const router = useRouter();
@@ -110,6 +105,26 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   const [error, setError] = useState('');
   const [pestana, setPestana] = useState<'general' | 'entrenamiento'>(() => (seAcabaDePedir() ? 'entrenamiento' : 'general'));
   const [anchoSelector, setAnchoSelector] = useState(0);
+  const [anoAbierto, setAnoAbierto] = useState(false);
+  // MOSS, ARRIBA (2/11, a pedido). Cuánto se tiró para abajo desde el tope: es lo negativo del desplazamiento.
+  const [enMoss, setEnMoss] = useState(false);
+  const tironAlSoltar = useRef(0);
+  const desplazado = useRef(new Animated.Value(0)).current;
+  const tiron = useRef(Animated.multiply(desplazado, -1)).current;
+  // Al cambiar General y Entrenamiento, lo nuevo llega de su lado.
+  const cambio = useRef(new Animated.Value(1)).current;
+  const lado = useRef(1);
+  const pestanaAntes = useRef(pestana);
+  useEffect(() => {
+    if (pestanaAntes.current === pestana) return;
+    lado.current = pestana === 'general' ? -1 : 1;
+    pestanaAntes.current = pestana;
+    void sinMovimiento().then((quieto) => {
+      if (quieto) return;
+      cambio.setValue(0);
+      Animated.timing(cambio, { toValue: 1, duration: 420, easing: LLEGA, useNativeDriver: true }).start();
+    });
+  }, [pestana, cambio]);
   const pulgar = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (!anchoSelector) return;
@@ -281,9 +296,30 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     <View style={estilos.raiz}>
       {/* El fondo de Stats en la web: tu cuerpo arriba a la derecha, velo 0,72. */}
       <FondoEspacial rango={datos.rango} planeta={datos.planeta} velo={0.72} />
-    <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]} scrollEnabled={!arrastrando} keyboardShouldPersistTaps="handled">
-      <Text style={estilos.titulo}>{T.stats.titulo}</Text>
+    <Animated.ScrollView
+      contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]}
+      scrollEnabled={!arrastrando}
+      keyboardShouldPersistTaps="handled"
+      scrollEventThrottle={16}
+      onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: desplazado } } }], { useNativeDriver: true })}
+      onScrollEndDrag={(e) => {
+        if (e.nativeEvent.contentOffset.y >= -TIRON_PARA_ENTRAR) return;
+        tironAlSoltar.current = -e.nativeEvent.contentOffset.y;
+        setEnMoss(true);
+      }}
+    >
+      <PuertaDeMoss
+        abierta={enMoss}
+        desde={tironAlSoltar.current}
+        alAbrir={() => {
+          tironAlSoltar.current = 0;
+          setEnMoss(true);
+        }}
+        alCerrar={() => setEnMoss(false)}
+      />
+      <Entra><Text style={estilos.titulo}>{T.stats.titulo}</Text></Entra>
 
+      <Entra orden={1}>
       <View style={estilos.selector} onLayout={(e) => setAnchoSelector(e.nativeEvent.layout.width)}>
         {/* La selección viaja de una opción a la otra: se ve de dónde vino. */}
         {anchoSelector > 0 && (
@@ -307,37 +343,36 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
           </Tocable>
         ))}
       </View>
+      </Entra>
 
+      <Animated.View style={{ opacity: cambio, transform: [{ translateX: cambio.interpolate({ inputRange: [0, 1], outputRange: [lado.current * 26, 0] }) }] }}>
       {/* EL AVISO DE ESTANCAMIENTO, si hay uno, arriba de los números: escondido
           abajo sería un aviso que no quiere ser leído. */}
       {pestana === 'general' && (
         <Estancamiento registradoHoy={entrenados.some((l) => l.fecha === hoy)} paleta={pal} />
       )}
 
-      {pestana === 'general' && datos.vidas && <LineaDeVidas vidas={datos.vidas} racha={racha} />}
-
+      {/* UN NÚMERO POR PANTALLA (2/11, «Cifras»): los cuatro de la grilla, cada uno en su caja, pesaban
+          todos igual. Se sacaron "Racha actual" (ya está en Inicio) y "Últimos 30 días" (no aportaba). */}
       {pestana === 'general' && (
-        <View style={estilos.grilla}>
-          {[
-            // Se sacaron "Racha actual" (ya está en Inicio) y "Últimos 30 días"
-            // (no aportaba). Queda mes y mejor, y se suma el año (28/9). El cuarto
-            // lugar —que quedaba vacío— es la cuenta regresiva de la próxima vida
-            // (5.3); desde el 28/10, los días faltados.
-            { v: String(esteMes), e: T.stats.esteMes },
-            { v: String(esteAno), e: T.stats.esteAno },
-            { v: String(mejor), e: T.stats.mejorRacha },
-            ...celdaFaltados(datos.faltados),
-          ].map((c) => (
-            <Caja key={c.e} style={estilos.celda}>
-              {/^\d+$/.test(c.v) ? (
-                <NumeroQueCuenta testID="stats-cifra" valor={Number(c.v)} desdeCero style={estilos.valor} />
-              ) : (
-                <Text testID="stats-cifra" style={estilos.valor}>{c.v}</Text>
-              )}
-              <Text style={estilos.etiqueta}>{c.e}</Text>
-            </Caja>
-          ))}
-        </View>
+        <Entra orden={2}>
+          <CifrasDelAno
+            fechas={entrenados.map((l) => l.fecha)}
+            hoy={hoy}
+            esteMes={esteMes}
+            esteAno={esteAno}
+            mejor={mejor}
+            faltados={datos.faltados}
+            anoAbierto={anoAbierto}
+            alTocarMeses={() => setAnoAbierto((v) => !v)}
+          />
+        </Entra>
+      )}
+
+      {pestana === 'general' && datos.vidas && (
+        <Entra orden={3}>
+          <LineaDeVidas vidas={datos.vidas} racha={racha} />
+        </Entra>
       )}
 
       {/* El resto de General, en el orden de la web: el año, las sesiones,
@@ -353,6 +388,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
           sexo={datos.sexo}
           alCambiar={cargar}
           calendario={<CalendarioDias paleta={pal} alCambiar={cargar} porRevisar={porRevisar} alRevisar={cargar} />}
+          anoAbierto={anoAbierto}
         />
       )}
 
@@ -361,6 +397,8 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
           {/* TU RUTINA, ARRIBA DE TODO, otra vez (16/10, a pedido): vuelve a Entrenamiento,
               donde estaba. En Inicio queda la fila de lo que toca hoy, que trae acá. */}
           <MiRutina visible={pestana === 'entrenamiento'} abrirHoy alArrastrar={setArrastrando} />
+          {/* LO QUE SIGUE LLEGA DESPUÉS DE LA RUTINA (2/11): antes, el día que se abre lo empujaba a la vista. */}
+          <Surgir demora={YA_SE_ABRIO_EL_DIA_MS}>
           {/* Una fila por músculo, una barra por semana, en series: la misma
               pantalla que la web, con las mismas funciones del núcleo. */}
           <Seccion>{T.volumen.titulo}</Seccion>
@@ -548,10 +586,13 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
               })}
             </>
           )}
+          </Surgir>
 
         </>
       )}
-    </ScrollView>
+      </Animated.View>
+    </Animated.ScrollView>
+    <MossAsomando tiron={tiron as unknown as Animated.Value} />
     </View>
   );
 }
@@ -577,12 +618,6 @@ const estilos = conTema(() => StyleSheet.create({
   },
   opcionTexto: { color: C.apagado, fontSize: 14 },
   opcionTextoActivo: { color: C.claro },
-
-  grilla: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  // Dos por fila: se reparten lo que queda después del hueco.
-  celda: { flexBasis: '47%', flexGrow: 1, padding: 14 },
-  valor: { ...R.cifra },
-  etiqueta: { ...R.etiqueta, marginTop: 4  },
 
   nota: { ...R.nota, marginBottom: 6  },
 

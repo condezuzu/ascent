@@ -116,7 +116,8 @@ try {
   });
   chequear('el sólido lleva su luz dibujada, cuatro anillos', anillos, { poligonos: 5, color: CLARO });
   const barra = await page.locator('[role="tablist"]').first().evaluate((n) => {
-    const hijos = [...n.children];
+    // Desde el 2/11 lo borroso va adentro del arco: un círculo enorme lo recorta.
+    const hijos = [...n.querySelectorAll('*')];
     return { desenfoque: hijos.some((h) => /blur/.test(getComputedStyle(h).backdropFilter || getComputedStyle(h).webkitBackdropFilter || '')), fondo: getComputedStyle(n).backgroundColor };
   });
   chequear('la barra de abajo es translúcida y desenfoca', barra, { desenfoque: true, fondo: 'rgba(0, 0, 0, 0)' });
@@ -136,6 +137,8 @@ try {
   await mas.waitFor({ timeout: 60000 });
   await page.waitForTimeout(1000);
   chequear('entrenando: ninguna sombra negra y ningún borde fino', await mirar(), { negras: [], finos: [] });
+  // Las cifras de Stats perdieron su caja (2/11): la superficie se mira en las que quedan.
+  chequear('las cajas llevan superficie con luz de arriba', await page.locator('[id="superficie"]').count() > 0, true);
   await page.getByText('×3', { exact: true }).first().click({ timeout: 20000 });
   await page.waitForTimeout(300);
   await mas.click();
@@ -158,8 +161,6 @@ try {
   await page.getByText(TX.nav.stats, { exact: true }).last().click({ timeout: 30000 });
   await page.waitForTimeout(1800);
   chequear('Stats: ninguna sombra negra y ningún borde fino', await mirar(), { negras: [], finos: [] });
-  const cajasConLuz = await page.getByTestId('stats-cifra').first().evaluate((n) => n.parentElement.querySelector('linearGradient, lineargradient')?.id ?? null);
-  chequear('las cajas llevan superficie con luz de arriba', cajasConLuz, 'superficie');
   void sombraDe;
 } finally {
   await nav.close();

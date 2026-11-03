@@ -117,6 +117,37 @@ void main() {
 }
 `;
 
+// Una estrella es un punto, no una bola: un núcleo y una caída corta, sin halo.
+export const FRAGMENT_ESTRELLA = /* glsl */ `
+precision highp float;
+varying vec3 vColor;
+varying float vBrillo;
+void main() {
+  float d = length(gl_PointCoord - vec2(0.5)) * 2.0;
+  float a = (1.0 - smoothstep(0.5, 1.0, d)) * vBrillo;
+  if (a < 0.004) discard;
+  gl_FragColor = vec4(vColor, a);
+}
+`;
+
+// La banda del cielo: el color viene en cada vértice. El grano rompe las franjas que se forman en
+// los degradados casi negros, que en una pantalla de 8 bits se ven como escalones.
+export const VERTEX_BANDA = /* glsl */ `
+attribute vec4 colorA;
+varying vec4 vColorA;
+void main() {
+  vColorA = colorA;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+export const FRAGMENT_BANDA = /* glsl */ `
+precision highp float;
+varying vec4 vColorA;
+void main() {
+  float grano = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
+  gl_FragColor = vec4(vColorA.rgb, clamp(vColorA.a + grano * 0.006, 0.0, 1.0));
+}
+`;
 export const FRAGMENT_PUNTOS = /* glsl */ `
 precision highp float;
 varying vec3 vColor;

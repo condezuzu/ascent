@@ -10,7 +10,7 @@ import { Text } from './Texto';
 import { LLEGA, SE_VA } from './movimiento';
 import Tocable from './Tocable';
 
-/** Lo que dura la mecha. Si se quema entera, la invitación se cancela sola. */
+/** Lo que dura en pantalla. Quemada la mecha, la invitación sigue en Social hasta sus 15 minutos. */
 export const MECHA_MS = 10_000;
 const ALTO = 56;
 const MARGEN = 12;
@@ -19,8 +19,8 @@ const MARGEN = 12;
  * LA INVITACIÓN QUE LLEGA (29/10, la fusión de B y C de la galería). Cae como
  * las burbujas de Inicio, rebota y se abre en píldora. La cuenta es una mecha
  * que se quema con una chispa en la punta; si llega al final, la píldora se
- * cierra en burbuja, se va volando y la invitación se cancela. Flota encima: no
- * mueve nada de lo que hay en pantalla.
+ * cierra en burbuja y se va volando. Flota encima: no mueve nada de lo que hay
+ * en pantalla.
  */
 export default function InvitacionQueLlega({
   novedad,

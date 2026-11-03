@@ -324,6 +324,7 @@ export function HojaDeMeta({
     <Hoja visible={visible} alCerrar={alCerrar}>
       <MetaDePasos
         pasos={pasos}
+        alCancelar={alCerrar}
         alCambiar={(n) => {
           alCambiar?.(n);
           alCerrar();

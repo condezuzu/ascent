@@ -61,8 +61,9 @@ try {
   // Con todo abierto, ni flechita ni toque que no hace nada (20/10).
   chequear('sin flechitas de plegar', /[⌃⌄]/.test(texto), false);
 
-  // Y EN STATS → ENTRENAMIENTO (20/10): ahí solo se abría hoy, y un día sin nada dejaba la
-  // rutina sin un ejercicio a la vista. Se entra como el usuario, por la fila «HOY» de Inicio.
+  // Y EN STATS → ENTRENAMIENTO: desde el 2/11 («Tu rutina llega», aprobada en la galería) llegan
+  // plegados y se abre solo uno, hoy o el próximo con algo. Lo que pidió el 20/10 sigue valiendo:
+  // nunca sin un ejercicio a la vista. Se entra como el usuario, por la fila «HOY» de Inicio.
   console.log('La rutina de Stats → Entrenamiento muestra sus ejercicios al abrir');
   await page.goto('http://localhost:8090', { waitUntil: 'domcontentloaded', timeout: 120000 });
   await page.getByTestId('inicio-rutina').first().click({ timeout: 90000 });
@@ -70,8 +71,9 @@ try {
   await page.waitForTimeout(2000);
   const enStats = (await page.getByTestId('rutina-guardada').first().innerText()).replace(/\n+/g, ' | ');
   await page.screenshot({ path: join(SALIDA, 'stats.png') });
-  chequear('sin tocar nada, los ejercicios de todos los días', ['Press de banca', 'Sentadilla', 'Remo con barra'].filter((n) => enStats.includes(n)), ['Press de banca', 'Sentadilla', 'Remo con barra']);
-  chequear('sin flechitas de plegar', /[⌃⌄]/.test(enStats), false);
+  const aLaVista = JSON.stringify(['Press de banca', 'Sentadilla', 'Remo con barra'].filter((n) => enStats.includes(n)));
+  chequear('sin tocar nada, un día abierto con sus ejercicios', [JSON.stringify(['Press de banca', 'Sentadilla']), JSON.stringify(['Remo con barra'])].includes(aLaVista), true);
+  chequear('y las flechitas: los otros se abren con un toque', /[⌃⌄]/.test(enStats), true);
 } catch (e) {
   fallos++;
   console.log('  FALLA ' + String(e).split('\n')[0].slice(0, 200));

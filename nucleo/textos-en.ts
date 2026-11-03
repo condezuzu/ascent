@@ -10,6 +10,11 @@ const minuscula = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
 export const EN: Textos = {
   idioma: 'en',
+  moss: {
+    nombre: 'Moss',
+    pronto: 'Soon',
+    volver: 'Back to Ascent',
+  },
   impulso: {
     faltasteUno: (dia: string) => `You missed ${dia}. One life was used.`,
     faltasteVarios: (n: number) => `You missed ${n} days. ${n} lives were used.`,
@@ -154,6 +159,8 @@ export const EN: Textos = {
     diaSolo: 'You were there. The day logged itself.',
     iniciarEntrenamiento: 'Start workout',
     iniciarGrupo: 'Start group',
+    nadieEntrenando: 'Nobody is training right now.',
+    invitarEnElGrupo: 'Invite',
     ultimoTramo: (n: number) => `Last stretch to ${n}.`,
     perdida: 'Some mass scattered. You get it back today.',
     hoyDescansa: 'Rest day. The streak stays the same.',
@@ -534,6 +541,7 @@ export const EN: Textos = {
     ultimos30: 'Last 30 days',
     esteMes: 'This month',
     esteAno: 'This year',
+    diasEsteAno: 'days this year',
     diasFaltados: 'Missed days',
     elAno: 'The year',
     sesiones: 'Sessions',
@@ -990,6 +998,8 @@ export const EN: Textos = {
     yoEnLista: (nombre: string) => `${nombre} (you)`,
     vacioTitulo: 'Your sky is still empty.',
     vacioPie: 'Find someone below and start the constellation.',
+    vacioBoton: 'Find your friends',
+    vacioInvitar: 'Invite them with a link',
     actividad: 'Activity',
     registroEl: (nombre: string, fecha: string) => `${nombre} logged on ${fecha}`,
     actividadMas: (n: number) => `See ${n} more`,

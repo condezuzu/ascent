@@ -10,13 +10,14 @@
 import { chromium } from 'playwright';
 import { createClient } from '@supabase/supabase-js';
 import { mkdirSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { pasarLaEntradaNativa, borrarCuentaDePrueba, limiteDeSonda } from './utiles.mjs';
 
 limiteDeSonda(6);
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
+const { TEXTOS_ES: TX } = await import(pathToFileURL(join(AQUI, '..', 'nucleo', 'textos.ts')).href);
 const SALIDA = join(AQUI, '..', 'capturas', 'invitacion-llega');
 mkdirSync(SALIDA, { recursive: true });
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -103,10 +104,30 @@ try {
   const duro = (Date.now() - abierta) / 1000;
   chequear('a los 10 segundos se va', duro > 9 && duro < 12.5, true);
   await page.waitForTimeout(1500);
-  chequear('y la invitación se canceló sola: no le queda a ninguno de los dos', [
+  // LA MECHA ES LO QUE ESTÁ EN PANTALLA (2/11): quemada no contesta, y sigue en Social hasta sus 15 minutos.
+  chequear('y la invitación sigue, para los dos', [
+    (await uniones(B)).filter((u) => u.estado === 'pendiente').length,
+    (await uniones(A)).filter((u) => u.estado === 'pendiente').length,
+  ], [1, 1]);
+  // Que venza a los 15 minutos lo prueba la sección 330 de test:db: acá no se puede esperar ni leer la tabla.
+  chequear('y no vuelve a caer como cartel', await (async () => {
+    await page.waitForTimeout(31000);
+    return cartel.count();
+  })(), 0);
+
+  console.log('En Social está, y de ahí se contesta');
+  await page.getByText(TX.nav.social, { exact: true }).last().click({ timeout: 20000 });
+  await page.getByTestId('juntos-aceptar').first().waitFor({ timeout: 30000 });
+  chequear('dice quién invita', await page.getByText(TX.social.teInvita(A.nombre), { exact: true }).filter({ visible: true }).count(), 1);
+  await page.screenshot({ path: join(SALIDA, 'en-social.png') });
+  await page.getByTestId('juntos').first().getByText(TX.social.no, { exact: true }).click();
+  await page.waitForTimeout(1500);
+  chequear('«No» la borra para los dos', [
     (await uniones(B)).filter((u) => u.estado === 'pendiente').length,
     (await uniones(A)).filter((u) => u.estado === 'pendiente').length,
   ], [0, 0]);
+  await page.getByText(TX.nav.inicio, { exact: true }).last().click({ timeout: 20000 });
+  await page.waitForTimeout(800);
 
   console.log('A invita otra vez, y B acepta');
   chequear('A invita de nuevo', (await A.s.rpc('invitar_al_grupo', { p_a: B.id })).data, 'ok');

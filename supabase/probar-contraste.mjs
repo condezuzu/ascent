@@ -175,6 +175,16 @@ async function medir(page, rango, pantalla) {
   }
 }
 
+// Recargada, la vista web tarda más de 4 s en volver a dibujar el motor (3/11). Se medía a los 3,5 s:
+// Inicio pasaba contra el fondo liso, sin el planeta detrás. Si el motor no llega, la sonda cae.
+const esperarElMotor = (page) =>
+  page.waitForFunction(() => {
+    const c = document.querySelector('canvas');
+    let op = c ? 1 : 0;
+    for (let n = c; n && n.nodeType === 1; n = n.parentElement) op *= Number(getComputedStyle(n).opacity);
+    return op > 0.99;
+  }, null, { timeout: 120000, polling: 100 });
+
 console.log('El piso de 4,5:1 en la pantalla');
 // Con la GPU de la máquina, como las capturas: sin ella el motor no se dibuja igual.
 const nav = await chromium.launch({ args: ['--enable-gpu', '--ignore-gpu-blocklist', '--use-angle=d3d11', '--enable-unsafe-swiftshader=false'] });
@@ -195,6 +205,7 @@ try {
     await page.reload({ waitUntil: 'domcontentloaded' });
     const iniciar = page.getByText(TX.inicio.iniciarEntrenamiento, { exact: true }).first();
     await iniciar.waitFor({ timeout: 120000 });
+    await esperarElMotor(page);
     await page.waitForTimeout(3500);
     await medir(page, r, 'inicio');
     // El rango 4 cambia de planeta cada día, y cada planeta tiene su brillo: los diez.
@@ -203,6 +214,7 @@ try {
         await sumarUnDia();
         await page.reload({ waitUntil: 'domcontentloaded' });
         await iniciar.waitFor({ timeout: 120000 });
+        await esperarElMotor(page);
         await page.waitForTimeout(3000);
         await medir(page, r, `inicio-planeta-${k + 1}`);
       }
@@ -222,7 +234,8 @@ try {
     for (const [nombre, pestana] of [['social', TX.nav.social], ['album', TX.nav.album], ['ajustes', TX.nav.ajustes]]) {
       await texto(pestana).click({ timeout: 30000 });
       // La foto del álbum vacío cae sola: en el aire, su texto se compararía con lo que tenía debajo un cuadro antes.
-      await page.waitForTimeout(nombre === 'album' ? 2600 : 1500);
+      // Y el nombre de la pestaña se va solo: a medio irse, se mediría una letra que ya casi no está.
+      await page.waitForTimeout(nombre === 'album' ? 2600 : 2300);
       await medir(page, r, nombre);
     }
     await texto(TX.nav.inicio).click({ timeout: 30000 });

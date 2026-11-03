@@ -1,3 +1,4 @@
+import type { MarcaDeRegla } from './reglaDePeso.ts';
 /**
  * LA META DE PASOS DEL DÍA.
  *
@@ -39,8 +40,41 @@ export function hayQueFestejar(pasos: number, meta: number, festejadoEl: string 
 export const META_PASOS_MIN = 1000;
 export const META_PASOS_MAX = 100000;
 
-/** Lo que abarca la barra que se arrastra. Una meta más alta, que ya estaba, se respeta hasta que se la mueve. */
-export const META_DESLIZADOR = { min: 1000, max: 30000, paso: 500 };
+/**
+ * LA REGLA DE LA META (2/11), como la del peso: un toque mueve 100, apretado de a 500, y la regla
+ * corre 100 cada `PX_POR_CIEN` píxeles. Una meta que no cae en la centena, ya guardada, se respeta
+ * hasta que se la mueve.
+ */
+export const META_PASO = 100;
+export const META_APRETADO = 500;
+export const PX_POR_CIEN = 9;
+
+export function metaAcotada(valor: number): number {
+  return Math.min(META_PASOS_MAX, Math.max(META_PASOS_MIN, Math.round(valor / META_PASO) * META_PASO));
+}
+
+/** Arrastrar la regla a la izquierda sube el número: la regla viene desde la derecha. */
+export function metaArrastrada(desde: number, dx: number): number {
+  return metaAcotada(desde - (dx / PX_POR_CIEN) * META_PASO);
+}
+
+/** Las rayitas que entran en `ancho` píxeles con `valor` en el medio. No hay nada a un lado de los topes. */
+export function marcasDeMeta(valor: number, ancho: number, escribir: (n: number) => string = String): MarcaDeRegla[] {
+  const media = Math.ceil(ancho / 2 / PX_POR_CIEN) + 1;
+  const centro = Math.round(valor / META_PASO);
+  const marcas: MarcaDeRegla[] = [];
+  for (let c = centro - media; c <= centro + media; c++) {
+    const n = c * META_PASO;
+    if (n < META_PASOS_MIN || n > META_PASOS_MAX) continue;
+    const mil = n % 1000 === 0;
+    marcas.push({
+      x: ancho / 2 + ((n - valor) / META_PASO) * PX_POR_CIEN,
+      alto: mil ? 'entero' : n % 500 === 0 ? 'medio' : 'decima',
+      etiqueta: mil ? escribir(n) : null,
+    });
+  }
+  return marcas;
+}
 
 /**
  * Lo guardado, o la de omisión. Un valor roto —de otra versión, escrito a

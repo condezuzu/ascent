@@ -12,10 +12,9 @@ import { C } from './colores';
 import Aparece from './Aparece';
 import { filaPrecargada } from '@compartido/inicioAlArrancar';
 import { Text } from './Texto';
-import { R } from './roles';
 
 /**
- * LO QUE TOCA HOY, EN INICIO (15/10). Un renglón —"HOY  Pecho, hombro y brazo"— que
+ * LO QUE TOCA HOY, EN INICIO (15/10). Un renglón —"Pecho, hombro y brazo"— que
  * lleva a la rutina entera, en Stats → Entrenamiento (16/10: la rutina volvió ahí).
  * No sale mientras se entrena: ahí la rutina ya está proponiendo el ejercicio siguiente.
  */
@@ -64,7 +63,6 @@ function FilaRutina() {
       accessibilityRole="button"
       accessibilityLabel={`${T.rutina.titulo}: ${texto}`}
     >
-      <Text style={estilos.rotulo}>{T.rutina.hoyRotulo}</Text>
       <Text style={estilos.texto} numberOfLines={1}>
         {texto}
       </Text>
@@ -77,7 +75,6 @@ function FilaRutina() {
 const estilos = StyleSheet.create({
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, marginTop: 6 },
   tocada: { opacity: 0.6 },
-  rotulo: { ...R.etiqueta },
   texto: { flex: 1, color: C.tinta, fontSize: 15 },
   flecha: { color: C.sub, fontSize: 22 },
 });

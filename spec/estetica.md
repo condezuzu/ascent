@@ -52,9 +52,10 @@ con el doble de aire abajo. Es la gramática de una revista, no la de un panel
 de control.
 
 La caja queda **solo** donde algo tiene que sentirse contenido: el número de
-DOTS, la zona de eliminar cuenta, el descanso corriendo y **las cuatro cifras de
-Stats, en caja cortada** (30/10: corte 10, relleno 14, de a dos por fila).
-Cuatro lugares, y por eso significan algo.
+DOTS, la zona de eliminar cuenta y el descanso corriendo. **Las cifras de Stats fueron
+en caja cortada** del 30/10 al 2/11; desde «Cifras» (sección 14 de la galería) van sin
+caja: un número grande por pantalla, y lo demás chico.
+Tres lugares, y por eso significan algo.
 
 **3 · Una sola medida fuera de grilla, repetida.**
 
