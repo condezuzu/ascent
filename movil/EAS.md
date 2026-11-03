@@ -407,7 +407,9 @@ con `ios.buildNumber` en `"10"` (lo que está commiteado), al canal `store`:
    --non-interactive` desde `movil/`: tiene que decir que coincide (`9ce579c6…`).
 3. `node --env-file=.env.local supabase/publicar-ota.mjs store "<qué trae>" --simular`, y si
    dice que coincide, lo mismo sin `--simular`. El publicador frena si la huella no es la de
-   una build del canal.
+   una build del canal. Desde una copia aparte (un worktree), copiarle antes `movil/.env`:
+   git no lo lleva, y sin él la OTA salía sin Supabase y la app cortaba al arrancar (del
+   23/10 al 3/11). Desde el 3/11 el publicador frena ese paquete.
 4. `npx eas-cli update:view <grupo> --json`: el de iOS tiene que decir `runtimeVersion`
    `9ce579c6…`.
 
