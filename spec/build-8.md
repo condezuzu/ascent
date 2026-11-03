@@ -64,6 +64,11 @@ El progreso de un ejercicio y las gráficas de peso y de pasos (1/11) también s
 necesitan build. Leer una gráfica arrastrando corre en JavaScript (`PiezasDeGrafico.tsx`), y con
 Reanimated podría pasar al hilo de la interfaz. Tampoco es un pendiente.
 
+La vuelta grande (2/11) también salió por OTA. Lo único que pide build es el giróscopo, para que
+el cielo se corra al inclinar el teléfono: hoy sus capas se corren solo al cambiar de pestaña, y
+`expo-sensors` no está en el binario (los pasos salen de HealthKit). `Deslizador.tsx` ya no
+existe: la meta de pasos usa `ReglaConBotones`.
+
 ## Los pasos que son del humano, sí o sí
 
 1. **El sonido ya está elegido** (corte 1). Lo único que queda es oírlo con
