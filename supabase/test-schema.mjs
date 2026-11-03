@@ -12667,12 +12667,14 @@ console.log('\n168. El guardian de la OTA: EAS corre adentro de movil, con la CL
   // qué deja pasar el guardián.
   const { mkdtempSync, mkdirSync: carpeta168, writeFileSync: escribir168, rmSync } = await import('node:fs');
   const { tmpdir } = await import('node:os');
-  const paquete = (sellos) => {
+  const DIRECCION = 'https://proyecto.supabase.co';
+  const LLAVE = 'eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYW5vbiJ9.firma-de_prueba';
+  const paquete = (sellos, supabase = DIRECCION + '\u0000' + LLAVE) => {
     const dist = mkdtempSync(unir168(tmpdir(), 'ascent-dist-'));
     for (const [plataforma, textos] of Object.entries(sellos)) {
       carpeta168(unir168(dist, '_expo', 'static', 'js', plataforma), { recursive: true });
       // Como en el paquete de verdad: los textos van pegados, entre bytes sueltos.
-      escribir168(unir168(dist, '_expo', 'static', 'js', plataforma, 'index-abc.hbc'), Buffer.from('\u0000\u0001basura' + textos.join('') + 'tate\u0000', 'latin1'));
+      escribir168(unir168(dist, '_expo', 'static', 'js', plataforma, 'index-abc.hbc'), Buffer.from('\u0000\u0001basura' + textos.join('') + 'tate\u0000' + supabase + '\u0000', 'latin1'));
     }
     return dist;
   };
@@ -12680,8 +12682,8 @@ console.log('\n168. El guardian de la OTA: EAS corre adentro de movil, con la CL
   const SIN = 'ascent-sello:EXPO_PUBLIC_DIAGNOSTICO=no;';
   const MIN_NO = 'ascent-sello:EXPO_PUBLIC_MINIMO=no;';
   const MIN_SI = 'ascent-sello:EXPO_PUBLIC_MINIMO=1;';
-  const revisar = (canal, sellos) => {
-    const dist = paquete(sellos);
+  const revisar = (canal, sellos, supabase) => {
+    const dist = paquete(sellos, supabase);
     try {
       return H.revisarPaquete(canal, dist).length;
     } finally {
@@ -12699,6 +12701,12 @@ console.log('\n168. El guardian de la OTA: EAS corre adentro de movil, con la CL
   chequear('ni uno con los dos sellos a la vez', revisar('store', { ios: [SIN, CON, MIN_NO], android: [SIN, MIN_NO] }) > 0, true);
   // Sin sello no se pudo comprobar: tampoco se sube.
   chequear('un paquete sin sello no se sube', [revisar('store', { ios: [], android: [] }) > 0, revisar('telefono', { ios: [CON, MIN_NO] }) > 0], [true, true]);
+  // Lo del 3/11: las OTA de la 10 se exportaban desde una copia sin `movil/.env`, y la app cortaba al arrancar.
+  chequear('ni uno sin la dirección o sin la llave de Supabase', [
+    revisar('store', deTienda, LLAVE) > 0,
+    revisar('store', deTienda, DIRECCION) > 0,
+    revisar('store', deTienda, '') > 0,
+  ], [true, true, true]);
   // CADA VARIABLE DE CADA PERFIL TIENE SU SELLO. Si se agrega una a `eas.json`
   // y no a `sello.ts`, el guardián no tendría qué buscar: esto falla antes.
   const selloTs = leer168(unir168(import.meta.dirname, '..', 'movil', 'src', 'sello.ts'), 'utf8');
@@ -20484,7 +20492,7 @@ console.log('\n297. La tarjeta del descanso de la build 7: una sola aunque llegu
   chequear('y saltar el descanso la apaga', vivas.length, 0);
   P297.enVivo = antes;
 }
-console.log('\n298. El arranque: los datos de Inicio, una vez y durante la entrada; Inicio después; la OTA al salir (21/10)');
+console.log('\n298. El arranque: los datos de Inicio, una vez y durante la entrada; Inicio después; la OTA al volver, ya no al salir (21/10 y 3/11)');
 {
   // La prueba de verdad es la de test:real (probar-arranque): con el orden de antes, Inicio se
   // montaba con el logo todavía encima, pedía sus datos al montarse y se veía la ruedita.
@@ -20520,13 +20528,30 @@ console.log('\n298. El arranque: los datos de Inicio, una vez y durante la entra
     /const pre = tomarPrecarga\(uid\);/.test(ini),
   ], [true, true, true]);
   const act = sinComentarios(deBug('movil', 'src', 'actualizaciones.ts'));
-  // La OTA bajada se aplica al pasar al fondo: el único reloadAsync automático es el del oyente.
+  // Desde el 3/11 se aplica al volver, con la entrada delante de quien vuelve (ver nucleo/actualizacion.ts).
+  const { alCambiarDeEstado } = await import('../nucleo/actualizacion.ts');
+  const aplicadas = (estados) => {
+    let salio = false;
+    let n = 0;
+    for (const e of estados) {
+      const paso = alCambiarDeEstado(salio, e);
+      salio = paso.salio;
+      if (paso.aplicar) n++;
+    }
+    return n;
+  };
+  chequear('una OTA bajada se aplica al volver a la app: ni en el fondo, ni por el centro de control', [
+    aplicadas(['background']),
+    aplicadas(['inactive', 'active']),
+    aplicadas(['inactive', 'background', 'inactive', 'active']),
+    aplicadas(['background', 'active', 'inactive', 'active']),
+  ], [0, 0, 1, 1]);
   const automaticos = (act.match(/Updates\.reloadAsync\(\)/g) ?? []).length;
-  chequear('una OTA bajada no reinicia la app delante de quien la usa: espera a que pase al fondo', [
-    /AppState\.addEventListener\('change', \(e\) => \{\s*if \(e !== 'background'\) return;/.test(act),
+  chequear('y el oyente recarga solo cuando eso lo dice: el único reloadAsync automático es el suyo', [
+    /const paso = alCambiarDeEstado\(salio, e\);\s*salio = paso\.salio;\s*if \(!paso\.aplicar\) return;/.test(act),
     automaticos,
-    /useEffect\(\(\) => \{\s*if \(!isUpdatePending \|\| !Updates\.isEnabled\) return;\s*aplicarAlSalir\(puedeReiniciar\);/.test(act),
-    /if \(!\(await buscarYTraer\(\)\)\) return;\s*aplicarAlSalir\(puedeReiniciar\);/.test(act),
+    /useEffect\(\(\) => \{\s*if \(!isUpdatePending \|\| !Updates\.isEnabled\) return;\s*aplicarAlVolver\(puedeReiniciar\);/.test(act),
+    /if \(!\(await buscarYTraer\(\)\)\) return;\s*aplicarAlVolver\(puedeReiniciar\);/.test(act),
   ], [true, 2, true, true]);
 }
 console.log('\n299. La migración 94: la base guarda las repeticiones de cada serie (21/10)');
