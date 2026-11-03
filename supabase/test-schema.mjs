@@ -20446,7 +20446,7 @@ console.log('\n297. La tarjeta del descanso de la build 7: una sola aunque llegu
   chequear('y saltar el descanso la apaga', vivas.length, 0);
   P297.enVivo = antes;
 }
-console.log('\n298. El arranque: los datos de Inicio, una vez y durante la entrada; Inicio después; la OTA al salir (21/10)');
+console.log('\n298. El arranque: los datos de Inicio, una vez y durante la entrada; Inicio después; la OTA al volver, ya no al salir (21/10 y 3/11)');
 {
   // La prueba de verdad es la de test:real (probar-arranque): con el orden de antes, Inicio se
   // montaba con el logo todavía encima, pedía sus datos al montarse y se veía la ruedita.
@@ -20482,13 +20482,30 @@ console.log('\n298. El arranque: los datos de Inicio, una vez y durante la entra
     /const pre = tomarPrecarga\(uid\);/.test(ini),
   ], [true, true, true]);
   const act = sinComentarios(deBug('movil', 'src', 'actualizaciones.ts'));
-  // La OTA bajada se aplica al pasar al fondo: el único reloadAsync automático es el del oyente.
+  // Desde el 3/11 se aplica al volver: recargada en el fondo, la 10 la contaba como un arranque fallido.
+  const { alCambiarDeEstado } = await import('../nucleo/actualizacion.ts');
+  const aplicadas = (estados) => {
+    let salio = false;
+    let n = 0;
+    for (const e of estados) {
+      const paso = alCambiarDeEstado(salio, e);
+      salio = paso.salio;
+      if (paso.aplicar) n++;
+    }
+    return n;
+  };
+  chequear('una OTA bajada se aplica al volver a la app: ni en el fondo, ni por el centro de control', [
+    aplicadas(['background']),
+    aplicadas(['inactive', 'active']),
+    aplicadas(['inactive', 'background', 'inactive', 'active']),
+    aplicadas(['background', 'active', 'inactive', 'active']),
+  ], [0, 0, 1, 1]);
   const automaticos = (act.match(/Updates\.reloadAsync\(\)/g) ?? []).length;
-  chequear('una OTA bajada no reinicia la app delante de quien la usa: espera a que pase al fondo', [
-    /AppState\.addEventListener\('change', \(e\) => \{\s*if \(e !== 'background'\) return;/.test(act),
+  chequear('y el oyente recarga solo cuando eso lo dice: el único reloadAsync automático es el suyo', [
+    /const paso = alCambiarDeEstado\(salio, e\);\s*salio = paso\.salio;\s*if \(!paso\.aplicar\) return;/.test(act),
     automaticos,
-    /useEffect\(\(\) => \{\s*if \(!isUpdatePending \|\| !Updates\.isEnabled\) return;\s*aplicarAlSalir\(puedeReiniciar\);/.test(act),
-    /if \(!\(await buscarYTraer\(\)\)\) return;\s*aplicarAlSalir\(puedeReiniciar\);/.test(act),
+    /useEffect\(\(\) => \{\s*if \(!isUpdatePending \|\| !Updates\.isEnabled\) return;\s*aplicarAlVolver\(puedeReiniciar\);/.test(act),
+    /if \(!\(await buscarYTraer\(\)\)\) return;\s*aplicarAlVolver\(puedeReiniciar\);/.test(act),
   ], [true, 2, true, true]);
 }
 console.log('\n299. La migración 94: la base guarda las repeticiones de cada serie (21/10)');

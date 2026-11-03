@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { AppState, type NativeEventSubscription } from 'react-native';
 import * as Updates from 'expo-updates';
+import { alCambiarDeEstado } from '@nucleo/actualizacion';
 import { anotar } from './cajaNegra';
 
 /**
@@ -114,27 +115,30 @@ export async function aplicar(): Promise<void> {
  */
 export async function buscarAlArrancar(puedeReiniciar: () => boolean): Promise<void> {
   if (!(await buscarYTraer())) return;
-  aplicarAlSalir(puedeReiniciar);
+  aplicarAlVolver(puedeReiniciar);
 }
 
-let esperandoSalir: NativeEventSubscription | null = null;
+let esperandoVolver: NativeEventSubscription | null = null;
 
 /**
- * SE APLICA CUANDO NO SE VE (21/10, bug: "Inicio aparece antes de la entrada y después vuelve a
- * cargar sin datos"). Bajada la actualización con la app abierta, la app se reiniciaba en el
- * acto, delante de quien la estaba usando: Inicio ya dibujado, la entrada otra vez y Inicio
- * cargando de cero. Ahora espera a que la app pase al fondo; al volver, arranca con la nueva
- * desde la entrada. Con un entrenamiento andando, tampoco ahí: queda para el próximo arranque.
+ * SE APLICA AL VOLVER (3/11). Bajada la actualización con la app abierta, reiniciar en el acto la
+ * rehacía delante de quien la estaba usando (21/10: Inicio ya dibujado, la entrada otra vez e Inicio
+ * cargando de cero). Del 21/10 al 3/11 se aplicaba al pasar al fondo, y ahí fallaba: ver
+ * `nucleo/actualizacion.ts`. Ahora espera a que se vaya y vuelva, y arranca con la nueva desde la
+ * entrada. Con un entrenamiento andando, tampoco ahí: queda para la vuelta siguiente o el próximo arranque.
  */
-export function aplicarAlSalir(puedeReiniciar: () => boolean) {
-  if (!Updates.isEnabled || esperandoSalir) return;
-  anotar('actualización: bajada, se aplica al salir de la app');
-  esperandoSalir = AppState.addEventListener('change', (e) => {
-    if (e !== 'background') return;
-    if (!puedeReiniciar()) return anotar('actualización: lista, se aplica al cerrar (entrenamiento andando)');
-    esperandoSalir?.remove();
-    esperandoSalir = null;
-    anotar('actualización: aplicando al salir');
+export function aplicarAlVolver(puedeReiniciar: () => boolean) {
+  if (!Updates.isEnabled || esperandoVolver) return;
+  anotar('actualización: bajada, se aplica al volver a la app');
+  let salio = false;
+  esperandoVolver = AppState.addEventListener('change', (e) => {
+    const paso = alCambiarDeEstado(salio, e);
+    salio = paso.salio;
+    if (!paso.aplicar) return;
+    if (!puedeReiniciar()) return anotar('actualización: lista, se aplica después (entrenamiento andando)');
+    esperandoVolver?.remove();
+    esperandoVolver = null;
+    anotar('actualización: aplicando al volver');
     void Updates.reloadAsync().catch((err) => {
       anotar(`actualización: no se pudo aplicar (${String((err as Error)?.message ?? err).slice(0, 60)})`);
     });
@@ -170,8 +174,8 @@ export function useAplicarLoQueEsteListo(puedeReiniciar: () => boolean) {
 
   useEffect(() => {
     if (!isUpdatePending || !Updates.isEnabled) return;
-    // Al salir de la app, no delante de quien la usa (21/10): ver `aplicarAlSalir`.
-    aplicarAlSalir(puedeReiniciar);
+    // Al volver a la app, no delante de quien la usa: ver `aplicarAlVolver`.
+    aplicarAlVolver(puedeReiniciar);
     // `puedeReiniciar` cambia en cada dibujo y no es lo que dispara esto: lo
     // que dispara es que una actualización pase a estar lista.
     // eslint-disable-next-line react-hooks/exhaustive-deps
