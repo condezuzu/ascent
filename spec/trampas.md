@@ -928,6 +928,16 @@ anillo del agujero negro.
 → **Regla:** antes de medir sobre el motor, esperar a que el lienzo esté entero
 (`esperarElMotor`), y mirar una foto de lo que se midió: tiene que verse el cuerpo.
 
+**Recargar con la app en el fondo cuenta como un arranque fallido (3/11).** Del 21/10
+al 3/11 una OTA bajada se aplicaba al pasar al fondo, para no reiniciar delante de
+quien la usaba. En la 10, desde el 23/10, casi todas fallaban al arrancar, y el
+teléfono volvía a lo anterior para siempre: expo-updates no reintenta una OTA que
+falló. La del 3/11 dio dos aperturas fallidas y una buena, y el dueño siguió viendo
+la app de antes. Es la explicación que mejor encaja; el error real no se pudo leer.
+→ **Regla:** una OTA se aplica al volver a la app (`nucleo/actualizacion.ts`), nunca
+con la app en el fondo. Y publicada no quiere decir que llegó: mirar
+`update:insights` antes de decirlo.
+
 ---
 
 ---
