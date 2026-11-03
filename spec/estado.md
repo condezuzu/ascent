@@ -12,9 +12,10 @@ sugerencias deja de llegar, empezá por mirarlo en el panel.
 
 ## Migraciones
 
-**Aplicadas hasta la 99** (29/10, con la CLI: `db push` y después `test:conexion`, 81 sin
+**Aplicadas hasta la 100** (2/11, con la CLI: `db push` y después `test:conexion`, 81 sin
 fallas). La 98 es invitar a un amigo al grupo y ver el grupo de un amigo; la 99, borrar
-la cuenta de Ascent con Moss en el mismo usuario de Auth.
+la cuenta de Ascent con Moss en el mismo usuario de Auth; la 100, que una invitación dure 15
+minutos en Social (la mecha de 10 segundos es solo lo que está en pantalla).
 
 **Moss: borrar con el vínculo activo** (verificado el 29/10 contra producción con
 `supabase/probar-borrado-con-moss.sql`, que se deshace solo). Con dos usuarios de Auth
@@ -44,6 +45,40 @@ solo el catálogo fijo, no los ejercicios propios de los usuarios (con siete pro
 nuevos daba una falla falsa). No toca datos ni la app; hasta pegarla, `test:conexion`
 marca a producción una atrás.
 
+## La vuelta grande (2/11, solo la nativa, por OTA, sin build)
+
+Las seis propuestas de la sección 14 de la galería, aprobadas con cambios, más tres pedidos del mismo día.
+La sonda es `probar-vuelta-grande` (y `probar-barra-iconos`, `probar-invitacion-llega`, `probar-menos-texto`);
+las cuentas las pinea la sección 330 de `test:db`. **Nada de esto se vio en un iPhone.**
+
+- **Horizonte** (`nucleo/horizonte.ts`): el cuerpo crece hasta ser el horizonte en los rangos 2 a 4; los demás
+  quedan en su esquina. **Sin el arco de progreso sobre el planeta, a pedido**: por eso la barra de bajo el número
+  se queda. **Hay que medir el calor en un iPhone**: es un cuerpo raytraceado en hasta el 40 % de la pantalla.
+- **Cielo** (`compartido/motor/firmamento.ts`): tres capas de estrellas y una banda, sin texturas ni render
+  targets (`expo-gl` no tiene `texStorage2D`). Las capas se corren al cambiar de pestaña; el giróscopo pide build.
+- Se fueron las elipses, el velo parejo y el desenfoque de las otras pestañas. La web no cambia: pide lo de siempre.
+- **Cifras**: un número grande por pantalla (Outfit 200). Los días son puntos sin letras, las vidas sin rótulo, la
+  serie en grande reemplaza a los circulitos, el + es sólido y «Terminar» un enlace, 48 px más abajo: el globo del +
+  lo tapaba y una cuenta nueva no podía tocarlo (lo cazó `test:real`). En Stats, los días del año, una raya por mes
+  y tres números sin caja; el año semana por semana se abre tocando los meses. Las letras de los meses van en
+  `C.sub`: más tenues, en el rango 6 quedaban en 3,6:1.
+- **Barra** (`ArcoDeLaBarra.tsx`): un arco con lo de abajo borroso y un punto que sigue a la tira. El nombre
+  aparece un rato al cambiar de pestaña, **debajo** del icono: arriba pisaba el arco.
+- **Tu rutina**: las rayas se dibujan, los días suben en cascada y se abre el de hoy, o el próximo con algo. Antes
+  estaban todos abiertos (20/10). Abrir y cerrar corre, en todos lados. En Entrenamiento, lo de abajo espera a que
+  el día termine de abrirse (`YA_SE_ABRIO_EL_DIA_MS`): si no, llegaba y el día lo empujaba a la vista.
+- **Movimiento**: el cuerpo viaja entre tres alturas, lo de una pantalla llega en cascada al tocar la barra (`Entra`;
+  deslizando no, porque ya venía a la vista), los números ruedan (`NumeroQueRueda`) y el día se prende al registrarlo.
+- **Meta de pasos**: como anotar el peso, con `ReglaConBotones`. Se fue `Deslizador`.
+- **Social sin amigos**: la estrella es el botón; sube, abre el buscador y termina al lado de «Invítalos con un
+  link». Reemplaza a la constelación del 31/10.
+- **Iniciar grupo**: abre la lista de los que entrenan. Sin nadie, una frase y nada para tocar. Invitar empieza a
+  entrenar; ya no comparte un link (sigue en Social).
+- **La entrada a Moss**, arriba de Stats: se entra tirando para abajo desde el tope, o tocando. Adentro, «Pronto»,
+  con los colores y las letras de Moss (`coloresDeMoss.ts`). **El tirón no se pudo probar**: la vista web no rebota.
+
+En Moss, Ascent se muda de Hábitos a Progreso (subiendo desde abajo), pendiente de su aprobación en esa galería.
+
 ## La vuelta visual de la nativa (30 y 31/10, por OTA, sin build)
 
 Las seis técnicas de la sección 11 de la galería, cada una con su commit y su sonda en
@@ -67,8 +102,8 @@ Las once propuestas de la sección 12 de la galería, de la A a la K: lo que se 
 una oración ahora se ve, y VoiceOver sigue leyendo la oración. `probar-menos-texto` las recorre
 por pantalla, y la sección 328 de `test:db` pinea lo que la vista web no dibuja
 (`accessibilityHint`). Lo que demuestra (`VidasExplicadas`, `AlbumVacio`, `SocialVacio`,
-`GimnasioExplicado`) no toca datos. La meta de pasos se arrastra entre 1.000 y 30.000 y se
-guarda con el botón; una meta mayor, ya guardada, se respeta hasta moverla. El doble de Salud
+`GimnasioExplicado`) no toca datos. La meta de pasos se guarda con el botón (desde el 2/11, con
+la regla: ver arriba). El doble de Salud
 de la sonda existe solo con `__DEV__`.
 
 ## Las gráficas de línea (1/11, por OTA, sin build)

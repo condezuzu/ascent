@@ -108,10 +108,11 @@ export default function CartelDeArriba() {
       <InvitacionQueLlega
         key={novedad.id}
         novedad={novedad}
-        // Quemada la mecha es un «no»: responder_union borra la invitación.
+        // LA MECHA ES LO QUE ESTÁ EN PANTALLA (2/11): quemada no contesta nada. La invitación sigue
+        // en Social hasta sus 15 minutos (migración 100), y de ahí se acepta.
         alContestar={(acepta) => {
           void irse(false);
-          void responderUnion(supabase, novedad.id, acepta === true).catch(() => undefined);
+          if (acepta !== null) void responderUnion(supabase, novedad.id, acepta).catch(() => undefined);
         }}
         alTerminar={soltar}
       />

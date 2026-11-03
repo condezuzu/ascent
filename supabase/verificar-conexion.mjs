@@ -376,7 +376,7 @@ console.log('\nProducción tiene la forma del repo');
       // retrato cambia hay una migración nueva, y un número viejo acá manda a
       // correr el archivo equivocado.
       const { readdirSync } = await import('node:fs');
-      const ultima = readdirSync(DIR).filter((f) => /^migracion-\d+/.test(f)).sort().pop();
+      const ultima = readdirSync(DIR).filter((f) => /^migracion-\d+/.test(f)).sort((a, b) => parseInt(a.slice(10), 10) - parseInt(b.slice(10), 10)).pop();
       console.log(`  --   falta correr supabase/${ultima}:`);
       console.log('       el retrato de producción es de otra versión, comparar no diría nada');
       faltaRetrato = true;

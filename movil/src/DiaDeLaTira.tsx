@@ -3,7 +3,7 @@ import { Animated, Easing, StyleSheet, type StyleProp, type TextStyle } from 're
 import { paletaDe } from '@nucleo/paletas';
 import { C } from './colores';
 import { Text } from './Texto';
-import { LLENA } from './movimiento';
+import { LLEGA, LLENA, sinMovimiento } from './movimiento';
 
 /**
  * UN DÍA DE LA TIRA DE LUNES A DOMINGO, con la animación aprobada en la galería
@@ -39,19 +39,24 @@ export default function DiaDeLaTira({
   rango,
   letra,
   estiloLetra,
+  tam = 26,
   children,
 }: {
   indice: number;
   hoyRegistrado: boolean;
   rango: number;
   letra: string;
-  estiloLetra: StyleProp<TextStyle>;
+  /** Sin esto no se dibuja la letra (Inicio, desde «Cifras»): queda para VoiceOver. */
+  estiloLetra?: StyleProp<TextStyle>;
+  /** El ancho del círculo que va adentro. */
+  tam?: number;
   /** El círculo del día, como se dibujaba antes. */
   children: ReactNode;
 }) {
   const entra = useRef(new Animated.Value(0)).current;
   const salto = useRef(new Animated.Value(0)).current;
   const tinta = useRef(new Animated.Value(0)).current;
+  const aro = useRef(new Animated.Value(1)).current;
   const montado = useRef(false);
 
   useEffect(() => {
@@ -61,6 +66,14 @@ export default function DiaDeLaTira({
   useEffect(() => {
     // Al montarse espera a que entren los siete; si se registra con la tira a la vista, salta ya.
     const espera = montado.current ? 0 : FIN_DE_LA_ENTRADA + 80;
+    // EL DÍA SE PRENDE (2/11, «Movimiento»): al registrarlo con la tira a la vista, un aro sale de él.
+    if (montado.current && hoyRegistrado) {
+      void sinMovimiento().then((quieto) => {
+        if (quieto) return;
+        aro.setValue(0);
+        Animated.timing(aro, { toValue: 1, duration: 760, easing: LLEGA, useNativeDriver: true }).start();
+      });
+    }
     montado.current = true;
     if (!hoyRegistrado) {
       tinta.setValue(0);
@@ -75,7 +88,7 @@ export default function DiaDeLaTira({
     ]);
     anim.start();
     return () => anim.stop();
-  }, [hoyRegistrado, salto, tinta]);
+  }, [hoyRegistrado, salto, tinta, aro]);
 
   const color = colorDelDiaRegistrado(rango);
   return (
@@ -91,14 +104,35 @@ export default function DiaDeLaTira({
         },
       ]}
     >
-      <Animated.View>
+      <Animated.View accessibilityLabel={estiloLetra ? undefined : letra} accessible={!estiloLetra}>
         {children}
+        {hoyRegistrado && (
+          <Animated.View
+            pointerEvents="none"
+            testID="aro-del-dia"
+            style={[
+              estilos.aro,
+              {
+                width: 26,
+                height: 26,
+                left: tam / 2 - 13,
+                top: tam / 2 - 13,
+                borderColor: color.halo,
+                opacity: aro.interpolate({ inputRange: [0, 1], outputRange: [0.9, 0] }),
+                transform: [{ scale: aro.interpolate({ inputRange: [0, 1], outputRange: [0.6, 2.8] }) }],
+              },
+            ]}
+          />
+        )}
         {hoyRegistrado && (
           <Animated.View
             pointerEvents="none"
             style={[
               estilos.registrado,
               {
+                width: tam,
+                height: tam,
+                borderRadius: tam / 2,
                 backgroundColor: color.relleno,
                 shadowColor: color.halo,
                 opacity: tinta,
@@ -108,7 +142,7 @@ export default function DiaDeLaTira({
           />
         )}
       </Animated.View>
-      <Text style={estiloLetra}>{letra}</Text>
+      {estiloLetra && <Text style={estiloLetra}>{letra}</Text>}
     </Animated.View>
   );
 }
@@ -116,5 +150,6 @@ export default function DiaDeLaTira({
 const estilos = StyleSheet.create({
   dia: { alignItems: 'center', gap: 7 },
   // El halo de la galería (0 0 12px) es una sombra sin corrimiento, del color del claro.
-  registrado: { position: 'absolute', left: 0, top: 0, width: 26, height: 26, borderRadius: 13, shadowOpacity: 1, shadowRadius: 6, shadowOffset: { width: 0, height: 0 } },
+  registrado: { position: 'absolute', left: 0, top: 0, shadowOpacity: 1, shadowRadius: 6, shadowOffset: { width: 0, height: 0 } },
+  aro: { position: 'absolute', borderRadius: 999, borderWidth: 1 },
 });

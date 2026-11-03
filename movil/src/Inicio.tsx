@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, ScrollView, Share, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
 import { DIAS_SEMANA, deISO, hoyISO, restarDias } from '@nucleo/fechas';
@@ -42,9 +42,10 @@ import { pedirResaltarGimnasio } from './ajustes/Gimnasio';
 import GloboPrimeraVez from './GloboPrimeraVez';
 import RachaConRotulo from './RachaConRotulo';
 import PasosInicio from './PasosInicio';
+import Entra from './Entra';
 import EnVivoDeInicio from './EnVivoDeInicio';
 import { diaDeLaSesion } from '@nucleo/subir';
-import { dejarDeEntrenar, invitarAlGrupo, linkDelGrupo } from '@compartido/enVivo';
+import { dejarDeEntrenar, invitarAlGrupo } from '@compartido/enVivo';
 import { irAPestana } from './irAPestana';
 import PesoHoja from './PesoHoja';
 import TimbreDePildora from './TimbreDePildora';
@@ -54,7 +55,6 @@ import DiaDeLaTira from './DiaDeLaTira';
 import EstrellaQueTitila from './EstrellaQueTitila';
 import Aparece from './Aparece';
 import BurbujasDelGrupo from './BurbujasDelGrupo';
-import { enlaceDeGrupo } from '@nucleo/enlace';
 import Tocable from './Tocable';
 import FondoOctogonal from './FondoOctogonal';
 import PuntoDelDia, { type EstadoDelDia } from './PuntoDelDia';
@@ -564,15 +564,7 @@ export default function Inicio({
   // aparece hasta reiniciar la app.
   const medallas = useMisMedallas(supabase, cargado?.perfil.id, cargado?.perfil.sexo, vueltas);
 
-  // «INICIAR GRUPO» (28/10): empieza a entrenar y comparte el link del grupo, el mismo de Social.
-  async function iniciarGrupo() {
-    if (!sesion.estado.corriendo) await sesion.empezar();
-    const codigo = await linkDelGrupo(supabase);
-    if (codigo) void Share.share({ message: T.social.mensajeDeInvitacion(enlaceDeGrupo(codigo)) }).catch(() => undefined);
-  }
-
-  // «INVITAR A UN GRUPO» desde la burbuja de un amigo (29/10): el grupo es de quien entrena, así
-  // que primero empieza a entrenar, como «Iniciar grupo».
+  // «INVITAR A UN GRUPO» (29/10): el grupo es de quien entrena, así que primero empieza a entrenar.
   async function invitar(amigo: string) {
     if (!sesion.estado.corriendo) await sesion.empezar();
     return invitarAlGrupo(supabase, amigo);
@@ -671,7 +663,8 @@ export default function Inicio({
         esquina="abajo-derecha"
         // Como en la web: Inicio es la única pantalla con atmósfera.
         atmosfera
-        lecturaMedia={!sesion.estado.corriendo && !cierre}
+        lecturaMedia={!sesion.estado.corriendo && !cierre && !registradoHoy}
+        textoAbajo={!!cierre || registradoHoy}
       />
     <ScrollView
       ref={scroll}
@@ -686,7 +679,7 @@ export default function Inicio({
       scrollEventThrottle={32}
       onScroll={(e) => (desplazado.current = e.nativeEvent.contentOffset.y)}
     >
-      <View style={estilos.cabecera} onLayout={(e) => setAnchoCabecera(e.nativeEvent.layout.width)}>
+      <Entra><View style={estilos.cabecera} onLayout={(e) => setAnchoCabecera(e.nativeEvent.layout.width)}>
         {/* LA CABECERA ES LA PUERTA AL PERFIL, igual que en la web: el avatar
             y el nombre juntos y tocables. Antes el nombre era un texto y no
             llevaba a ningún lado — no porque se hubiera decidido así, sino
@@ -783,10 +776,10 @@ export default function Inicio({
           </Tocable>
         )}
         </Cruce>
-      </View>
+      </View></Entra>
       {/* EL MULTIJUGADOR, ARRIBA DE TODO (28/10): «Iniciar grupo» y quién entrena ahora.
           Entrenando, lo reemplaza la tira del grupo (más abajo). */}
-      <BurbujasDelGrupo visible={!sesion.estado.corriendo} alIniciarGrupo={() => void iniciarGrupo()} alInvitar={invitar} />
+      <BurbujasDelGrupo visible={!sesion.estado.corriendo} alInvitar={invitar} />
       {/* EL GLOBITO DEL DESCANSO (15/10), saliendo de la píldora de arriba a la
           derecha, la primera vez que hay uno andando. Se va con el descanso. */}
       {sesion.estado.corriendo && !!sesion.estado.descanso && anchoCabecera > 0 && anchoPildora > 0 && (
@@ -815,7 +808,13 @@ export default function Inicio({
           primer día". El día cero no es una versión pobre del día 40: es la
           nube de polvo antes de la estrella, y por eso el fondo del rango 1 va
           a fondo (caos, color, movimiento; ver `FondoEspacial`/shaders). */}
-      <RachaConRotulo racha={perfil.racha_actual} />
+      <Entra orden={1}>
+        <RachaConRotulo
+          racha={perfil.racha_actual}
+          compacto={sesion.estado.corriendo}
+          derecha={sesion.estado.corriendo && impulsos ? <VidasDeInicio impulsos={impulsos} /> : undefined}
+        />
+      </Entra>
 
       {/* LOS PASOS DE HOY (5.2). Debajo del número, arriba de la semana, y en
           voz baja: es el dato del teléfono, no la racha. Solo si hay algo que
@@ -836,37 +835,46 @@ export default function Inicio({
       )}
 
       {/* LAS VIDAS, ARRIBA DE LOS DÍAS Y COMO ESTRELLAS (21/10, aprobado en la galería): la misma
-          estrella del aviso, llena la que queda y en contorno la usada. Eran puntos, debajo. */}
-      {impulsos && (
-        <Aparece>
-          <View style={estilos.impulsos} testID="vidas-inicio">
-            <Text style={estilos.impulsosEt}>{T.impulso.titulo}</Text>
-            {modosDeLasVidas(impulsos).map((modo, i) => (
-              <EstrellaQueTitila key={i} indice={i} modo={modo} />
-            ))}
+          estrella del aviso, llena la que queda y en contorno la usada. Sin el rótulo (2/11): VoiceOver
+          lo sigue diciendo. Entrenando van al lado del número. */}
+      {impulsos && !sesion.estado.corriendo && (
+        <Entra orden={2}>
+          <Aparece>
+            <VidasDeInicio impulsos={impulsos} />
+          </Aparece>
+        </Entra>
+      )}
+
+      {/* LO QUE NO SE USA ENTRENANDO SE VA ENCOGIÉNDOSE, y vuelve igual: se cortaba de golpe. */}
+      <Entra orden={3}>
+        <Aparece visible={!sesion.estado.corriendo}>
+          <View style={[estilos.tira, !!impulsos && estilos.tiraBajoVidas]} testID="tira-inicio">
+            {semana.map((d, i) => {
+              // Lo que salvó una vida se queda grande: ver `PuntoDelDia`.
+              const chico = d.estadoDia !== 'cubierto';
+              return (
+                <DiaDeLaTira
+                  key={d.fecha}
+                  indice={i}
+                  hoyRegistrado={d.esHoy && d.estadoDia === 'lleno'}
+                  rango={numeroDeRango(racha)}
+                  letra={DIAS_SEMANA[deISO(d.fecha).getDay()]}
+                  tam={chico ? 9 : 26}
+                >
+                  <PuntoDelDia chico estado={d.estadoDia} esHoy={d.esHoy} frio={d.estadoDia === 'cubierto' ? frioDelDia(helada, d.fecha, hoy) : null} />
+                </DiaDeLaTira>
+              );
+            })}
           </View>
         </Aparece>
-      )}
-
-      {!sesion.estado.corriendo && (
-      <View style={[estilos.tira, !!impulsos && estilos.tiraBajoVidas]} testID="tira-inicio">
-        {semana.map((d, i) => (
-          <DiaDeLaTira
-            key={d.fecha}
-            indice={i}
-            hoyRegistrado={d.esHoy && d.estadoDia === 'lleno'}
-            rango={numeroDeRango(racha)}
-            letra={DIAS_SEMANA[deISO(d.fecha).getDay()]}
-            estiloLetra={estilos.letra}
-          >
-            <PuntoDelDia estado={d.estadoDia} esHoy={d.esHoy} frio={d.estadoDia === 'cubierto' ? frioDelDia(helada, d.fecha, hoy) : null} />
-          </DiaDeLaTira>
-        ))}
-      </View>
-      )}
+      </Entra>
 
       {/* TU RUTINA (15/10): lo que toca hoy, a un toque. Mientras se entrena, no. */}
-      {!sesion.estado.corriendo && <FilaRutina />}
+      <Entra orden={4}>
+        <Aparece visible={!sesion.estado.corriendo}>
+          <FilaRutina />
+        </Aparece>
+      </Entra>
 
       {/* LOS ESTADOS DE BORDE (24/9), que faltaban enteros en el telefono.
           Los cuatro son de una linea y en voz baja: ninguno pide hacer nada,
@@ -953,8 +961,9 @@ export default function Inicio({
             // el ejercicio. Se cierra solo con el primer +; para entonces ya se
             // entendió, y la pregunta de marca —que sale después de un + — nunca lo
             // encuentra abierto. El cardio no tiene +: el globito espera a la fuerza.
+            // También se va al ir a terminar: la pregunta sale justo donde él flota.
             globoDelMas={(colaX) => (
-              <GloboPrimeraVez cual="series" colaX={colaX} alinear="centro" cerrarCuando={sesion.estado.series > 0}>
+              <GloboPrimeraVez cual="series" colaX={colaX} alinear="centro" cerrarCuando={sesion.estado.series > 0 || terminando}>
                 {T.inicio.globoSeries}
               </GloboPrimeraVez>
             )}
@@ -1016,10 +1025,8 @@ export default function Inicio({
             </>
           ) : (
             <Surgir demora={MS.terminar}>
-            <Tocable style={estilos.solido} hundir={0.97} onPress={() => setTerminando(true)}>
-              <FondoOctogonal relleno={C.claro} luz={C.claro} />
-              <Text style={estilos.textoSolido}>{T.sesion.terminar}</Text>
-            </Tocable>
+              {/* Un enlace (2/11, «Cifras»): lo sólido de esta pantalla es el +, que se toca doce veces. */}
+              <Fantasma texto={T.sesion.terminar} alTocar={() => setTerminando(true)} estilo={estilos.terminar} />
             </Surgir>
           )}
         </View>
@@ -1089,11 +1096,13 @@ export default function Inicio({
         // sumarle la foto o el peso. Era un renglón de texto que no parecía un
         // botón; ahora es lo mismo que la web. Ver `DiaListo.tsx`.
         <>
-          <DiaListo
-            alaFoto={() => setRegistrarAbierto(true)}
-            alPeso={() => setPesoAbierto(true)}
-            minutos={minutosDeHoy}
-          />
+          <Surgir demora={160}>
+            <DiaListo
+              alaFoto={() => setRegistrarAbierto(true)}
+              alPeso={() => setPesoAbierto(true)}
+              minutos={minutosDeHoy}
+            />
+          </Surgir>
           {/* VER LO DE HOY, A UN TOQUE (1.2/5.4). El resumen ya no se borra solo;
               y si lo cerraste con la equis —o recargaste—, esto lo vuelve a
               abrir. Solo si hubo entrenamiento con bloques: un día a mano no
@@ -1132,7 +1141,8 @@ export default function Inicio({
           )}
         </>
       ) : (
-        <>
+        // ABAJO, SOBRE EL PLANETA (2/11): el botón se apoya en el horizonte, y arriba queda el cielo.
+        <Entra orden={5} style={estilos.alFondo}>
           <Tocable style={estilos.solido} hundir={0.97} onPress={() => setRegistrarAbierto(true)}>
             <FondoOctogonal relleno={C.claro} luz={C.claro} />
             <Text style={estilos.textoSolido}>{sinNada ? T.inicio.registrarPrimerDia : T.inicio.registrarDia}</Text>
@@ -1141,7 +1151,7 @@ export default function Inicio({
               el día —pesarse no es haber ido al gimnasio— pero tiene que poder
               anotarse cualquier día, entrenes o no. */}
           <Fantasma texto={T.peso.anotarPeso} alTocar={() => setPesoAbierto(true)} />
-        </>
+        </Entra>
       )}
 
       <PesoHoja
@@ -1277,12 +1287,24 @@ export default function Inicio({
   );
 }
 
+/** Las vidas, las mismas al lado del número entrenando y abajo de él en reposo. */
+function VidasDeInicio({ impulsos }: { impulsos: Parameters<typeof modosDeLasVidas>[0] }) {
+  useTema();
+  return (
+    <View style={estilos.impulsos} testID="vidas-inicio" accessible accessibilityLabel={T.impulso.titulo}>
+      {modosDeLasVidas(impulsos).map((modo, i) => (
+        <EstrellaQueTitila key={i} indice={i} modo={modo} tam={18} />
+      ))}
+    </View>
+  );
+}
+
 const estilos = conTema(() => StyleSheet.create({
   // Transparente: el fondo lo dibuja `FondoRaiz`, detrás de todas las
   // pestañas. Un color acá lo taparía.
   raiz: { flex: 1 },
   // Transparente: detrás está el fondo, que ya pinta el color de base.
-  pantalla: { flexGrow: 1, padding: 24, paddingTop: 64 },
+  pantalla: { flexGrow: 1, padding: 24, paddingTop: 64, paddingBottom: 44 },
   centrado: { flex: 1, backgroundColor: C.fondo, alignItems: 'center', justifyContent: 'center', gap: 16 },
   // FLEXIBLE Y CON MINIMO: cede el nombre, nunca la fila entera. Ver el
   // comentario de la cabecera.
@@ -1291,7 +1313,7 @@ const estilos = conTema(() => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 30,
+    marginBottom: 22,
   },
   usuario: { color: C.tinta, fontSize: 16, fontWeight: '600', letterSpacing: -0.1, flexShrink: 1 },
   etiqueta: { ...R.etiqueta },
@@ -1301,26 +1323,22 @@ const estilos = conTema(() => StyleSheet.create({
   // arriba (bajo el número de la racha) y abajo (antes de la semana).
   pasos: { color: C.apagado, fontSize: 13, marginTop: 14, fontFamily: L.dato },
 
-  tira: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 34 },
+  // De lado a lado, puntos sueltos a la altura del día más grande que pueda haber.
+  tira: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 26, marginTop: 26 },
   // Pegada a las vidas, como en el aviso: se leen juntas.
-  tiraBajoVidas: { marginTop: 18 },
-  letra: { color: C.apagado, fontSize: 11, fontFamily: L.dato },
+  tiraBajoVidas: { marginTop: 14 },
+  alFondo: { marginTop: 'auto' },
+  // Más abajo de donde llega el globo del +, que flota sin correr nada: tapaba este enlace y no se podía tocar.
+  terminar: { marginTop: 48 },
 
-  impulsos: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 26 },
-  impulsosEt: {
-    color: C.apagado,
-    fontSize: 10,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    fontWeight: '500',
-    marginRight: 4,
-  },
+  impulsos: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 20 },
+  impulsosCompactas: { marginTop: 0 },
 
   // El fondo lo dibuja `FondoOctogonal`, con las esquinas cortadas (21/10).
   solido: {
     paddingVertical: 15,
     alignItems: 'center',
-    marginTop: 34,
+    marginTop: 22,
   },
   apagado: { opacity: DESHABILITADO },
   textoSolido: { color: C.fondo, fontSize: 15, fontWeight: '600' },

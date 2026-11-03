@@ -1,8 +1,8 @@
-import { memo } from 'react';
+import { memo, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { progresoEnRango, siguienteRango } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
-import NumeroQueCuenta from './NumeroQueCuenta';
+import NumeroQueRueda from './NumeroQueRueda';
 import { C, conAlfa, conTema, luz } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
@@ -45,11 +45,19 @@ import Svg, { Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg';
  * línea. Sin texto porque decir "faltan 4 días para el rango 5" nombraría el
  * rango, y los rangos no se nombran nunca (§7): descubrir en qué te vas a
  * convertir es la recompensa.
+ *
+ * MUCHO MÁS GRANDE (2/11, «Cifras» en la galería): es la pregunta que contesta
+ * esta pantalla. ENTRENANDO VA CHICO (`compacto`): ahí la cifra es la serie, y el
+ * número se queda porque está siempre, con las vidas a la derecha (`derecha`).
  */
 function RachaConRotulo({
   racha,
+  compacto = false,
+  derecha,
 }: {
   racha: number;
+  compacto?: boolean;
+  derecha?: ReactNode;
 }) {
   useTema();
   // El color sale del rango, y el rango de la misma racha que llena la barra:
@@ -61,15 +69,15 @@ function RachaConRotulo({
 
   return (
     <View>
-      <View style={estilos.fila}>
-        <View style={estilos.rotulo} accessibilityLabel={T.inicio.racha}>
+      <View style={[estilos.fila, compacto && estilos.filaCompacta]}>
+        <View style={[estilos.rotulo, compacto && estilos.rotuloCompacto]} accessibilityLabel={T.inicio.racha}>
           {letras.map((l, i) => (
             // `importantForAccessibility` en las letras sueltas: sin esto, el
             // lector de pantalla dictaría "A H C A R", que no es una palabra.
             // La etiqueta de la columna ya dice RACHA entera.
             <Text
               key={i}
-              style={estilos.letra}
+              style={[estilos.letra, compacto && estilos.letraCompacta]}
               importantForAccessibility="no"
               accessibilityElementsHidden
             >
@@ -77,25 +85,28 @@ function RachaConRotulo({
             </Text>
           ))}
         </View>
-        {/* VIAJA HASTA EL NÚMERO NUEVO en vez de reemplazarse. La primera vez
-            no cuenta —abrir la app no es haber subido 47 hoy— y con "reducir
-            movimiento" salta. Ver `NumeroQueCuenta.tsx`. */}
+        {/* RUEDA HASTA EL NÚMERO NUEVO en vez de reemplazarse. La primera vez no
+            se mueve —abrir la app no es haber subido 47 hoy— y con "reducir
+            movimiento" salta. Ver `NumeroQueRueda.tsx`. */}
         <View style={estilos.conAura}>
           {/* Dibujada y no con textShadow: en iOS la sombra del texto se corta en el borde de su caja. */}
-          <Svg width={AURA_ANCHO} height={AURA_ALTO} style={estilos.aura} pointerEvents="none">
-            <Defs>
-              <RadialGradient id="aura" cx="50%" cy="50%" rx="50%" ry="50%">
-                <Stop offset="0" stopColor={C.claro} stopOpacity={0.2} />
-                <Stop offset="1" stopColor={C.claro} stopOpacity={0} />
-              </RadialGradient>
-            </Defs>
-            <Ellipse cx={AURA_ANCHO / 2} cy={AURA_ALTO / 2} rx={AURA_ANCHO / 2} ry={AURA_ALTO / 2} fill="url(#aura)" />
-          </Svg>
-          <NumeroQueCuenta valor={racha} style={[estilos.numero, { color: C.claro }]} />
+          {!compacto && (
+            <Svg width={AURA_ANCHO} height={AURA_ALTO} style={estilos.aura} pointerEvents="none">
+              <Defs>
+                <RadialGradient id="aura" cx="50%" cy="50%" rx="50%" ry="50%">
+                  <Stop offset="0" stopColor={C.claro} stopOpacity={0.2} />
+                  <Stop offset="1" stopColor={C.claro} stopOpacity={0} />
+                </RadialGradient>
+              </Defs>
+              <Ellipse cx={AURA_ANCHO / 2} cy={AURA_ALTO / 2} rx={AURA_ANCHO / 2} ry={AURA_ALTO / 2} fill="url(#aura)" />
+            </Svg>
+          )}
+          <NumeroQueRueda valor={racha} alto={compacto ? 44 : 150} style={[compacto ? estilos.numeroCompacto : estilos.numero, { color: C.claro }]} />
         </View>
+        {derecha && <View style={estilos.derecha}>{derecha}</View>}
       </View>
 
-      {prox && (
+      {prox && !compacto && (
         <View style={[estilos.barra, { backgroundColor: conAlfa(C.principal, 0.14) }]}>
           <View style={[estilos.llena, { width: `${Math.round(progreso * 100)}%` }]}>
             <LinearGradient
@@ -112,26 +123,31 @@ function RachaConRotulo({
   );
 }
 
-const AURA_ANCHO = 260;
-const AURA_ALTO = 170;
+const AURA_ANCHO = 360;
+const AURA_ALTO = 240;
 
 const estilos = conTema(() => StyleSheet.create({
   // `flex-end`: la palabra se apoya en la base del número, no en su tope.
   fila: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   // El equivalente del `padding-bottom: 12px` de la web: la columna de letras
   // no llega hasta la línea de base del número, se queda un poco antes.
-  rotulo: { paddingBottom: 14, alignItems: 'center' },
+  rotulo: { paddingBottom: 24, alignItems: 'center' },
+  filaCompacta: { alignItems: 'center' },
+  rotuloCompacto: { paddingBottom: 0 },
+  letraCompacta: { fontSize: 7.5, lineHeight: 9 },
   // `lineHeight` chico y `letterSpacing` en cero: acá la separación entre
   // letras es la separación entre FILAS, que es lo que hace el efecto.
   letra: { color: C.sub, fontSize: 10, lineHeight: 14, textTransform: 'uppercase', fontWeight: '500' },
-  numero: { fontSize: 92, fontWeight: '300', lineHeight: 100, fontFamily: L.racha, letterSpacing: -2 },
+  numero: { fontSize: 148, fontWeight: '200', lineHeight: 150, fontFamily: L.racha, letterSpacing: -5, marginLeft: -6 },
+  numeroCompacto: { fontSize: 44, fontWeight: '300', lineHeight: 46, fontFamily: L.racha, letterSpacing: -1 },
+  derecha: { marginLeft: 'auto' },
   barra: { height: 3, width: '62%', borderRadius: 2, marginTop: 20, marginBottom: 8 },
   llena: { height: '100%' },
   relleno: { borderRadius: 2 },
   // La punta: el punto donde vas, con su luz.
   punta: { position: 'absolute', right: -3, top: -2, width: 7, height: 7, borderRadius: 3.5, backgroundColor: C.claro, ...luz(C.claro, 0.9, 5) },
   conAura: { position: 'relative' },
-  aura: { position: 'absolute', left: -60, top: -35 },
+  aura: { position: 'absolute', left: -80, top: -45 },
 }));
 
 // Con los mismos props no se redibuja: el + de la sesión redibuja Inicio y esto no cambió (15/10).

@@ -205,7 +205,8 @@ export default function VidasExplicadas({
 const estilos = conTema(() => StyleSheet.create({
   todo: { marginTop: 4 },
   arriba: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 },
-  numero: { color: C.claro, fontFamily: L.racha, fontWeight: '300', fontSize: 58, lineHeight: 62, letterSpacing: -2 },
+  // Chico (2/11, «Cifras»): la cifra de Stats es otra. Este está para ver que la racha no se mueve.
+  numero: { color: C.tinta, fontFamily: L.dato, fontWeight: '300', fontSize: 26, lineHeight: 30, letterSpacing: -1 },
   estrellas: { flexDirection: 'row', gap: HUECO, paddingBottom: 10 },
   lugar: { width: TAM, height: TAM, alignItems: 'center' },
   vacia: { width: TAM, height: TAM },

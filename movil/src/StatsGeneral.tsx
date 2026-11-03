@@ -31,6 +31,7 @@ import { modosDeLasVidas } from '@nucleo/impulsos';
 import { Text, TextInput } from './Texto';
 import { L } from './fuentes';
 import { Fantasma, Seccion, R } from './roles';
+import Aparece from './Aparece';
 import { LLEGA, MS, sinMovimiento } from './movimiento';
 import Relleno from './Relleno';
 import VidasExplicadas from './VidasExplicadas';
@@ -97,6 +98,7 @@ export default function StatsGeneral({
   sexo,
   alCambiar,
   calendario,
+  anoAbierto = false,
 }: {
   logs: Log[];
   racha: number;
@@ -108,6 +110,8 @@ export default function StatsGeneral({
   alCambiar: () => void;
   /** El calendario del mes, para corregir días: se abre con el botón de debajo del año. */
   calendario?: React.ReactNode;
+  /** El año entero, semana por semana: se abre tocando los meses, arriba (2/11, «Cifras»). */
+  anoAbierto?: boolean;
 }) {
   useTema();
   const [calendarioAbierto, setCalendarioAbierto] = useState(false);
@@ -189,26 +193,28 @@ export default function StatsGeneral({
 
   return (
     <View>
-      <Seccion>{T.stats.elAno}</Seccion>
-      <View style={[estilos.tarjeta, estilos.mapa]}>
-        {semanas.map((s, i) => (
-          <ColumnaDelAno key={i} indice={i}>
-            {s.map((c) => (
-              <View
-                key={c.fecha}
-                style={[
-                  estilos.celdaAno,
-                  c.clase === 'si' && { backgroundColor: pal.claro },
-                  // Hoy, o el último día entrenado: emite.
-                  c.fecha === ultimoEntrenado && luz(pal.claro, 0.6, 3.5),
-                  c.clase === 'descanso' && { backgroundColor: pal.principal, opacity: 0.25 },
-                  c.clase === 'futuro' && { backgroundColor: 'transparent' },
-                ]}
-              />
-            ))}
-          </ColumnaDelAno>
-        ))}
-      </View>
+      <Aparece visible={anoAbierto}>
+        <Seccion>{T.stats.elAno}</Seccion>
+        <View style={[estilos.tarjeta, estilos.mapa]} testID="el-ano">
+          {semanas.map((s, i) => (
+            <ColumnaDelAno key={i} indice={i}>
+              {s.map((c) => (
+                <View
+                  key={c.fecha}
+                  style={[
+                    estilos.celdaAno,
+                    c.clase === 'si' && { backgroundColor: pal.claro },
+                    // Hoy, o el último día entrenado: emite.
+                    c.fecha === ultimoEntrenado && luz(pal.claro, 0.6, 3.5),
+                    c.clase === 'descanso' && { backgroundColor: pal.principal, opacity: 0.25 },
+                    c.clase === 'futuro' && { backgroundColor: 'transparent' },
+                  ]}
+                />
+              ))}
+            </ColumnaDelAno>
+          ))}
+        </View>
+      </Aparece>
 
       {/* CORREGIR DÍAS (15/10): un botón que se ve como botón y abre el calendario del mes acá mismo. */}
       {calendario && (

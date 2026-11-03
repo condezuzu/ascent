@@ -13,6 +13,11 @@ import Tocable from './Tocable';
  *
  * Sin nombre todavía no hay link que dar, y no se dibuja.
  */
+export function compartirInvitacion(usuario: string) {
+  // Cerrar la hoja sin compartir también rechaza en algunos sistemas: no es un error.
+  void Share.share({ message: T.social.invitacion(enlaceDeAmigo(usuario)) }).catch(() => undefined);
+}
+
 export default function InvitarConLink({ usuario }: { usuario: string | null | undefined }) {
   useTema();
   if (!usuario) return null;
@@ -21,8 +26,7 @@ export default function InvitarConLink({ usuario }: { usuario: string | null | u
       testID="invitar-con-link"
       style={estilos.boton}
       accessibilityRole="button"
-      // Cerrar la hoja sin compartir también rechaza en algunos sistemas: no es un error.
-      onPress={() => void Share.share({ message: T.social.invitacion(enlaceDeAmigo(usuario)) }).catch(() => undefined)}
+      onPress={() => compartirInvitacion(usuario)}
     >
       <Text style={estilos.texto}>{T.social.invitar}</Text>
     </Tocable>
