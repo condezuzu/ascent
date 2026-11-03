@@ -40,6 +40,18 @@ const minuscula = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 const ES = {
   // En qué idioma están estos textos: se lo dice a la base para los avisos push (migración 77).
   idioma: 'es' as 'es' | 'en',
+
+  // La entrada a Moss, arriba de Stats (2/11).
+
+  moss: {
+
+    nombre: 'Moss',
+
+    pronto: 'Pronto',
+
+    volver: 'Volver a Ascent',
+
+  },
   // ---------------------------------------------------------------
   // LAS VIDAS. Se llamaron "impulsos" un tiempo, por elegancia, y el humano lo
   // probó en el gimnasio: no se entendía, ni él lo entendía. "Vidas" es más
@@ -297,6 +309,8 @@ const ES = {
     iniciarEntrenamiento: 'Iniciar entrenamiento',
     // La primera burbuja del multijugador, arriba de Inicio (28/10).
     iniciarGrupo: 'Iniciar grupo',
+    nadieEntrenando: 'Nadie está entrenando en este momento.',
+    invitarEnElGrupo: 'Invitar',
     // Redacción hacia adelante, nunca hacia la pérdida.
     ultimoTramo: (n: number) => `Último tramo para el ${n}.`,
     perdida: 'Se dispersó un poco de masa. Hoy se recupera.',
@@ -942,6 +956,7 @@ const ES = {
     ultimos30: 'Últimos 30 días',
     esteMes: 'Este mes',
     esteAno: 'Este año',
+    diasEsteAno: 'días este año',
     // La cuarta celda (28/10): los días que tocaba entrenar y no se fue, desde el alta.
     diasFaltados: 'Días faltados',
     elAno: 'El año',
@@ -1652,6 +1667,8 @@ const ES = {
     yoEnLista: (nombre: string) => `${nombre} (tú)`,
     vacioTitulo: 'Tu cielo todavía está vacío.',
     vacioPie: 'Busca a alguien más abajo y empieza la constelación.',
+    vacioBoton: 'Busca a tus amigos',
+    vacioInvitar: 'Invítalos con un link',
     actividad: 'Actividad',
     registroEl: (nombre: string, fecha: string) => `${nombre} registró el ${fecha}`,
     actividadMas: (n: number) => `Ver ${n} más`,

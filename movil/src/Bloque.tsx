@@ -17,6 +17,7 @@ import { ponerNombres } from '@compartido/enCurso';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import SelectorEjercicio from './SelectorEjercicio';
 import ListaDeBloques from './ListaDeBloques';
+import NumeroQueRueda from './NumeroQueRueda';
 import CampoPeso from './CampoPeso';
 import CampoReps from './CampoReps';
 import CampoDistancia from './CampoDistancia';
@@ -38,7 +39,7 @@ const MINUTOS_DE_ARRANQUE = 20;
 import EtiquetaDeCarga from './EtiquetaDeCarga';
 import Globito from './Globito';
 import { esPropio, nombreVisible } from '@nucleo/propios';
-import { C, conAlfa, DESHABILITADO, HALO, conTema, luz } from './colores';
+import { C, conAlfa, DESHABILITADO, HALO, conTema } from './colores';
 import { useTema } from './useTema';
 import { leerRecordados, marcarSubida } from '@compartido/pesosRecordados';
 import { claveDeSubida, loQueSePuedeSubir, type Subida } from '@nucleo/subir';
@@ -251,7 +252,6 @@ export default function Bloque({
     : estado.hechas > 0
       ? { texto: T.sesion.cardioOtraVuelta, accion: () => alArrancarCardio?.() }
       : { texto: T.sesion.cardioArrancar, accion: () => alArrancarCardio?.() };
-  const puntos = Math.max(estado.meta, estado.hechas);
   // Las series a mano: `null` cerrado, texto mientras se escribe.
   const [metaEscrita, setMetaEscrita] = useState<string | null>(null);
   const usarMetaEscrita = () => {
@@ -417,6 +417,19 @@ export default function Bloque({
         </Aparece>
       )}
 
+      {/* UNA SOLA CUENTA DEL BLOQUE (19/9), y desde «Cifras» (2/11) es la cifra de esta pantalla: el número
+          grande reemplaza a los circulitos. Dos lecturas de lo mismo hicieron creer que se perdían series. */}
+      {!esTiempo && (
+        <View style={estilos.cuenta} testID="cuenta-de-series" accessible accessibilityRole="image" accessibilityLabel={T.sesion.deMeta(estado.hechas, estado.meta)} accessibilityLiveRegion="polite">
+          <NumeroQueRueda valor={estado.hechas} alto={132} style={estilos.cuentaNumero} />
+          <Text style={estilos.cuentaMeta}>/{estado.meta}</Text>
+          <View style={estilos.cuentaHueco} />
+          <Tic valor={total}>
+            <Text style={estilos.cuentaTotal}>{T.sesion.totalHoy(total)}</Text>
+          </Tic>
+        </View>
+      )}
+
       {!esTiempo && (
       <View style={estilos.metas} accessibilityLabel={T.sesion.cuantasVasAHacer}>
         {pildorasDeMeta(estado.meta).map((m) => (
@@ -457,7 +470,7 @@ export default function Bloque({
           />
           <Tocable
             testID="meta-a-mano-usar"
-            style={[estilos.meta, estilos.metaUsar, metaAMano(metaEscrita) !== null && estilos.metaPrendida]}
+            style={[estilos.metaUsar, metaAMano(metaEscrita) !== null && estilos.metaUsarLista]}
             disabled={metaAMano(metaEscrita) === null}
             onPress={usarMetaEscrita}
           >
@@ -535,29 +548,14 @@ export default function Bloque({
         </View>
       )}
 
-      {/* UNA SOLA CUENTA DEL BLOQUE: los circulitos (19/9, lo mismo que la
-          web). El "1 de 3" grande decía lo mismo con otra forma, y dos
-          lecturas de lo mismo son las que hicieron creer que se habían
-          perdido series. El total va chico al lado; el "1 de 3" queda para
-          el lector de pantalla. */}
-      <View style={estilos.cuenta} accessibilityLiveRegion="polite">
-        {/* El cardio no tiene meta de series: sin circulitos. */}
-        {!esTiempo && (
-        <View
-          style={estilos.puntos}
-          accessible
-          accessibilityRole="image"
-          accessibilityLabel={T.sesion.deMeta(estado.hechas, estado.meta)}
-        >
-          {Array.from({ length: puntos }).map((_, i) => (
-            <PuntoDeSerie key={i} lleno={i < estado.hechas} extra={i >= estado.meta} />
-          ))}
+      {/* El cardio no tiene meta de series: solo el total. */}
+      {esTiempo && (
+        <View style={estilos.cuentaDeCardio} accessibilityLiveRegion="polite">
+          <Tic valor={total}>
+            <Text style={estilos.cuentaTotal}>{T.sesion.totalHoy(total)}</Text>
+          </Tic>
         </View>
-        )}
-        <Tic valor={total}>
-          <Text style={estilos.cuentaTotal}>{T.sesion.totalHoy(total)}</Text>
-        </Tic>
-      </View>
+      )}
 
       {/* EL − AL LADO DEL +, DEL MISMO ALTO (25/9).
           *"En vez de un + grande, un + y un −. Bajar series hoy es muy
@@ -567,7 +565,7 @@ export default function Bloque({
           para arriba —tocaste dos veces, sumaste la del calentamiento— y la
           app lo trataba como un caso raro.
 
-          EL + SIGUE MANDANDO: se lleva tres cuartos del ancho. Son dos gestos
+          EL + SIGUE MANDANDO: se lleva lo que sobra, y va sólido (2/11). Son dos gestos
           muy distintos en frecuencia —doce sumas contra una resta— y hacerlos
           del mismo tamaño sería pedirle a la mano que apunte doce veces.
 
@@ -620,14 +618,14 @@ export default function Bloque({
             onPress={esTiempo ? principalDeCardio.accion : sumar}
             accessibilityLabel={esTiempo ? principalDeCardio.texto : T.inicio.sumarSerie}
           >
-            <FondoOctogonal relleno={esTiempo ? C.claro : FONDO_BOTON} superficie={!esTiempo} luz={esTiempo ? C.claro : undefined} borde={esTiempo ? undefined : C.bordeOcto} corte={CORTE} />
-            <Text style={esTiempo ? estilos.cerrarTexto : estilos.masTexto}>{esTiempo ? principalDeCardio.texto : '+'}</Text>
+            <FondoOctogonal relleno={C.claro} luz={C.claro} corte={CORTE} />
+            <Text style={esTiempo ? estilos.cerrarTexto : estilos.masSolidoTexto}>{esTiempo ? principalDeCardio.texto : '+'}</Text>
           </MasQuePulsa>
         </View>
       )}
 
-      {/* El − se lleva un cuarto y el + tres, con 8 de hueco: el centro del + sale de ahí. */}
-      {!cumplida && !esTiempo && globoDelMas && anchoBotones > 0 && globoDelMas((anchoBotones - 8) / 4 + 8 + ((anchoBotones - 8) * 3) / 8)}
+      {/* El − tiene su ancho y el + lo que sobra, con 8 de hueco: el centro del + sale de ahí. */}
+      {!cumplida && !esTiempo && globoDelMas && anchoBotones > 0 && globoDelMas(ANCHO_MENOS + 8 + (anchoBotones - ANCHO_MENOS - 8) / 2)}
 
       {debajoDelMas}
 
@@ -700,28 +698,7 @@ export default function Bloque({
 }
 
 const CURVA_SALE = LLEGA;
-
-/**
- * EL PUNTO DE UNA SERIE (15/10, aprobada en la galería): el que se acaba de llenar
- * se llena desde el centro en 0,26 s. Los que ya estaban llenos al montar, no: es
- * la serie que se suma, no la pantalla que aparece.
- */
-function PuntoDeSerie({ lleno, extra }: { lleno: boolean; extra: boolean }) {
-  useTema();
-  const relleno = useRef(new Animated.Value(lleno ? 1 : 0)).current;
-  const antes = useRef(lleno);
-  useEffect(() => {
-    if (lleno === antes.current) return;
-    antes.current = lleno;
-    if (!lleno) return relleno.setValue(0);
-    Animated.timing(relleno, { toValue: 1, duration: 260, easing: CURVA_SALE, useNativeDriver: true }).start();
-  }, [lleno, relleno]);
-  return (
-    <View style={[estilos.punto, lleno && estilos.puntoBorde, extra && estilos.puntoExtra]}>
-      <Animated.View style={[estilos.puntoRelleno, { transform: [{ scale: relleno }] }]} />
-    </View>
-  );
-}
+const ANCHO_MENOS = 66;
 
 const PressableAnimado = Animated.createAnimatedComponent(Pressable);
 
@@ -783,14 +760,16 @@ const estilos = conTema(() => StyleSheet.create({
   ejercicioSugerido: { borderBottomColor: 'transparent' },
   rayas: { position: 'absolute', left: 0, right: 0, bottom: -1 },
   sugeridoNota: { color: C.apagado, fontSize: 12, lineHeight: 16, marginTop: 6 },
-  metas: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  meta: { flex: 1, borderWidth: 1, borderColor: C.bordeMeta, borderRadius: 999, paddingVertical: 9, alignItems: 'center' },
-  metaPrendida: { borderColor: C.claro, backgroundColor: C.fondoMeta },
-  metaTexto: { color: C.apagado, fontSize: 13, fontFamily: L.dato },
-  metaTextoPrendido: { color: C.claro },
+  // LAS SERIES QUE SE VAN A HACER, SIN CAJA (2/11, «Cifras»): subrayada la elegida. Con 44 de alto para el dedo.
+  metas: { flexDirection: 'row', gap: 14, marginTop: 8 },
+  meta: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: 'transparent' },
+  metaPrendida: { borderBottomColor: C.claro },
+  metaTexto: { color: C.sub, fontSize: 14, fontFamily: L.dato },
+  metaTextoPrendido: { color: C.tinta },
   metaAMano: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 10 },
   metaAManoCampo: { color: C.tinta, fontSize: 16, minWidth: 150, borderBottomWidth: 1, borderBottomColor: C.lineaFuerte, paddingVertical: 6, textAlign: 'center', fontFamily: L.dato },
-  metaUsar: { flex: 0, minWidth: 76, paddingHorizontal: 18 },
+  metaUsar: { minWidth: 76, paddingHorizontal: 18, paddingVertical: 9, alignItems: 'center', borderWidth: 1, borderColor: C.bordeMeta, borderRadius: 999 },
+  metaUsarLista: { borderColor: C.claro, backgroundColor: C.fondoMeta },
   peso: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, marginTop: 12 },
   minutos: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 12 },
   cardio: { alignItems: 'center', marginTop: 14, gap: 4 },
@@ -818,14 +797,13 @@ const estilos = conTema(() => StyleSheet.create({
   },
   opcionTexto: { color: C.claro, fontSize: 13 },
   nota: { color: C.apagado, fontSize: 12, marginTop: 8 },
-  puntos: { flexDirection: 'row', justifyContent: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 1 },
-  punto: { width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: C.bordeSerie },
-  puntoBorde: { borderColor: C.claro },
-  puntoRelleno: { ...StyleSheet.absoluteFillObject, borderRadius: 8, backgroundColor: C.claro, ...luz(C.claro, 0.42, 4) },
-  luzDelMas: { ...StyleSheet.absoluteFillObject, backgroundColor: conAlfa(C.claro, 0.14) },
-  puntoExtra: { width: 11, height: 11, borderRadius: 6, marginTop: 2.5 },
-  cuenta: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 22 },
-  cuentaTotal: { color: C.apagado, fontSize: 11.5, fontFamily: L.dato },
+  luzDelMas: { ...StyleSheet.absoluteFillObject, backgroundColor: conAlfa(C.negro, 0.14) },
+  cuenta: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 10 },
+  cuentaNumero: { color: C.tinta, fontFamily: L.racha, fontWeight: '200', fontSize: 132, lineHeight: 132, letterSpacing: -5, marginLeft: -6 },
+  cuentaMeta: { color: C.apagado, fontFamily: L.dato, fontWeight: '300', fontSize: 30 },
+  cuentaHueco: { flex: 1 },
+  cuentaDeCardio: { flexDirection: 'row', justifyContent: 'center', marginTop: 22 },
+  cuentaTotal: { color: C.sub, fontSize: 11.5, fontFamily: L.dato },
   // La fila de los dos botones: el − angosto y el + con todo lo que sobra.
   filaBotones: { flexDirection: 'row', gap: 8, marginTop: 18 },
   // A LA MITAD (26/9), de 150 a 75 y el signo de 56 a 28.
@@ -843,17 +821,18 @@ const estilos = conTema(() => StyleSheet.create({
   // El fondo y el borde los dibuja `FondoOctogonal`: esquinas cortadas en diagonal (21/10).
   mas: {
     marginTop: 18,
-    minHeight: 75,
+    minHeight: 84,
     alignItems: 'center',
     justifyContent: 'center',
   },
   masTexto: { color: C.claro, fontSize: 28, fontWeight: '200' },
-  masCerrar: { flex: 3, marginTop: 0 },
+  masSolidoTexto: { color: C.fondo, fontSize: 30, fontWeight: '300' },
+  masCerrar: { flex: 1, marginTop: 0 },
   masEnPausa: { opacity: DESHABILITADO },
-  // Un cuarto del ancho contra tres: doce sumas contra una resta.
-  menos: { flex: 1, marginTop: 0 },
+  // Angosto contra todo lo que sobra: doce sumas contra una resta.
+  menos: { width: ANCHO_MENOS, marginTop: 0 },
   menosApagado: { opacity: 0.35 },
-  masAncho: { flex: 3, marginTop: 0 },
+  masAncho: { flex: 1, marginTop: 0 },
   cerrarTexto: { color: C.fondo, fontSize: 18, fontWeight: '600' },
   // "La próxima, más": un contorno, no un sólido. No compite con el `+`, que
   // es lo que se toca doce veces; este se toca una.

@@ -62,12 +62,17 @@ try {
       const motor = !!document.querySelector('canvas');
       const fila = !!document.querySelector('[data-testid="inicio-rutina"]');
       linea.push({ t: Math.round(performance.now()), logo: !!capa, opacidad, inicio, rueda, motor, fila });
-      if (performance.now() - t0 < 9000) requestAnimationFrame(mirar);
+      // Hasta 3 s después de que llegó Inicio. Con un tope fijo de 9 s, si Metro tardaba en servir el
+      // paquete (18 s en una corrida de test:real) se medía un arranque que todavía no había empezado.
+      if (inicio && !window.__llegoInicio) window.__llegoInicio = performance.now();
+      const ahora = performance.now();
+      if (window.__llegoInicio ? ahora - window.__llegoInicio > 3000 : ahora - t0 > 90000) window.__arranqueMedido = true;
+      else requestAnimationFrame(mirar);
     };
     requestAnimationFrame(mirar);
   });
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 120000 });
-  await page.waitForTimeout(9500);
+  await page.waitForFunction(() => window.__arranqueMedido, null, { timeout: 100000 });
   const { linea, pedidos } = await page.evaluate(() => ({
     linea: window.__arranque,
     pedidos: performance

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
-import { StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import type { Ejercicio } from '@nucleo/tipos';
 import {
   agregarEjercicio,
@@ -40,7 +40,9 @@ import { useTema } from './useTema';
 import Aparece from './Aparece';
 import GloboPrimeraVez from './GloboPrimeraVez';
 import { copiarDiaAlPortapapeles, useDiaCopiado } from './portapapelesDeDia';
-import { Text, TextInput } from './Texto';
+import { Text, TextInput, TextoAnimado } from './Texto';
+import Surgir from './Surgir';
+import { LLEGA, sinMovimiento } from './movimiento';
 import { L } from './fuentes';
 import { Fantasma, R } from './roles';
 import Tocable from './Tocable';
@@ -359,9 +361,10 @@ export default function MiRutina({
 
   return (
     <View testID="mi-rutina">
-      <Text style={estilos.seccion}>{T.rutina.titulo}</Text>
+      <TituloQueLlega />
 
       {guardadas && rutinas.length > 0 && (
+        <Surgir demora={90}>
         <View style={estilos.acciones}>
           {rutinas.map((r) => (
             <Tocable
@@ -392,10 +395,12 @@ export default function MiRutina({
             </Tocable>
           )}
         </View>
+        </Surgir>
       )}
 
       {actual ? (
         <>
+          <Surgir demora={150}>
           <View style={estilos.barra}>
             {editando ? (
               <TextInput
@@ -423,6 +428,7 @@ export default function MiRutina({
               }}
             />
           </View>
+          </Surgir>
           {/* EL GLOBITO DE LA RUTINA (15/10), saliendo del nombre del entrenamiento
               ("Entrenamiento 1" por defecto), la primera vez que se edita. */}
           {editando && nombreEn.ancho > 0 && (
@@ -435,10 +441,10 @@ export default function MiRutina({
             catalogo={catalogo}
             // Fuera de editar, la lista del día sola (19/10): copiar y pegar quedan en Editar.
             abajoDelDia={editando ? editorDelDia : undefined}
-            abiertoAlEmpezar={abrirHoy ? new Date().getDay() : undefined}
-            // FUERA DE EDITAR, TODOS ABIERTOS (20/10): con solo hoy abierto, un día sin nada
-            // dejaba la rutina sin un ejercicio a la vista. Igual que la del perfil.
-            abiertos={!editando}
+            // Se abre el de hoy. Si hoy no hay nada, el próximo que tenga algo: con hoy vacío, la
+            // rutina quedaba sin un ejercicio a la vista (20/10).
+            abiertoAlEmpezar={abrirHoy ? diaParaAbrir(actual.dias) : undefined}
+            llega
             testID="rutina-guardada"
           />
           {editando && (
@@ -511,6 +517,34 @@ export default function MiRutina({
 
 // Todas las filas del editor miden lo mismo: así el arrastre sabe sobre cuál está el dedo.
 const ALTO_FILA = 44;
+
+function diaParaAbrir(dias: DiaDeSemana[]) {
+  const hoy = new Date().getDay();
+  for (let i = 0; i < 7; i++) {
+    const d = (hoy + i) % 7;
+    if (dias[d]?.ejercicios.length) return d;
+  }
+  return hoy;
+}
+
+/** El título entra abriéndose (2/11): las letras se juntan hasta su lugar. */
+function TituloQueLlega() {
+  useTema();
+  const t = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    let vivo = true;
+    void sinMovimiento().then((quieto) => {
+      if (!vivo) return;
+      if (quieto) return t.setValue(1);
+      // Por JS: el espacio entre letras no va por el motor nativo.
+      Animated.timing(t, { toValue: 1, duration: 620, easing: LLEGA, useNativeDriver: false }).start();
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [t]);
+  return <TextoAnimado style={[estilos.seccion, { opacity: t, letterSpacing: t.interpolate({ inputRange: [0, 1], outputRange: [4.4, 2] }) }]}>{T.rutina.titulo}</TextoAnimado>;
+}
 
 const estilos = conTema(() => StyleSheet.create({
   seccion: { ...R.etiqueta, marginTop: 34, marginBottom: 10  },

@@ -12,7 +12,7 @@ import Ranking from './Ranking';
 import Album from './Album';
 import Ajustes from './Ajustes';
 import { despertarMotor } from './despertarMotor';
-import { ponerDesenfoque } from './desenfoqueDelFondo';
+import { ponerDesenfoque, ponerTira } from './desenfoqueDelFondo';
 import { eventos } from '@compartido/eventos';
 import { SOCIAL_CAMBIO } from '@compartido/ranking';
 import { IR_A_PESTANA, PESTANA_ACTIVA, type Pestana } from './irAPestana';
@@ -23,9 +23,10 @@ import CartelDeArriba from './CartelDeArriba';
 import { C, conTema, conAlfa } from './colores';
 import { useTema } from './useTema';
 import { Text, TextoAnimado } from './Texto';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { LLEGA } from './movimiento';
+import ArcoDeLaBarra from './ArcoDeLaBarra';
+import { ContextoLlegada } from './Entra';
+import { LLEGA, SE_VA } from './movimiento';
 import Tocable from './Tocable';
 
 /**
@@ -112,6 +113,12 @@ const DECIDE_PX = 14;
  */
 const DESENFOQUE: number[] = [0, 1, 1, 0.45, 1];
 
+/** El fondo sigue a la tira: cuán tapado está, y en qué pestaña anda para las capas del cielo. */
+function moverFondo(x: number, ancho: number) {
+  ponerDesenfoque(desenfoqueEn(x, ancho));
+  ponerTira(-x / ancho);
+}
+
 /**
  * CUÁNTO DESENFOQUE LE TOCA A LA TIRA DONDE ESTÁ AHORA.
  *
@@ -185,6 +192,8 @@ export default function Pestanas({
    * el driver nativo— sin orden garantizado entre ellas. Ver el encabezado.
    */
   const correr = useRef(new Animated.Value(0)).current;
+  // Cuántas veces se llegó tocando la barra: dispara la cascada de la pantalla (ver `Entra`).
+  const [llegadas, setLlegadas] = useState(0);
   /**
    * EN CUÁL ESTÁ LA TIRA, O A CUÁL ESTÁ YENDO — EL TITILEO AL DESLIZAR RÁPIDO (3/10).
    *
@@ -353,8 +362,9 @@ export default function Pestanas({
       montadas.current.add(destino);
       setPestana(destino);
       setAsomando(null);
+      setLlegadas((n) => n + 1);
       const llega = reposo(ORDEN.indexOf(destino), ancho);
-      ponerDesenfoque(desenfoqueEn(llega, ancho));
+      moverFondo(llega, ancho);
       // Sin nada al terminar: la activa ya quedó dicha arriba. Si este viaje
       // corta uno del gesto, aquel se entera de que no terminó y no decide.
       Animated.timing(correr, {
@@ -369,6 +379,32 @@ export default function Pestanas({
 
   // "Ir a Ajustes" desde el texto de otra pantalla: ver `irAPestana.ts`.
   useEffect(() => eventos.escuchar(IR_A_PESTANA, (p) => irA(p as Pestana)), [irA]);
+
+  /**
+   * EL NOMBRE APARECE UN RATO, Y DEBAJO DEL ICONO (2/11). La barra ya no lleva palabras: el nombre se
+   * ve al cambiar de pestaña y se va. Abajo del icono, que es donde estaba siempre: arriba pisaba el arco.
+   */
+  const nombres = useRef(ORDEN.map(() => new Animated.Value(0))).current;
+  const yaSeMostro = useRef(false);
+  useEffect(() => {
+    if (!yaSeMostro.current) {
+      yaSeMostro.current = true;
+      return;
+    }
+    const i = ORDEN.indexOf(pestana);
+    nombres.forEach((v, j) => {
+      if (j === i) return;
+      v.stopAnimation();
+      v.setValue(0);
+    });
+    const anim = Animated.sequence([
+      Animated.timing(nombres[i], { toValue: 1, duration: 180, easing: LLEGA, useNativeDriver: true }),
+      Animated.delay(1100),
+      Animated.timing(nombres[i], { toValue: 0, duration: 320, easing: SE_VA, useNativeDriver: true }),
+    ]);
+    anim.start();
+    return () => anim.stop();
+  }, [pestana, nombres]);
 
   const pan = useMemo(
     () =>
@@ -408,7 +444,7 @@ export default function Pestanas({
           // y a mitad de camino la mitad. No es el índice de la pestaña sino
           // dónde está la tira AHORA, que es lo que hace que baje mientras
           // arrastrás en vez de saltar al soltar.
-          ponerDesenfoque(desenfoqueEn(x, ancho));
+          moverFondo(x, ancho);
         },
         onPanResponderRelease: (_e, g) => {
           const ms = Math.max(1, Date.now() - gesto.current.desde);
@@ -420,7 +456,7 @@ export default function Pestanas({
           const llega = reposo(hasta, ancho);
           // Al soltar, el desenfoque va A DONDE VA LA TIRA y no a donde está:
           // los dos viajes duran lo mismo y terminan juntos.
-          ponerDesenfoque(desenfoqueEn(llega, ancho));
+          moverFondo(llega, ancho);
           Animated.timing(correr, {
             toValue: llega,
             duration: VIAJE_MS,
@@ -449,7 +485,7 @@ export default function Pestanas({
         // que salió, como soltar sin haber movido.
         onPanResponderTerminate: () => {
           const llega = reposo(ORDEN.indexOf(rumbo.current), ancho);
-          ponerDesenfoque(desenfoqueEn(llega, ancho));
+          moverFondo(llega, ancho);
           Animated.timing(correr, {
             toValue: llega,
             duration: VIAJE_MS,
@@ -562,7 +598,7 @@ export default function Pestanas({
                   la que asoma: el fondo es uno solo detrás de las dos, y
                   cambiarlo a mitad del gesto se vería como un salto. */}
               <ContextoVisible.Provider value={cual === pestana}>
-                {pantallas[cual]}
+                <ContextoLlegada.Provider value={cual === pestana ? llegadas : 0}>{pantallas[cual]}</ContextoLlegada.Provider>
               </ContextoVisible.Provider>
             </Animated.View>
           );
@@ -577,8 +613,7 @@ export default function Pestanas({
       />
 
       <View style={estilos.barra} accessibilityRole="tablist">
-        <BlurView tint="dark" intensity={40} style={StyleSheet.absoluteFill} pointerEvents="none" />
-        <View style={[StyleSheet.absoluteFill, estilos.barraVelo]} pointerEvents="none" />
+        <ArcoDeLaBarra correr={correr} ancho={ancho} cantidad={ORDEN.length} />
         {/* El orden de la web: Inicio, Ranking, Álbum, Stats, Ajustes. */}
         {ORDEN.map((p, i) => {
           // EL PUNTITO EN RANKING: hay solicitudes esperando y no estás mirando
@@ -595,29 +630,24 @@ export default function Pestanas({
               // encendido— y sin esto se leería dos veces en voz alta.
               accessibilityLabel={avisa ? `${rotuloDe(p)} — ${T.social.tePidieron(solicitudes)}` : rotuloDe(p)}
             >
-              {/* EL ICONO ARRIBA Y LA PALABRA CHICA ABAJO (28/10). El icono se enciende igual
-                  que el rótulo: uno apagado y otro encendido encima, con la luz de la tira. */}
+              {/* EL ICONO SE ENCIENDE: uno apagado y otro encendido encima. Lo que cambia es la
+                  opacidad, y sale de la tira (`luces`), no de `pestana`: acompaña al dedo. */}
               <View style={estilos.icono}>
                 <IconoDePestana cual={p} color={C.apagado} />
-                <Animated.View style={[StyleSheet.absoluteFill, { opacity: luces[i] }]} pointerEvents="none">
+                <Animated.View testID={'luz-' + p} style={[StyleSheet.absoluteFill, { opacity: luces[i] }]} pointerEvents="none">
                   <IconoDePestana cual={p} color={C.claro} luz />
                 </Animated.View>
                 {avisa && <View style={estilos.punto} />}
               </View>
-              <View>
-                <Text style={estilos.texto}>{rotuloDe(p)}</Text>
-                {/* LA LUZ: el mismo rótulo, encendido, encima del apagado. Lo
-                    que cambia es su opacidad, y sale de la tira (`luces`), no
-                    de `pestana`. */}
-                <TextoAnimado
-                  testID={'luz-' + p}
-                  style={[estilos.texto, estilos.luz, { opacity: luces[i] }]}
-                  accessibilityElementsHidden
-                  importantForAccessibility="no"
-                >
-                  {rotuloDe(p)}
-                </TextoAnimado>
-              </View>
+              <TextoAnimado
+                testID={'nombre-' + p}
+                style={[estilos.texto, { opacity: nombres[i] }]}
+                numberOfLines={1}
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              >
+                {rotuloDe(p)}
+              </TextoAnimado>
             </Tocable>
           );
         })}
@@ -647,19 +677,13 @@ const estilos = conTema(() => StyleSheet.create({
   reintentarTexto: { color: C.tinta, fontSize: 14 },
   barra: {
     flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: C.linea,
     paddingBottom: 20,
-    paddingTop: 6,
+    paddingTop: 7,
   },
-  // Encima del desenfoque y no en la barra: iOS dibuja mal un desenfoque con algo translúcido debajo.
-  barraVelo: { backgroundColor: conAlfa(C.negro, 0.62) },
   tope: { position: 'absolute', left: 0, right: 0, top: 0, height: 62 },
   boton: { flex: 1, alignItems: 'center', paddingVertical: 4, minHeight: 44, justifyContent: 'center', gap: 3 },
   icono: { width: 22, height: 22 },
-  texto: { color: C.apagado, fontSize: 10, fontWeight: '500', letterSpacing: 0.3 },
-  // Encima del rótulo apagado, calzado: mismo texto, mismo tamaño, otro color.
-  luz: { position: 'absolute', left: 0, top: 0, color: C.claro },
+  texto: { color: C.claro, fontSize: 10, fontWeight: '500', letterSpacing: 0.3 },
   // El puntito de aviso, arriba a la derecha del icono de la pestaña.
   punto: {
     position: 'absolute',

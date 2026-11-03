@@ -68,6 +68,8 @@ try {
       if (!t) continue;
       const el = n.parentElement;
       if (!el || ['SCRIPT', 'STYLE', 'NOSCRIPT', 'TITLE'].includes(el.tagName)) continue;
+      // La puerta de Moss va con las letras de Moss (2/11), y solo ella.
+      if (el.closest('[data-testid="entrada-a-moss"], [data-testid="moss-asomando"], [data-testid="pantalla-de-moss"]')) continue;
       const cs = getComputedStyle(el);
       if (cs.visibility === 'hidden' || cs.display === 'none') continue;
       const c = el.getBoundingClientRect();
@@ -111,14 +113,14 @@ try {
     await document.fonts.ready;
     return lista.filter((f) => !document.fonts.check(`16px ${f}`));
   }, fuentes);
-  chequear('las fuentes de Inicio están cargadas', await sinCargar(['Inter_400Regular', 'Inter_500Medium', 'Inter_600SemiBold', 'Outfit_300Light', 'GeistMono_400Regular']), []);
+  chequear('las fuentes de Inicio están cargadas', await sinCargar(['Inter_400Regular', 'Inter_500Medium', 'Inter_600SemiBold', 'Outfit_200ExtraLight', 'GeistMono_400Regular']), []);
   const anchos = await page.evaluate(() => {
     const c = document.createElement('canvas').getContext('2d');
     const mide = (f, t) => { c.font = `40px ${f}`; return Math.round(c.measureText(t).width * 10) / 10; };
     return {
       mono: mide('GeistMono_400Regular', '1111') === mide('GeistMono_400Regular', '0000'),
       inter: mide('Inter_400Regular', '1111') === mide('Inter_400Regular', '0000'),
-      outfit: mide('Outfit_300Light', '0') !== mide('Inter_400Regular', '0'),
+      outfit: mide('Outfit_200ExtraLight', '0') !== mide('Inter_400Regular', '0'),
     };
   });
   chequear('se dibujan: en Geist Mono el 1 y el 0 miden lo mismo, en Inter no, y Outfit es otra', anchos, { mono: true, inter: false, outfit: true });
@@ -127,9 +129,10 @@ try {
   chequear('Inicio: nada en la fuente del sistema', await delSistema(), []);
   chequear('Inicio: nada cortado', await cortados(), []);
   const racha = page.getByText('3', { exact: true }).first();
-  chequear('el número de la racha es Outfit', await familia(racha), 'Outfit_300Light');
+  chequear('el número de la racha es Outfit, el más fino', await familia(racha), 'Outfit_200ExtraLight');
   chequear('el nombre es Inter 600', await familia(page.getByText(`le_${sello.slice(-6)}`, { exact: true }).first()), 'Inter_600SemiBold');
-  chequear('las letras de la tira son datos', await familia(page.getByTestId('pantalla-inicio').getByText('M', { exact: true }).first()), 'GeistMono_400Regular');
+  // Desde «Cifras» (2/11) Inicio no dibuja las letras de la tira: quedan para VoiceOver.
+  chequear('las letras de la tira quedan para VoiceOver', await page.getByTestId('pantalla-inicio').getByLabel('M', { exact: true }).count() > 0, true);
   chequear('el botón de iniciar es Inter 500', await familia(iniciar), 'Inter_500Medium');
 
   // ---- ENTRENANDO ----
@@ -170,8 +173,9 @@ try {
   chequear('Stats: nada en la fuente del sistema', await delSistema(), []);
   chequear('Stats: nada cortado', await cortados(), []);
   chequear('y la de las cifras cargó', await sinCargar(['GeistMono_300Light']), []);
-  chequear('las cifras de Stats son Geist Mono liviana', await familia(page.getByTestId('stats-cifra').first()), 'GeistMono_300Light');
-  chequear('la etiqueta de una cifra es Inter 500', await familia(page.getByText(TX.stats.mejorRacha, { exact: true }).first()), 'Inter_500Medium');
+  chequear('el número grande de Stats es Outfit, el más fino', await familia(page.getByTestId('stats-cifra').first()), 'Outfit_200ExtraLight');
+  chequear('las cifras chicas son Geist Mono liviana', await familia(page.getByTestId('stats-cifra').nth(1)), 'GeistMono_300Light');
+  chequear('la etiqueta de una cifra es Inter', await familia(page.getByText(TX.stats.mejorRacha, { exact: true }).first()), 'Inter_400Regular');
   chequear('«día N» es un dato', await familia(page.getByText(TX.stats.diaN(6), { exact: true }).first()), 'GeistMono_400Regular');
   for (const [nombre, pestana] of [['Entrenamiento', TX.stats.pestanaEntrenamiento], ['Social', TX.nav.social], ['Álbum', TX.nav.album], ['Ajustes', TX.nav.ajustes]]) {
     await texto(pestana).click({ timeout: 20000 });

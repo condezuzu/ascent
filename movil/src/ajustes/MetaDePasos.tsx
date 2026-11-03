@@ -1,23 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
   CLAVE_META_PASOS,
-  META_DESLIZADOR,
+  META_APRETADO,
+  META_PASO,
   META_PASOS_POR_OMISION,
   leerMeta,
+  marcasDeMeta,
+  metaAcotada,
+  metaArrastrada,
   metaValida,
 } from '@nucleo/pasos';
 import { T } from '@nucleo/textos';
 import { plataforma } from '@plataforma';
 import Candado from '../Candado';
-import { C, conAlfa, conTema } from '../colores';
-import Deslizador from '../Deslizador';
+import { FIJO } from '../coloresFijos';
 import { L } from '../fuentes';
-import { R } from '../roles';
-import { Text } from '../Texto';
+import ReglaConBotones from '../ReglaConBotones';
+import { CifraJunta, Text } from '../Texto';
 import Tocable from '../Tocable';
 import FondoOctogonal from '../FondoOctogonal';
-import { useTema } from '../useTema';
 
 /**
  * LA META DE PASOS DEL DÍA.
@@ -31,31 +33,34 @@ import { useTema } from '../useTema';
  * contar días de gimnasio y pasaría a contar otra cosa. La meta es para mirar el
  * gráfico y saber cuánto falta, y nada más.
  *
- * SE MUESTRA EN VEZ DE EXPLICARSE (propuesta H, aprobada el 31/10). Decía «Mueve la barra de Inicio
- * y el gráfico de Stats. No entra en tu racha ni la ve nadie.». Ahora se arrastra, y se mueven acá
- * mismo la barra de hoy y la línea de la semana con los pasos de verdad. El candado dice que no la
- * ve nadie. VoiceOver sigue leyendo el texto.
+ * SE ELIGE COMO SE ANOTA EL PESO (2/11, a pedido): el número grande, − y + a los lados de la regla.
+ * Con una barra no gustaba. La semana de abajo sigue mostrando, con los pasos de verdad, qué días
+ * llegan a la meta que se está eligiendo. El candado dice que no la ve nadie. VoiceOver sigue
+ * leyendo el texto.
  *
  * SE GUARDA CON EL BOTÓN y no con cada píxel del arrastre: guardando al mover, se escribiría decenas
  * de veces para un número.
  */
 export default function MetaDePasos({
   alCambiar,
+  alCancelar,
   pasos = [],
 }: {
   alCambiar?: (meta: number) => void;
+  alCancelar?: () => void;
   /** Los pasos de verdad, por día, del más viejo al más nuevo. */
   pasos?: { fecha: string; valor: number }[];
 } = {}) {
-  useTema();
   const [valor, setValor] = useState(META_PASOS_POR_OMISION);
+  const tocado = useRef(false);
 
   useEffect(() => {
     let vivo = true;
     plataforma.almacenamiento
       .leer(CLAVE_META_PASOS)
       .then((m) => {
-        if (vivo) setValor(leerMeta(m));
+        // Si ya la empezó a mover, no se le cambia el número de abajo de los dedos.
+        if (vivo && !tocado.current) setValor(leerMeta(m));
       })
       .catch(() => {});
     return () => {
@@ -72,35 +77,37 @@ export default function MetaDePasos({
     await plataforma.almacenamiento.guardar(CLAVE_META_PASOS, String(valor)).catch(() => {});
   }
 
-  const lindo = valor.toLocaleString(T.general.locale);
+  const escribir = (n: number) => n.toLocaleString(T.general.locale);
   const semana = pasos.slice(-7);
-  const hoy = semana[semana.length - 1]?.valor ?? 0;
   const techo = Math.max(valor, ...semana.map((d) => d.valor), 1);
   return (
-    <View style={estilos.seccion} testID="meta-de-pasos" accessible={false} accessibilityHint={T.ajustes.metaPasosNota}>
+    <View style={estilos.todo} testID="meta-de-pasos" accessible={false} accessibilityHint={T.ajustes.metaPasosNota}>
       <View style={estilos.cabeza}>
         <Text style={estilos.titulo}>{T.ajustes.metaPasosTitulo}</Text>
-        <Candado etiqueta={T.ajustes.metaPasosNota} />
+        <View style={estilos.candado}>
+          <Candado etiqueta={T.ajustes.metaPasosNota} />
+        </View>
       </View>
-      <Text style={estilos.numero} testID="meta-valor">{lindo}</Text>
-      <Deslizador
-        testID="meta-deslizador"
+      <View style={estilos.cifra}>
+        <Text style={estilos.numero} testID="meta-valor">
+          <CifraJunta texto={escribir(valor)} apretar={-13} />
+        </Text>
+      </View>
+      <ReglaConBotones
         valor={valor}
-        min={META_DESLIZADOR.min}
-        max={META_DESLIZADOR.max}
-        paso={META_DESLIZADOR.paso}
-        alMover={setValor}
-        etiqueta={T.ajustes.metaPasosTitulo}
-        textoDelValor={lindo}
+        alCambiar={(v) => {
+          tocado.current = true;
+          setValor(v);
+        }}
+        acotar={metaAcotada}
+        arrastrado={metaArrastrada}
+        marcasDe={(v, ancho) => marcasDeMeta(v, ancho, escribir)}
+        paso={META_PASO}
+        apretado={META_APRETADO}
+        etiquetaMenos={`− ${META_PASO}`}
+        etiquetaMas={`+ ${META_PASO}`}
+        prefijo="meta"
       />
-      {/* La barra de Inicio, con los pasos de hoy: se mueve mientras se arrastra. */}
-      <View style={estilos.barra}>
-        <View testID="meta-barra" style={[estilos.barraLlena, { width: `${Math.min(100, (hoy / Math.max(1, valor)) * 100)}%` }]} />
-      </View>
-      <View style={estilos.pie}>
-        <Text style={estilos.pieTexto}>{hoy.toLocaleString(T.general.locale)}</Text>
-        <Text style={estilos.pieTexto}>{lindo}</Text>
-      </View>
       {semana.length > 0 && (
         <View style={estilos.semana} testID="meta-semana">
           {semana.map((d) => (
@@ -109,27 +116,32 @@ export default function MetaDePasos({
           <View testID="meta-linea" style={[estilos.lineaMeta, { bottom: `${(valor / techo) * 100}%` }]} />
         </View>
       )}
-      <Tocable style={estilos.boton} onPress={guardar} testID="meta-guardar">
-        <FondoOctogonal relleno={C.claro} luz={C.claro} />
+      <Tocable style={estilos.boton} onPress={guardar} testID="meta-guardar" accessibilityRole="button">
+        <FondoOctogonal relleno={FIJO.crema} luz={FIJO.crema} />
         <Text style={estilos.botonTexto}>{T.general.guardar}</Text>
       </Tocable>
+      {alCancelar && (
+        <Tocable style={estilos.cancelar} onPress={alCancelar} testID="meta-cancelar">
+          <Text style={estilos.cancelarTexto}>{T.general.cancelar}</Text>
+        </Tocable>
+      )}
     </View>
   );
 }
 
-const estilos = conTema(() => StyleSheet.create({
-  seccion: { marginTop: 8 },
-  cabeza: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  titulo: { ...R.etiqueta },
-  numero: { color: C.claro, fontSize: 30, fontWeight: '300', letterSpacing: -1.2, fontFamily: L.dato },
-  barra: { height: 3, borderRadius: 999, backgroundColor: C.barraPista, overflow: 'hidden', marginTop: 4 },
-  barraLlena: { height: '100%', backgroundColor: C.claro },
-  pie: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 },
-  pieTexto: { color: C.sub, fontSize: 11, fontFamily: L.dato },
-  semana: { height: 66, flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginTop: 14 },
-  dia: { flex: 1, borderRadius: 1, backgroundColor: C.barraDentro },
-  diaLlega: { backgroundColor: C.claro },
-  lineaMeta: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: conAlfa(C.claro, 0.7) },
-  boton: { marginTop: 18, paddingVertical: 13, alignItems: 'center' },
-  botonTexto: { color: C.fondo, fontSize: 14.5, fontWeight: '600' },
-}));
+const estilos = StyleSheet.create({
+  todo: { alignItems: 'center', gap: 14 },
+  cabeza: { alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
+  titulo: { color: FIJO.tinta, fontSize: 15, fontWeight: '600', textAlign: 'center' },
+  candado: { position: 'absolute', right: 0 },
+  cifra: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 6 },
+  numero: { color: FIJO.tinta, fontSize: 64, fontWeight: '200', lineHeight: 84, fontFamily: L.dato, letterSpacing: -3 },
+  semana: { alignSelf: 'stretch', height: 66, flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
+  dia: { flex: 1, borderRadius: 1, backgroundColor: FIJO.raya },
+  diaLlega: { backgroundColor: FIJO.crema },
+  lineaMeta: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: FIJO.sub },
+  boton: { alignSelf: 'stretch', paddingVertical: 14, alignItems: 'center' },
+  botonTexto: { color: FIJO.negro, fontSize: 15, fontWeight: '600' },
+  cancelar: { paddingVertical: 8, alignItems: 'center' },
+  cancelarTexto: { color: FIJO.sub, fontSize: 14 },
+});

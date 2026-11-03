@@ -40,6 +40,7 @@ function FondoEspacial(op: Pedido) {
     !!op.atmosfera,
     op.velo ?? null,
     !!op.lecturaMedia,
+    !!op.textoAbajo,
   ]);
 
   useEffect(() => {

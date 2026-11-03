@@ -3989,7 +3989,7 @@ begin
   end if;
   delete from entrenos_compartidos where estado = 'pendiente' and solicitante = uid and destinatario = p_a and tipo = 'union';
   insert into entrenos_compartidos (solicitante, destinatario, hasta, tipo)
-       values (uid, p_a, now() + interval '3 hours', 'invitacion')
+       values (uid, p_a, now() + interval '15 minutes', 'invitacion')
   on conflict do nothing;
   return 'ok';
 end;
@@ -4880,7 +4880,7 @@ create trigger rutinas_anotar_semana
   for each row execute function public.anotar_semana_de_rutina();
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 99; $$;
+returns int language sql immutable as $$ select 100; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

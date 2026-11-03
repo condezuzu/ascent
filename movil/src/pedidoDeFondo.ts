@@ -58,8 +58,10 @@ export type Pedido = OpcionesFondo & {
    * planeta. Ver `ponerEstadoDelCuerpo`.
    */
   ajeno?: boolean;
-  /** El velo de lectura a la mitad: Inicio en reposo, que es donde el planeta se tiene que ver. */
+  /** Inicio en reposo: es donde el planeta se tiene que ver. Ver `nucleo/horizonte.ts`. */
   lecturaMedia?: boolean;
+  /** Hay algo para leer sobre el borde del planeta: el resumen al terminar, el día listo. */
+  textoAbajo?: boolean;
 };
 
 /**

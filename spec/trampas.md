@@ -910,6 +910,24 @@ apuesta.
 → **Regla:** esperar la condición, no dormir un rato y mirar. Y si el paso
 previo no pudo hacer lo suyo, que **devuelva el problema**, no `undefined`.
 
+**Lo que flota sin ocupar lugar tapa lo que muevas debajo (2/11).** El globo del +
+tiene alto cero y mide 46 px hacia abajo. «Terminar» era un sólido con el centro
+más abajo que eso; al volverlo un enlace pegado al +, quedó debajo del globo, y una
+cuenta nueva no podía tocarlo hasta cerrarlo. Lo cazaron dos sondas viejas que
+tocaban «Terminar» con el globo prendido, entre otras nueve que sí estaban
+desactualizadas.
+→ **Regla:** después de un cambio de diseño, mirar por qué falla cada sonda antes
+de actualizarla. Una que se traba tocando un botón suele ser un bug.
+
+**Lo que se mide contra el motor tiene que esperar a que el motor se vea (3/11).**
+Recargada, la vista web tarda de 6 a 10 s en volver a dibujar el motor, y
+`probar-contraste` medía Inicio a los 3,5 s: contra el fondo liso, sin planeta. No se
+sabe desde cuándo. Lo delató una foto sin estrellas, no una sonda. Rota la placa de
+«Anotar peso», la sonda vieja pasaba en verde y la nueva la caza a 1,32:1 sobre el
+anillo del agujero negro.
+→ **Regla:** antes de medir sobre el motor, esperar a que el lienzo esté entero
+(`esperarElMotor`), y mirar una foto de lo que se midió: tiene que verse el cuerpo.
+
 ---
 
 ---

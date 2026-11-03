@@ -65,8 +65,11 @@ try {
       // Sin nada que se le vea (ni fondo, ni borde, ni recorte de una foto), el radio no dibuja nada.
       const seVe = cs.backgroundColor !== 'rgba(0, 0, 0, 0)' || parseFloat(cs.borderTopWidth) > 0 || parseFloat(cs.borderBottomWidth) > 0 || cs.overflow === 'hidden';
       if (!seVe) continue;
-      if (r >= Math.min(c.width, c.height) / 2 - 1) continue;
-      salida.push(`${(el.textContent || '').trim().slice(0, 22) || el.tagName} r=${r} ${Math.round(c.width)}×${Math.round(c.height)}`);
+      // El alto y el ancho sin transformaciones: un aro que late sigue siendo un aro.
+      const ancho = el.offsetWidth ?? c.width;
+      const alto = el.offsetHeight ?? c.height;
+      if (r >= Math.min(ancho, alto) / 2 - 1) continue;
+      salida.push(`${(el.textContent || '').trim().slice(0, 22) || el.tagName} r=${r} ${Math.round(ancho)}×${Math.round(alto)}`);
     }
     return [...new Set(salida)];
   });
@@ -136,11 +139,11 @@ try {
   chequear('Stats: ningún radio del medio', await delMedio(), []);
   const cifras = page.getByTestId('stats-cifra');
   chequear('las cuatro cifras', await cifras.count(), 4);
+  // Desde «Cifras» (2/11) no van en caja: una grande, y tres chicas en una fila, del mismo ancho.
   const enCaja = await cifras.evaluateAll((ns) => ns.map((n) => !!n.parentElement.querySelector('polygon')));
-  chequear('cada una en su caja cortada', enCaja, [true, true, true, true]);
-  // Dos por fila, del mismo ancho.
-  const cajas = await cifras.evaluateAll((ns) => ns.map((n) => { const c = n.parentElement.getBoundingClientRect(); return [Math.round(c.x), Math.round(c.y), Math.round(c.width)]; }));
-  chequear('dos por fila y del mismo ancho', [cajas[0][1] === cajas[1][1], cajas[2][1] === cajas[3][1], cajas[0][1] < cajas[2][1], new Set(cajas.map((c) => c[2])).size], [true, true, true, 1]);
+  chequear('sin caja', enCaja, [false, false, false, false]);
+  const cajas = await cifras.evaluateAll((ns) => ns.map((n) => { const c = n.parentElement.getBoundingClientRect(); return [Math.round(c.x), Math.round(c.y), Math.round(c.width), Math.round(n.getBoundingClientRect().height)]; }));
+  chequear('la grande arriba, y las chicas en una fila', [cajas[0][3] > cajas[1][3] * 2, cajas[0][1] < cajas[1][1], cajas[1][1] === cajas[2][1], cajas[2][1] === cajas[3][1]], [true, true, true, true]);
   await page.mouse.move(195, 500);
   await page.mouse.wheel(0, 700);
   await page.waitForTimeout(600);

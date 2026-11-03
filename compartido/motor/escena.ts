@@ -17,10 +17,12 @@ import {
   VERTEX_FUGAZ,
   FRAGMENT_FUGAZ,
   FRAGMENT_PUNTOS,
+  FRAGMENT_ESTRELLA,
   FRAGMENT_PRESAGIO,
   FRAGMENT_PLANO,
 } from './shaders';
 import { RANGOS_CFG, PLANETAS_CFG, ESTRELLAS_POR_RANGO, type ConfigCuerpo } from './cuerpos';
+import { crearFirmamento } from './firmamento';
 import { paletaDe } from '@nucleo/paletas';
 import { marca, medir, anotarMedicion } from '@compartido/medir';
 import { ALTURA, alturaDelPulso, siguePulsando } from '@nucleo/pulso';
@@ -67,6 +69,13 @@ export type OpcionesFondo = {
   estilo?: Estilo;
   /** Fuerza el nivel de la cara nocturna. Solo la galeria lo usa. */
   noche?: number;
+  /** El cielo de `firmamento.ts` en vez del campo de siempre. La web no lo pide. */
+  cielo?: boolean;
+  /**
+   * EL CUERPO COMO HORIZONTE (ver `nucleo/horizonte.ts`): el radio en el mundo, cuánto más grandes van
+   * las nubes y dónde va en cada esquina (x como fracción del ancho). La web no lo pide.
+   */
+  horizonte?: { radio: number; nube: number; lugares: Partial<Record<Esquina, { x: number; y: number }>> };
 };
 
 // El quad SIEMPRE mide 2x2 para que vP vaya de -1 a 1 y el shader dibuje el
@@ -390,10 +399,10 @@ function crearFugaz(rango: number, planeta?: string | null) {
 // duros; con shader propio cada partícula lleva su tamaño y su brillo.
 // `titila`: solo las estrellas (19/9). La galaxia y el polvo son miles de
 // partículas juntas, y titilando se verían como ruido.
-function materialPuntos(titila = false): THREE.ShaderMaterial {
+function materialPuntos(titila = false, nitida = false): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     vertexShader: VERTEX_PUNTOS,
-    fragmentShader: FRAGMENT_PUNTOS,
+    fragmentShader: nitida ? FRAGMENT_ESTRELLA : FRAGMENT_PUNTOS,
     uniforms: {
       uTime: { value: 0 },
       uDpr: { value: densidadActual },
@@ -602,6 +611,11 @@ export type Montaje = {
    */
   tapar: (si: boolean) => void;
   /**
+   * LAS CAPAS DEL CIELO SE CORREN AL CAMBIAR DE PESTAÑA (2/11), cada una distinto: es lo que hace que
+   * se lea la profundidad. `pestanas` es cuántas hay de distancia al medio. Sin `cielo`, no hace nada.
+   */
+  paralaje: (pestanas: number) => void;
+  /**
    * Se cumple cuando el primer cuadro ya se dibujó: los shaders compilaron.
    * Hasta ahí el canvas está vacío, y la pantalla sigue mostrando el fondo de
    * CSS. La web espera esto para el fundido de entrada.
@@ -680,14 +694,22 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
   // Y NO CUESTA: sin cuerpo no se construye ni el planeta, ni la atmósfera, ni
   // la nebulosa, ni el fantasma, así que la GPU tiene de sobra. El tope de
   // `ESTRELLAS_TOPE` sigue mandando arriba de todo.
-  const estrellas = crearEstrellas(
-    (ESTRELLAS_POR_RANGO[op.rango] ?? 150) * (op.soloEstrellas ? 1.8 : 1),
-    op.rango,
-    op.planeta,
-    (cajaInicial.w || 390) / (cajaInicial.h || 844)
-  );
-  materiales.push(estrellas.material as THREE.ShaderMaterial);
-  escena.add(estrellas);
+  const aspInicial = (cajaInicial.w || 390) / (cajaInicial.h || 844);
+  const firmamento = op.cielo
+    ? crearFirmamento({
+        rango: op.rango,
+        planeta: op.planeta,
+        asp: aspInicial,
+        factor: { bajo: 0.4, medio: 0.75, alto: 1 }[nivelActual],
+        materialDePuntos: ({ titila, nitida }) => materialPuntos(titila, nitida),
+      })
+    : null;
+  const estrellas = firmamento ? null : crearEstrellas((ESTRELLAS_POR_RANGO[op.rango] ?? 150) * (op.soloEstrellas ? 1.8 : 1), op.rango, op.planeta, aspInicial);
+  // Los materiales de las estrellas: a todos les llega la lente del agujero negro.
+  const deLasEstrellas = firmamento ? firmamento.materiales : [estrellas!.material as THREE.ShaderMaterial];
+  materiales.push(...deLasEstrellas);
+  if (firmamento) escena.add(...firmamento.objetos);
+  if (estrellas) escena.add(estrellas);
   const fugaz = crearFugaz(op.rango, op.planeta);
   escena.add(fugaz.mesh);
 
@@ -720,7 +742,8 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     presagio.scale.setScalar(2.0);
     presagio.position.z = -0.3;
     grupo.add(presagio);
-  } else if (op.fantasma) {
+  } else if (op.fantasma && !(op.horizonte && op.horizonte.radio >= 0.46 * 1.95)) {
+    // (Con un horizonte más grande que el fantasma quedaría tapado entero, y dibujarlo igual cuesta.)
     const fcfg =
       op.fantasma.rango === 4 && op.fantasma.planeta && PLANETAS_CFG[op.fantasma.planeta]
         ? PLANETAS_CFG[op.fantasma.planeta]
@@ -751,7 +774,7 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     polvo = crearPolvo(!!op.vacio);
     materiales.push(polvo.material as THREE.ShaderMaterial);
     grupo.add(polvo);
-    grupo.scale.setScalar(0.95);
+    grupo.scale.setScalar(0.95 * (op.horizonte?.nube ?? 1));
   } else if (op.rango === 6) {
     // Galaxia (era el 7; el "Sistema" se sacó en la migración 54).
     const amat = crearMaterialCuerpo(AURORA_CFG, !!op.apagado, 0.004);
@@ -769,7 +792,7 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     galaxia = crearGalaxia(op.rango);
     materiales.push(galaxia.material as THREE.ShaderMaterial);
     grupo.add(galaxia);
-    grupo.scale.setScalar(1.5);
+    grupo.scale.setScalar(1.5 * (op.horizonte?.nube ?? 1));
   } else if (cfg) {
     // LOS CUERPOS CONVIVEN CON EL CIELO, NO LO REEMPLAZAN.
     //
@@ -786,7 +809,8 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     // Se achican los dos escalones manteniendo la diferencia entre ellos: un
     // rango alto sigue teniendo un cuerpo más grande, pero le deja cielo
     // alrededor. El presupuesto de relleno también baja, que no estorba.
-    const escala = op.rango >= 5 ? 1.0 : 0.88;
+    // El 0,46 es el radio del cuerpo adentro del quad: ver la lente, más abajo.
+    const escala = op.horizonte ? op.horizonte.radio / 0.46 : op.rango >= 5 ? 1.0 : 0.88;
     const caja = l.tamano();
     const pixel = 2 / (escala * Math.min(caja.w || 400, caja.h || 700));
     // EL NIVEL DE NOCHE, POR CUERPO (27/9). Antes era uno solo para toda la
@@ -800,7 +824,8 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     cuerpo.scale.setScalar(escala);
     grupo.add(cuerpo);
 
-    for (let i = 0; i < cfg.lunas; i++) {
+    // Sin lunas en el horizonte: al lado de un cuerpo que no entra en la pantalla no se leen.
+    for (let i = 0; i < (op.horizonte ? 0 : cfg.lunas); i++) {
       const lmat = crearMaterialCuerpo(LUNA_CFG, !!op.apagado, 0.02, !!op.reposo, 1, op.estilo, nocheDe(LUNA_CFG));
       materiales.push(lmat);
       const luna = new THREE.Mesh(QUAD, lmat);
@@ -828,9 +853,11 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
   // `const float R` del fragmento del cuerpo: el quad mide 2 de lado y `vP` va
   // de -1 a 1, así que en mundo mide lo mismo multiplicado por la escala. Si
   // alguna vez se toca allá, se toca acá.
-  const lenteR = op.rango === 7 && !op.soloEstrellas ? 0.46 : 0;
-  const uEstrellas = (estrellas.material as THREE.ShaderMaterial).uniforms;
-  uEstrellas.uLenteR.value = lenteR;
+  const lenteR = op.rango === 7 && !op.soloEstrellas ? (op.horizonte?.radio ?? 0.46) : 0;
+  for (const m of deLasEstrellas) m.uniforms.uLenteR.value = lenteR;
+  const centrarLente = () => {
+    for (const m of deLasEstrellas) (m.uniforms.uLenteC.value as THREE.Vector2).set(grupo.position.x, grupo.position.y);
+  };
 
   marca('ascent:particulas-fin');
   medir('ascent:escena-armado', 'ascent:particulas-inicio', 'ascent:particulas-fin');
@@ -890,6 +917,8 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
    * cámara es ortográfica y el borde derecho está en `asp`.
    */
   function destinoDe(e: Esquina, asp: number) {
+    const lugar = op.horizonte?.lugares[e];
+    if (lugar) return { x: asp * lugar.x, y: lugar.y };
     if (e === 'abajo-derecha') return { x: asp * 0.8, y: -0.72 };
     if (e === 'arriba-derecha') return { x: asp * 0.82, y: 0.72 };
     return { x: 0, y: 0 };
@@ -909,8 +938,12 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
   for (const m of materiales) m.uniforms.uTime.value = tiempo;
   // También acá, y no solo en el bucle: el primer cuadro se dibuja desde
   // `compileAsync` y el bucle puede no haber corrido todavía.
-  if (lenteR > 0) (uEstrellas.uLenteC.value as THREE.Vector2).set(grupo.position.x, grupo.position.y);
+  if (lenteR > 0) centrarLente();
   ubicarOrbitantes();
+
+  // Dónde está el cielo y a dónde va, en pestañas: ver `paralaje`.
+  let cieloEn = 0;
+  let cieloA = 0;
 
   function frame() {
     if (!vivo) return;
@@ -950,12 +983,18 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
       grupo.position.y = viaje.y0 + (viaje.y1 - viaje.y0) * suave;
       if (t >= 1) viaje = null;
     }
-    const hayMovimiento = orbitantes.length > 0 || fugaz.mesh.visible || viaje !== null;
+    const hayMovimiento = orbitantes.length > 0 || fugaz.mesh.visible || viaje !== null || cieloEn !== cieloA;
     // TAPADO = COMO SI HICIERA RATO QUE NADIE TOCA. No es un tercer camino: es
     // el escalón lento que ya existe, pedido por otra razón. Así hay una sola
     // regla de cuántos cuadros se dibujan y vive en `nucleo/quietud.ts`.
     const sinTocar = tapado ? ESPERA_LENTO_MS : ahora - ultimoToque;
     if (!debeDibujar(sinTocar, ahora - ultimoCuadro, hayMovimiento)) return;
+    if (firmamento && cieloEn !== cieloA) {
+      // Por tiempo y no por cuadro: tapado se dibujan doce por segundo, y tardaría cinco veces más.
+      cieloEn += (cieloA - cieloEn) * (1 - Math.exp(-(ahora - ultimoCuadro) / 240));
+      if (Math.abs(cieloA - cieloEn) < 0.002) cieloEn = cieloA;
+      firmamento.correr(cieloEn);
+    }
     ultimoCuadro = ahora;
 
     // `getDelta` se llama SOLO cuando se dibuja, así que trae el tiempo real
@@ -967,7 +1006,7 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     // El centro de la lente viaja con el cuerpo: si se queda fijo, al cambiar
     // de esquina las estrellas se curvan alrededor de un agujero que ya no
     // está ahí.
-    if (lenteR > 0) (uEstrellas.uLenteC.value as THREE.Vector2).set(grupo.position.x, grupo.position.y);
+    if (lenteR > 0) centrarLente();
     ubicarOrbitantes();
     fugaz.actualizar(tiempo, camara.right);
     if (galaxia) galaxia.rotation.z = tiempo * 0.022;
@@ -1238,5 +1277,11 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     if (!si) despertar();
   };
 
-  return { soltar, pulso, pausar, mover, tapar, listo };
+  const paralaje = (pestanas: number) => {
+    if (!firmamento || pestanas === cieloA) return;
+    cieloA = pestanas;
+    despertar();
+  };
+
+  return { soltar, pulso, pausar, mover, tapar, paralaje, listo };
 }

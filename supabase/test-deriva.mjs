@@ -97,7 +97,8 @@ const schemaDeHoy = () => sinStorage(lf(readFileSync(join(DIR, 'schema.sql'), 'u
 function migraciones() {
   return readdirSync(DIR)
     .filter((f) => /^migracion-\d+/.test(f))
-    .sort()
+    // Por número: desde la 100, como texto «migracion-100» quedaba antes que «migracion-11».
+    .sort((a, b) => Number(/^migracion-(\d+)/.exec(a)[1]) - Number(/^migracion-(\d+)/.exec(b)[1]) || a.localeCompare(b))
     .map((f) => ({ nombre: f, sql: lf(readFileSync(join(DIR, f), 'utf8')) }))
     .filter((m) => !/^migracion-0[67]/.test(m.nombre));
 }

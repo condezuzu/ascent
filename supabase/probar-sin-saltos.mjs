@@ -1,9 +1,9 @@
 // LO QUE ENTRA NO EMPUJA DE UN SALTO, Y LOS BOTONES SE HUNDEN (26/10, a pedido: microanimaciones).
 //
 // En la vista web de la nativa (:8090), con una cuenta descartable: se empieza a entrenar y se
-// abre el campo de las series a mano («+»). Cuadro a cuadro se mira dónde está la fila de los
-// círculos, que queda debajo: tiene que bajar pasando por varios lugares intermedios, no saltar
-// de un lugar al otro. Y una píldora de series, apretada, tiene que estar más chica.
+// abre el campo de las series a mano («+»). Cuadro a cuadro se mira dónde está el + grande, que
+// queda debajo: tiene que bajar pasando por varios lugares intermedios, no saltar de un lugar al
+// otro. Y una píldora de series, apretada, tiene que estar más chica.
 //
 //   node --env-file=.env.local supabase/probar-sin-saltos.mjs
 import { chromium } from 'playwright';
@@ -56,8 +56,8 @@ try {
   await page.getByLabel(TX.inicio.sumarSerie).first().waitFor({ timeout: 90000 });
   await page.waitForTimeout(2500);
 
-  // Dónde está la fila de los círculos cada 15 ms, durante dos segundos y medio.
-  const etiqueta = TX.sesion.deMeta(0, 3);
+  // Dónde está el + cada 15 ms, durante dos segundos y medio.
+  const etiqueta = TX.inicio.sumarSerie;
   const muestras = page.evaluate(
     (et) =>
       new Promise((listo) => {
@@ -78,7 +78,7 @@ try {
   const ys = await muestras;
   const distintas = [...new Set(ys)];
   console.log(`  --   ${ys.length} cuadros, ${distintas.length} lugares: ${distintas.slice(0, 12).join(' ')}`);
-  chequear('al abrirse el campo, la fila de abajo baja pasando por lugares intermedios (no salta)', [distintas.length >= 5, ys[ys.length - 1] > ys[0]], [true, true]);
+  chequear('al abrirse el campo, el + baja pasando por lugares intermedios (no salta)', [distintas.length >= 5, ys[ys.length - 1] > ys[0]], [true, true]);
   await page.screenshot({ path: join(SALIDA, 'abierto.png') });
 
   // La píldora ×4, apretada, se hunde.

@@ -94,6 +94,8 @@
 //  41. probar-menos-texto — las once de la sección 12: la explicación ya no se lee, el dibujo hace lo que
 //      dice y VoiceOver sigue teniendo el texto (31/10), en la nativa.
 //  42. probar-progreso — la pantalla del progreso de un ejercicio y las gráficas de línea: el tiempo a
+//  43. probar-vuelta-grande — lo de la sección 14: Iniciar grupo abre la lista, el número grande, la rutina
+//      que llega, la cascada al tocar la barra, y la entrada a Moss.
 //      escala, cada anotación sobre la línea, leer tocando y arrastrando (1/11), en la nativa.
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
@@ -157,6 +159,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'llega con la curva, se va más corto', archivo: 'probar-movimiento.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'menos texto, más visual', archivo: 'probar-menos-texto.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'las gráficas de línea', archivo: 'probar-progreso.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'la vuelta grande', archivo: 'probar-vuelta-grande.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

@@ -77,6 +77,8 @@ try {
   const solido = () => page.getByText(TX.inicio.registrarDia, { exact: true }).first();
   const luzDeInicio = () => page.getByTestId('luz-inicio').first();
   const colorDe = async (loc) => hexDe(await loc.evaluate((n) => getComputedStyle(n).color));
+  // La pestaña prendida es el dibujo de su icono: el color está en el trazo.
+  const colorDelIcono = async (loc) => hexDe(await loc.evaluate((n) => n.querySelector('path[stroke]')?.getAttribute('stroke') ?? ''))?.toLowerCase();
 
   // El color del sólido, por el píxel: a la izquierda del texto, adentro del octágono.
   async function pixelDelSolido() {
@@ -89,7 +91,7 @@ try {
     await iniciar().waitFor({ timeout: 120000 });
     await solido().waitFor({ timeout: 30000 });
     await page.waitForTimeout(1200);
-    return { solido: await pixelDelSolido(), chip: await colorDe(iniciar()), pestana: await colorDe(luzDeInicio()) };
+    return { solido: await pixelDelSolido(), chip: await colorDe(iniciar()), pestana: await colorDelIcono(luzDeInicio()) };
   }
   const esperada = (racha) => {
     const { rango, planeta } = cuerpoDe(racha);
@@ -124,7 +126,7 @@ try {
   let colorLuz = '';
   for (let i = 0; i < 60 && colorLuz !== claroDel2; i++) {
     await page.waitForTimeout(500);
-    colorLuz = await colorDe(luzDeInicio()).catch(() => '');
+    colorLuz = await colorDelIcono(luzDeInicio()).catch(() => '');
   }
   chequear('al subir, sin recargar, la pestaña prendida ya es del rango 2', colorLuz, claroDel2);
   chequear('el lienzo del motor es el mismo elemento: no se remontó nada', await page.evaluate(() => !!document.querySelector('canvas[data-marca-de-la-prueba="1"]')), true);

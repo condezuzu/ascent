@@ -86,7 +86,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   const [noCargo, setNoCargo] = useState(false);
   const [cargado, setCargado] = useState(false);
   const [busqueda, setBusqueda] = useState('');
-  // La constelación vacía lleva al buscador: es donde se agrega a alguien.
+  // La estrella de Social sin amigos lleva al buscador: es donde se agrega a alguien.
   const [pedirFoco, setPedirFoco] = useState(0);
   const [resultados, setResultados] = useState<UsuarioPublico[]>([]);
   const [mandados, setMandados] = useState<Set<string>>(new Set());
@@ -244,6 +244,67 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
   });
 
   const amigos = datos?.amigos ?? [];
+  const sinAmigos = cargado && !noCargo && amigos.length <= 1;
+  const yo = datos?.amigos.find((a) => a.id === miId)?.username;
+
+  // BUSCAR GENTE, EN UN RENGLÓN FINITO (15/10): no tapa nada y está donde se lo busca. Los resultados
+  // caen justo debajo. Sin amigos, lo abre la estrella (ver `SocialVacio`).
+  const buscador = (
+    <View style={estilos.buscador}>
+      <Text style={estilos.lupa}>⌕</Text>
+      <CampoTexto
+        pedirFoco={pedirFoco}
+        testID="buscar-gente"
+        style={estilos.campo}
+        placeholder={T.social.buscarGente}
+        placeholderTextColor={C.apagado}
+        value={busqueda}
+        onChangeText={buscar}
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+    </View>
+  );
+  const lugaresEncontrados = resultados.map((u) => {
+    const accion = accionDeBusqueda(u.id, datos?.amigos ?? [], datos?.solicitudes ?? [], mandados);
+    return (
+      <View style={estilos.fila} key={u.id}>
+        <Avatar url={u.avatar_url} nombre={u.username} />
+        {/* Su rango al lado, como en el ranking: de un desconocido, lo
+            primero que dice algo es en qué anda. El nombre lleva al perfil
+            y "Agregar" queda aparte: mirar antes que agregar. */}
+        <Insignia rango={numeroDeRango(u.racha_actual)} tam={26} />
+        <Tocable style={{ flex: 1 }} onPress={() => router.push(`/perfil/${u.id}`)} accessibilityRole="button">
+          <Text style={estilos.nombre}>{u.username}</Text>
+        </Tocable>
+        {/* Si esa persona YA te mandó un pedido, "Agregar" rebotaba en
+            silencio contra el suyo: acá se acepta. Y si ya es tu amiga
+            —la acabás de aceptar— no se ofrece nada: ver `accionDeBusqueda`. */}
+        {accion.que === 'aceptar' ? (
+          <Tocable onPress={() => aceptar(accion.pedido)} hitSlop={8}>
+            <Text style={estilos.accion}>{T.social.aceptar}</Text>
+          </Tocable>
+        ) : accion.que === 'enviado' ? (
+          <Text style={estilos.dato}>{T.social.pedidoEnviado}</Text>
+        ) : accion.que === 'agregar' ? (
+          <Tocable onPress={() => agregar(u.id)} hitSlop={8}>
+            <Text style={estilos.accion}>{T.social.agregar}</Text>
+          </Tocable>
+        ) : null}
+      </View>
+    );
+  });
+  const loEncontrado = (
+    <>
+      {lugaresEncontrados}
+      {/* "No encontramos a nadie": solo cuando se buscó algo de verdad y no
+          hubo con qué. Antes un nombre inexistente no decía nada y parecía
+          que la búsqueda no andaba. */}
+      {busqueda.trim().length >= 2 && resultados.length === 0 && (
+        <Text style={estilos.sinResultado}>{T.social.sinResultado}</Text>
+      )}
+    </>
+  );
 
   return (
     <View style={estilos.raiz}>
@@ -255,62 +316,21 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
       <ScrollView contentContainerStyle={[estilos.pantalla, { paddingTop: arriba }]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <Text style={estilos.titulo}>{T.social.titulo}</Text>
 
-        {/* BUSCAR GENTE, ARRIBA Y EN UN RENGLÓN FINITO (15/10): no tapa nada y
-            está donde se lo busca. Los resultados caen justo debajo. */}
-        <View style={estilos.buscador}>
-          <Text style={estilos.lupa}>⌕</Text>
-          <CampoTexto
-            pedirFoco={pedirFoco}
-            testID="buscar-gente"
-            style={estilos.campo}
-            placeholder={T.social.buscarGente}
-            placeholderTextColor={C.apagado}
-            value={busqueda}
-            onChangeText={buscar}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </View>
-        {/* EL GLOBITO DE AGREGAR AMIGOS (15/10), saliendo del buscador: es donde se agregan. */}
-        <GloboPrimeraVez cual="amigos" colaX={66} subir={12} vistoAlMostrar cerrarCuando={busqueda.length > 0}>
-          {T.globos.amigos}
-        </GloboPrimeraVez>
-        {resultados.map((u) => {
-          const accion = accionDeBusqueda(u.id, datos?.amigos ?? [], datos?.solicitudes ?? [], mandados);
-          return (
-          <View style={estilos.fila} key={u.id}>
-            <Avatar url={u.avatar_url} nombre={u.username} />
-            {/* Su rango al lado, como en el ranking: de un desconocido, lo
-                primero que dice algo es en qué anda. El nombre lleva al perfil
-                y "Agregar" queda aparte: mirar antes que agregar. */}
-            <Insignia rango={numeroDeRango(u.racha_actual)} tam={26} />
-            <Tocable style={{ flex: 1 }} onPress={() => router.push(`/perfil/${u.id}`)} accessibilityRole="button">
-              <Text style={estilos.nombre}>{u.username}</Text>
-            </Tocable>
-            {/* Si esa persona YA te mandó un pedido, "Agregar" rebotaba en
-                silencio contra el suyo: acá se acepta. Y si ya es tu amiga
-                —la acabás de aceptar— no se ofrece nada: ver `accionDeBusqueda`. */}
-            {accion.que === 'aceptar' ? (
-              <Tocable onPress={() => aceptar(accion.pedido)} hitSlop={8}>
-                <Text style={estilos.accion}>{T.social.aceptar}</Text>
-              </Tocable>
-            ) : accion.que === 'enviado' ? (
-              <Text style={estilos.dato}>{T.social.pedidoEnviado}</Text>
-            ) : accion.que === 'agregar' ? (
-              <Tocable onPress={() => agregar(u.id)} hitSlop={8}>
-                <Text style={estilos.accion}>{T.social.agregar}</Text>
-              </Tocable>
-            ) : null}
-          </View>
-          );
-        })}
-        {/* "No encontramos a nadie": solo cuando se buscó algo de verdad y no
-            hubo con qué. Antes un nombre inexistente no decía nada y parecía
-            que la búsqueda no andaba. */}
-        {busqueda.trim().length >= 2 && resultados.length === 0 && (
-          <Text style={estilos.sinResultado}>{T.social.sinResultado}</Text>
+        {sinAmigos ? (
+          <SocialVacio usuario={yo} buscador={buscador} resultados={loEncontrado} alAbrir={() => setPedirFoco((n) => n + 1)} yaAbierto={busqueda.length > 0} />
+        ) : (
+          // Mientras carga no se dibuja, para no mostrar un buscador que la estrella va a esconder.
+          cargado && (
+            <>
+              {buscador}
+              {/* EL GLOBITO DE AGREGAR AMIGOS (15/10), saliendo del buscador: es donde se agregan. */}
+              <GloboPrimeraVez cual="amigos" colaX={66} subir={12} vistoAlMostrar cerrarCuando={busqueda.length > 0}>
+                {T.globos.amigos}
+              </GloboPrimeraVez>
+              {loEncontrado}
+            </>
+          )
         )}
-
 
         {/* ENTRENANDO CONTIGO, ARRIBA DE TODO (28/10, aprobado en la galería): es lo que está
             pasando. Cada cara con el color de su rango. Nunca dice dónde. */}
@@ -395,12 +415,7 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
               </Tocable>
             )}
           </View>
-        ) : (
-          cargado &&
-          !noCargo && (
-            <SocialVacio alBuscar={() => setPedirFoco((n) => n + 1)} />
-          )
-        )}
+        ) : null}
 
 
         {entrenando.length > 0 && (
@@ -467,10 +482,12 @@ export default function Ranking({ alSalir }: { alSalir: () => void }) {
           </View>
         )}
 
-        {/* Invitar: al final de lo tuyo, antes de lo que hacen los demás. */}
-        <View style={estilos.seccion}>
-          <InvitarConLink usuario={datos?.amigos.find((a) => a.id === miId)?.username} />
-        </View>
+        {/* Invitar: al final de lo tuyo, antes de lo que hacen los demás. Sin amigos, la estrella ya lo trae. */}
+        {!sinAmigos && (
+          <View style={estilos.seccion}>
+            <InvitarConLink usuario={yo} />
+          </View>
+        )}
 
         {/* LA ACTIVIDAD, ABAJO DE TODO (15/10): es lo menos importante de la pantalla. */}
         {(datos?.actividad ?? []).length > 0 && (

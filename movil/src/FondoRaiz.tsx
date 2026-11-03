@@ -10,22 +10,20 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 import { GLView, type ExpoWebGLRenderingContext } from 'expo-gl';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import VeloDeLectura from './VeloDeLectura';
 import type { WebGLRenderer } from 'three';
 import type { Montaje, OpcionesFondo } from '@compartido/motor/escena';
 import { eventos } from '@compartido/eventos';
 import { PULSO } from '@nucleo/pulso';
-import { veloDeRango } from '@nucleo/atmosfera';
-import { FONDO_BASE, FONDO_RANGO_7, paletaDe } from '@nucleo/paletas';
-import { ELIPSES_BASE, ELIPSES_VELO } from '@compartido/fondoDegradados';
-import ElipsesDeLuz from './ElipsesDeLuz';
+import { FONDO_BASE, FONDO_RANGO_7 } from '@nucleo/paletas';
+import { alturaDe, ESQUINA_DE_ALTURA, horizonteDe, velosDe } from '@nucleo/horizonte';
 import { CAMBIO_FONDO, cargarElMotor, esPreferenciaFondo, type PreferenciaFondo } from '@nucleo/fondo';
 import { plataforma } from '@plataforma';
 import { conAlfa } from './colores';
+import { LLEGA } from './movimiento';
 import { escucharFondo, type Pedido } from './pedidoDeFondo';
-import { escucharDesenfoque, escucharTapa } from './desenfoqueDelFondo';
+import { escucharDesenfoque, escucharTapa, escucharTira } from './desenfoqueDelFondo';
 import { ponerEstadoDelMotor } from './estadoDelMotor';
 import { CALIDAD_CAMBIO, densidadTope } from '@nucleo/calidad';
 import { calidadAhora, leerCalidad, vigilarCalidad } from './calidad';
@@ -33,9 +31,14 @@ import { calidadAhora, leerCalidad, vigilarCalidad } from './calidad';
 /**
  * EL FONDO DE LA APP NATIVA: el motor de cuerpos celestes detrás de todo.
  *
- * Es el MISMO motor que el de la web; esto es el marco. Tres capas, igual que
- * allá: una base de color, el `GLView` que entra con un fundido cuando el
- * motor está listo, y un velo oscuro arriba que sostiene la legibilidad.
+ * Es el MISMO motor que el de la web; esto es el marco: una base de color, el
+ * `GLView` que entra con un fundido cuando el motor está listo, y arriba lo que
+ * sostiene la legibilidad.
+ *
+ * DESDE EL 2/11 LA NATIVA VA DISTINTO QUE LA WEB (sección 14 de la galería): pide
+ * el cielo de `firmamento.ts` y el cuerpo como horizonte (`nucleo/horizonte.ts`).
+ * Se fueron las elipses de color, el velo parejo y el desenfoque de las otras
+ * pestañas: tapaban lo que se había hecho para verse.
  *
  * VIVE EN LA RAÍZ, NO EN INICIO. Inicio pide el fondo (`FondoEspacial` →
  * `pedidoDeFondo.ts`) y esto lo dibuja. Un solo `GLView`, un solo contexto y
@@ -49,24 +52,14 @@ import { calidadAhora, leerCalidad, vigilarCalidad } from './calidad';
  * Si las opciones cambiaron se monta la escena nueva ANTES de soltar la
  * vieja, para que three reuse los programas que ya tiene vivos.
  *
- * LOS BORDES, IGUALES A LA WEB: el degradado vertical que oscurece arriba y
- * abajo (`.velo-bordes`) es lineal, y `expo-linear-gradient` lo reproduce con
- * los mismos cuatro cortes y las mismas opacidades.
- *
- * LAS ELIPSES DE LUZ DE LA BASE Y EL VELO, también iguales (18/9): los números
- * viven en `compartido/fondoDegradados.ts`, de donde los toma la web para su
- * CSS, y acá los dibuja `ElipsesDeLuz` con `react-native-svg`.
+ * LOS BORDES: el degradado vertical que oscurece arriba y abajo. Abajo pega
+ * menos que en la web: ahí abajo ya está la barra, con lo suyo borroso.
  *
  * LA SUBIDA DE RANGO NO PASA POR ACÁ (23/9). Tiene su propio `GLView` dentro
  * del modal, porque un `Modal` de iOS es otra jerarquía de vistas y este queda
  * tapado. Ver `LienzoSubida.tsx`.
  *
- * LO QUE FALTA RESPECTO DE LA WEB, a la vista:
- *
- *   - La animación del velo entre visitas (la "atmósfera" que se abre al subir
- *     de rango). Se pinta el velo del rango, quieto.
- *
- * LO QUE RESPETA IGUAL: la preferencia "Fondo: automático / siempre / nunca"
+ * LO QUE RESPETA IGUAL QUE LA WEB: la preferencia "Fondo: automático / siempre / nunca"
  * (misma clave, misma decisión de `nucleo/fondo.ts`), el movimiento reducido
  * del sistema, y el pulso de registrar el día.
  */
@@ -117,6 +110,9 @@ function claveDeEscena(op: OpcionesFondo, animar: boolean) {
 
 type Escena = { clave: string; montaje: Montaje };
 
+/** Dónde queda el cuerpo para este pedido. */
+const alturaDelPedido = (p: Pedido) => alturaDe(p.esquina, p.lecturaMedia);
+
 /**
  * EL FUNDIDO, en milisegundos.
  *
@@ -147,6 +143,14 @@ const TAPADO_INMEDIATO = 0.85;
 const TAPADO_ASENTADO = 0.4;
 /** Cuánto tiene que quedarse quieto el desenfoque de Stats antes de bajar. */
 const ASENTARSE_MS = 400;
+
+function VeloPlano({ color, cuanto }: { color: string; cuanto: number }) {
+  const opacidad = useRef(new Animated.Value(cuanto)).current;
+  useEffect(() => {
+    Animated.timing(opacidad, { toValue: cuanto, duration: 420, easing: LLEGA, useNativeDriver: true }).start();
+  }, [cuanto, opacidad]);
+  return <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: color, opacity: opacidad }]} />;
+}
 
 export default function FondoRaiz() {
   const [pedido, setPedido] = useState<Pedido | null>(null);
@@ -260,67 +264,25 @@ export default function FondoRaiz() {
   }, [listo]);
 
   /**
-   * EL DESENFOQUE FUERA DE INICIO (25/9).
+   * CUÁNTO SE ALEJÓ DE INICIO, de 0 a 1 (25/9). Era el desenfoque del fondo fuera de Inicio, a pedido; el
+   * 2/11 el desenfoque se fue, porque con el planeta como horizonte el fondo ya no compite con la
+   * lectura. Queda el número porque dice cuánto está tapado, y de ahí salen los cuadros del motor.
    *
-   * *"Quiero que el planeta esté SIEMPRE, y que en las otras pestañas se vea
-   * borroso. Que el desenfoque baje gradualmente mientras deslizo hacia
-   * Inicio, siguiendo el dedo."*
-   *
-   * LO QUE HACE QUE ESTO SEA POSIBLE es el otro medio pedido: que el cuerpo
-   * exista siempre. Antes las otras cuatro pestañas pedían `soloEstrellas` —
-   * cielo SIN cuerpo—, que es otra escena: al volver a Inicio había que
-   * construirla, y construirla es lo que se veía como "el planeta aparece de
-   * la nada". Ahora las cinco piden el mismo cuerpo, la escena no se rearma
-   * nunca al cambiar de pestaña, y lo único que cambia es cuánto se lo ve.
-   *
-   * ─────────────────────────────────────────────────────────────────────
-   * EL `filter` DE REACT NATIVE NO SIRVE ACÁ, Y DEJÓ EL FONDO EN BLANCO
-   *
-   * Primer intento, y el peor bug del día: *"el fondo se ve todo BLANCO en
-   * Ranking, Álbum y Stats"*. Era `filter: [{ blur: N }]` sobre la vista que
-   * contiene el `GLView`.
-   *
-   * POR QUÉ NO PODÍA ANDAR. Para desenfocar, iOS tiene que RASTERIZAR la vista
-   * —dibujarla en un mapa de bits y pasarle el filtro—. Una vista de OpenGL no
-   * tiene su contenido en la capa: lo tiene en un framebuffer de la GPU que el
-   * rasterizador no lee. Lo que sale de ahí no es el planeta borroso, es la
-   * capa vacía, y encima del fondo claro del sistema eso es blanco.
-   *
-   * O sea que el error no fue de ajuste: era una operación imposible sobre esa
-   * vista en particular. Se probó en el navegador, donde `filter` es CSS y sí
-   * funciona sobre un canvas, y ahí se veía bien. La diferencia entre las dos
-   * plataformas era toda la historia.
-   *
-   * LO QUE SE HACE AHORA son dos capas distintas, y ninguna toca el `GLView`:
-   *
-   *   1. **Un velo extra**, acá mismo: una vista opaca del color del fondo que
-   *      sube con la distancia a Inicio. No desenfoca —empuja el planeta hacia
-   *      atrás— y es lo único que se puede hacer sin código nativo.
-   *   2. **Un desenfoque de verdad** encima, con `expo-blur`. `BlurView` NO
-   *      rasteriza a nadie: por debajo es un `UIVisualEffectView`, o sea una
-   *      vista del SISTEMA que desenfoca lo que quedó DETRÁS suyo una vez ya
-   *      compuesto en pantalla — GL incluido. Es justamente el caso que
-   *      `filter` no puede, y por eso el arreglo pasaba por acá y no por
-   *      ajustar un número.
-   *
-   * LAS DOS SE QUEDAN, y no es redundancia: el velo aporta la profundidad (el
-   * planeta se va hacia atrás) y el desenfoque aporta el foco (deja de ser
-   * legible como objeto). Juntas, el velo va a la mitad de lo que iba cuando
-   * era lo único: sumar los dos al máximo tapaba el planeta en vez de
-   * desenfocarlo.
-   *
-   * QUE EL VELO NO SOBRE EN UNA BUILD VIEJA no hace falta cuidarlo: agregar
-   * `expo-blur` mueve la huella, y una actualización publicada con ella no le
-   * llega nunca a una build que no la tiene. Las dos capas viajan siempre
-   * juntas.
-   *
-   * SE DIBUJA EN PASOS ENTEROS: ver `desenfoqueDelFondo.ts`. Un gesto manda
-   * sesenta eventos por segundo y el desenfoque tiene catorce valores
-   * distintos; avisar en cada píxel sería un dibujado de la raíz por cuadro
-   * para no cambiar nada.
+   * Si alguna vez vuelve: el `filter` de React Native sobre un `GLView` deja la vista en blanco (iOS no
+   * puede rasterizar un framebuffer). Se desenfoca con `BlurView` encima, como la barra de abajo.
    */
   const [desenfoque, setDesenfoque] = useState(0);
   useEffect(() => escucharDesenfoque(setDesenfoque), []);
+  // Las capas del cielo acompañan a la tira. Sin pasar por React: es un valor por cuadro del gesto.
+  const tira = useRef(0);
+  useEffect(
+    () =>
+      escucharTira((i) => {
+        tira.current = i;
+        escena.current?.montaje.paralaje(i - 2);
+      }),
+    [],
+  );
   // Una pantalla opaca encima (el descanso, la subida de rango): el fondo no se ve, y se pausa.
   const [tapadoDelTodo, setTapadoDelTodo] = useState(false);
   useEffect(() => escucharTapa(setTapadoDelTodo), []);
@@ -464,7 +426,7 @@ export default function FondoRaiz() {
       // pantalla nueva la quiere en otra esquina, viaja hasta allá.
       actual.montaje.pausar(false);
       actual.montaje.tapar(tapadoAhora.current);
-      actual.montaje.mover(pedido.esquina ?? 'abajo-derecha');
+      actual.montaje.mover(ESQUINA_DE_ALTURA[alturaDelPedido(pedido)]);
       // El fundido de entrada solo la primera vez: al volver a Inicio la
       // escena ya estaba, y hacerla aparecer de a poco otra vez se leería como
       // que se cargó de nuevo.
@@ -509,10 +471,11 @@ export default function FondoRaiz() {
               return () => oyentesDeTamano.current.delete(fn);
             },
           },
-          { ...pedido, animar }
+          { ...pedido, animar, cielo: true, horizonte: horizonteDe(pedido.rango, pedido.planeta), esquina: ESQUINA_DE_ALTURA[alturaDelPedido(pedido)] }
         );
         const vieja = escena.current;
         m?.tapar(tapadoAhora.current);
+        m?.paralaje(tira.current - 2);
         escena.current = m ? { clave, montaje: m } : null;
         vieja?.montaje.soltar();
         if (!pedidoAhora.current) {
@@ -587,10 +550,7 @@ export default function FondoRaiz() {
   // Hasta el primer pedido no se crea nada: ni el contexto ni three.
   if (!op) return null;
   const fondo = op.rango === 7 ? FONDO_RANGO_7 : FONDO_BASE;
-  const paleta = paletaDe(op.rango, op.planeta);
-  // Prioridad igual que en la web —lo que pidió la pantalla, después lo que
-  // dice el rango, después el valor fijo—, menos el velo animado entre visitas.
-  const velo = op.velo ?? (op.atmosfera ? veloDeRango(op.rango) : op.rango >= 5 ? 0.62 : 0.5);
+  const { velo, lectura } = velosDe(op.rango, alturaDelPedido(op), op.textoAbajo);
 
   return (
     <View
@@ -603,9 +563,6 @@ export default function FondoRaiz() {
           en `mostrarEspacio`. */}
       {mostrarEspacio && (
       <>
-      {medida && (
-        <ElipsesDeLuz elipses={ELIPSES_BASE} paleta={paleta} ancho={medida.w} alto={medida.h} estrellas id="base" />
-      )}
       {cargar && vistaGL && (
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: opacidad }]}>
           {/* `key` con la generación: al perderse el contexto se sube y el
@@ -622,47 +579,18 @@ export default function FondoRaiz() {
           />
         </Animated.View>
       )}
-      {/* EL VELO EXTRA DE LAS OTRAS PESTAÑAS. Va ENTRE el motor y el velo del
-          rango, así que empuja el planeta hacia atrás sin tocar nada de lo que
-          se lee encima. `pointerEvents` no hace falta: el fondo entero ya es
-          `none`. */}
-      {desenfoque > 0 && (
-        <>
-          <View
-            style={[StyleSheet.absoluteFill, { backgroundColor: fondo, opacity: desenfoque * 0.2 }]}
-          />
-          {/* EL DESENFOQUE DE VERDAD. Va acá arriba y no más abajo porque
-              desenfoca lo que tiene DETRÁS: el motor, la base y las elipses.
-              El velo del rango y los bordes quedan encima suyo, nítidos, que
-              es lo que hay que hacer — son lo que sostiene la legibilidad del
-              texto y desenfocarlos no ayudaría a nada.
-
-              SOLO SE MONTA CUANDO HACE FALTA. Un `UIVisualEffectView` no es
-              gratis ni con intensidad cero: el sistema le sigue componiendo
-              el fondo cada cuadro. En Inicio, que es donde el planeta importa,
-              no existe. */}
-          <BlurView
-            style={StyleSheet.absoluteFill}
-            tint="dark"
-            intensity={Math.round(desenfoque * 42)}
-            pointerEvents="none"
-          />
-        </>
-      )}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: fondo, opacity: velo }]}>
-        {medida && <ElipsesDeLuz elipses={ELIPSES_VELO} paleta={paleta} ancho={medida.w} alto={medida.h} id="velo" />}
-      </View>
-      {/* LOS BORDES, lo que sostiene la legibilidad cuando el velo se abre: el
-          mismo `.velo-bordes` de la web —fondo al 80 % arriba, nada del 26 % al
-          86 %, fondo al 88 % abajo—. Los extremos transparentes son el fondo
-          con alfa 0 y no `transparent`: CSS mezcla premultiplicado y acá no,
+      {/* El velo también se mueve: entre pantallas cambia, y de golpe se ve como un parpadeo del fondo. */}
+      <VeloPlano color={fondo} cuanto={velo} />
+      {/* LOS BORDES, lo que sostiene la legibilidad cuando el velo se abre: fondo
+          al 80 % arriba y nada del 26 % al 86 %. Los extremos transparentes son el
+          fondo con alfa 0 y no `transparent`: CSS mezcla premultiplicado y acá no,
           y hacia negro transparente el degradado ensuciaría el color. */}
       <LinearGradient
         style={StyleSheet.absoluteFill}
-        colors={[conAlfa(fondo, 0.8), conAlfa(fondo, 0), conAlfa(fondo, 0), conAlfa(fondo, 0.88)]}
+        colors={[conAlfa(fondo, 0.8), conAlfa(fondo, 0), conAlfa(fondo, 0), conAlfa(fondo, 0.5)]}
         locations={[0, 0.26, 0.86, 1]}
       />
-      <VeloDeLectura entero={!op.lecturaMedia} />
+      <VeloDeLectura cuanto={lectura} />
       </>
       )}
     </View>

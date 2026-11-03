@@ -72,8 +72,9 @@ cada una con un trabajo y ninguna invadiendo el del resto:
 - **Inter** — todo lo que se lee: textos, botones, títulos de pantalla,
   etiquetas. Es la más común de la web justamente porque no hace ruido, y se
   la elige por eso, no por defecto.
-- **Outfit** — SOLO el número grande de la racha. Geométrica, ancha y
-  monolineal. Es el único lugar donde la tipografía tiene que tener carácter.
+- **Outfit** — SOLO el número grande de cada pantalla (la racha; desde el 2/11
+  también la serie y los días del año). Geométrica, ancha y monolineal. Es el
+  único lugar donde la tipografía tiene que tener carácter.
 - **Geist Mono** — SOLO datos tabulares: cifras de Stats, días del calendario,
   fechas del álbum, letras de la tira semanal, números de la lista. Donde
   alinear en columna sirve de verdad. Nunca en párrafos ni en títulos.
@@ -114,6 +115,11 @@ plano y la densidad del fondo.
 
 **El objeto de fondo se recorta, no se centra.** Entra por una esquina y se sale de
 la pantalla. Centrado compite con el contenido y parece un fondo de pantalla.
+
+**Desde el 2/11, en la nativa, el velo plano ya no es parejo** (aprobado en la
+sección 14 de la galería): el cuerpo hace de horizonte y lo oscuro lo pone su lado
+de noche. Los números viven en `nucleo/horizonte.ts`, y el piso de 4,5:1 lo sigue
+midiendo `probar-contraste`. La web sigue con la regla de abajo.
 
 **Velo plano oscuro entre el fondo y la interfaz, siempre.** Cuanto más detallado
 el fondo, más velo. Es lo que permite subir la calidad del render sin arruinar

@@ -9,12 +9,27 @@ const ARCHIVOS = {
   Inter_400Regular_Italic: require('../assets/fuentes/Inter_400Regular_Italic.ttf'),
   Inter_500Medium: require('../assets/fuentes/Inter_500Medium.ttf'),
   Inter_600SemiBold: require('../assets/fuentes/Inter_600SemiBold.ttf'),
+  Outfit_200ExtraLight: require('../assets/fuentes/Outfit_200ExtraLight.ttf'),
   Outfit_300Light: require('../assets/fuentes/Outfit_300Light.ttf'),
   GeistMono_200ExtraLight: require('../assets/fuentes/GeistMono_200ExtraLight.ttf'),
   GeistMono_300Light: require('../assets/fuentes/GeistMono_300Light.ttf'),
   GeistMono_400Regular: require('../assets/fuentes/GeistMono_400Regular.ttf'),
   GeistMono_500Medium: require('../assets/fuentes/GeistMono_500Medium.ttf'),
 };
+
+/** Las letras de Moss (la entrada de arriba de Stats). Se cargan aparte: Ascent no las usa para nada más. */
+export const LETRAS_DE_MOSS = { titulo: 'CormorantGaramond_400Regular_Italic', texto: 'Jost_400Regular' } as const;
+
+export function cargarFuentesDeMoss() {
+  return new Promise<void>((listo) =>
+    listo(
+      require('expo-font').loadAsync({
+        CormorantGaramond_400Regular_Italic: require('../assets/fuentes/CormorantGaramond_400Regular_Italic.ttf'),
+        Jost_400Regular: require('../assets/fuentes/Jost_400Regular.ttf'),
+      }),
+    ),
+  ).catch(() => {});
+}
 
 let listas = false;
 
@@ -47,7 +62,7 @@ function numeroDe(peso: TextStyle['fontWeight']) {
 /** El archivo de esa familia y ese peso. `null` si la familia no es de las nuestras. */
 export function archivoDe(familia: string | undefined, peso: TextStyle['fontWeight'], estilo: TextStyle['fontStyle']) {
   const n = numeroDe(peso);
-  if (familia === L.racha) return 'Outfit_300Light';
+  if (familia === L.racha) return n <= 200 ? 'Outfit_200ExtraLight' : 'Outfit_300Light';
   if (familia === L.dato) {
     if (n <= 200) return 'GeistMono_200ExtraLight';
     if (n <= 300) return 'GeistMono_300Light';

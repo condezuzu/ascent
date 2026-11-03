@@ -26,7 +26,7 @@ const CRISTALES = [
   { left: 27, top: 22 },
 ];
 
-export default function PuntoDelDia({ estado, esHoy, frio = null }: { estado: EstadoDelDia; esHoy: boolean; frio?: FrioDelDia }) {
+export default function PuntoDelDia({ estado, esHoy, frio = null, chico = false }: { estado: EstadoDelDia; esHoy: boolean; frio?: FrioDelDia; chico?: boolean }) {
   useTema();
   const titila = useRef(new Animated.Value(0)).current;
   const derrite = useRef(new Animated.Value(frio === 'derrite' ? 0 : 1)).current;
@@ -50,20 +50,26 @@ export default function PuntoDelDia({ estado, esHoy, frio = null }: { estado: Es
   }, [frio, derrite]);
 
   const cubierto = estado === 'cubierto';
+  // CHICO EN INICIO (2/11, «Cifras»): un punto, sin círculo que compita con el número. El día que
+  // salvó una vida se queda de su tamaño: es lo único de la tira que hay que mirar, y pasa poco.
+  const enChico = chico && !cubierto;
   return (
     <View
       style={[
         estilos.punto,
+        enChico && estilos.puntoChico,
         estado === 'lleno' && estilos.lleno,
+        estado === 'lleno' && enChico && estilos.llenoChico,
         estado === 'vacio' && estilos.vacio,
         (estado === 'futuro' || estado === 'sinDato') && estilos.futuro,
         estado === 'descanso' && estilos.vacio,
         cubierto && estilos.cubierto,
         cubierto && frio === 'helado' && estilos.helado,
         esHoy && estilos.puntoHoy,
+        esHoy && enChico && estilos.puntoHoyChico,
       ]}
     >
-      {estado === 'descanso' && <View style={estilos.guion} />}
+      {estado === 'descanso' && <View style={[estilos.guion, enChico && estilos.guionChico]} />}
       {cubierto && <Estrella tam={13} modo={frio === 'helado' ? 'hielo' : 'luz'} />}
       {cubierto && frio === 'helado' &&
         CRISTALES.map((c, i) => (
@@ -104,6 +110,10 @@ const estilos = conTema(() => StyleSheet.create({
   vacio: { borderWidth: 1, borderColor: C.diaVacio },
   futuro: { borderWidth: 1, borderColor: C.diaFuturo },
   puntoHoy: { borderWidth: 1, borderColor: C.claro, ...luz(C.claro, 0.45, 5) },
+  puntoChico: { width: 9, height: 9, borderRadius: 4.5 },
+  llenoChico: { backgroundColor: C.claro },
+  puntoHoyChico: { ...luz(C.claro, 0.9, 6) },
+  guionChico: { width: 5, height: 1 },
   guion: { width: 10, height: 2, borderRadius: 1, backgroundColor: C.tenue },
   cubierto: { borderWidth: 1, borderColor: C.claro },
   helado: { borderColor: C.hieloClaro, shadowColor: C.hielo, shadowOpacity: 0.8, shadowRadius: 8, shadowOffset: { width: 0, height: 0 } },

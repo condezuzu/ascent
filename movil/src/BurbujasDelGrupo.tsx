@@ -18,11 +18,16 @@ import FondoOctogonal from './FondoOctogonal';
 
 type Amigo = { id: string; username: string; avatar_url: string | null };
 // Dónde quedó la burbuja tocada, en la ventana: de ahí sale el globo.
-type Tocada = { amigo: Amigo; x: number; y: number; ancho: number; alto: number };
+type Lugar = { x: number; y: number; ancho: number; alto: number };
+type Tocada = Lugar & { amigo: Amigo };
 
 /**
  * EL MULTIJUGADOR ARRIBA DE TODO EN INICIO (28/10, la variante B aprobada en la galería, más
  * compacta): «Iniciar grupo» y una burbuja por amigo que está entrenando ahora. Nunca dice dónde.
+ *
+ * «INICIAR GRUPO» ABRE LA LISTA DE LOS QUE ENTRENAN (2/11, a pedido), para invitarlos. Antes
+ * empezaba a entrenar y compartía un link. Si no entrena nadie lo dice, y no deja hacer nada: un
+ * grupo de uno no existe. El link sigue en Social.
  *
  * TOCAR A UN AMIGO ABRE UNA BURBUJA ENCIMA (29/10, como quedó en la galería), no su perfil. Si
  * entrena sin grupo, «Invitar a un grupo»; si entrena con otros, cuántos son, sus caras y «Unirse
@@ -33,18 +38,19 @@ type Tocada = { amigo: Amigo; x: number; y: number; ancho: number; alto: number 
  */
 export default function BurbujasDelGrupo({
   visible,
-  alIniciarGrupo,
   alInvitar,
 }: {
   visible: boolean;
-  alIniciarGrupo: () => void;
   alInvitar: (amigo: string) => Promise<RespuestaDeInvitar>;
 }) {
   useTema();
   const version = useVersionDelEsquema();
   const [amigos, setAmigos] = useState<Amigo[]>([]);
   const [tocada, setTocada] = useState<Tocada | null>(null);
+  const [iniciando, setIniciando] = useState<Lugar | null>(null);
+  const [preguntando, setPreguntando] = useState(false);
   const caras = useRef(new Map<string, View | null>());
+  const mas = useRef<View | null>(null);
   const cargar = useCallback(async () => {
     const { data, error } = await supabase.rpc('entrenando_ahora');
     if (!error) setAmigos(Array.isArray(data) ? (data as Amigo[]) : []);
@@ -61,14 +67,21 @@ export default function BurbujasDelGrupo({
     cara.measureInWindow((x, y, ancho, alto) => setTocada({ amigo: a, x, y, ancho, alto }));
   }
 
+  function iniciarGrupo() {
+    // Lo que ya estaba en la fila puede ser de hace rato: se pregunta de nuevo al abrir.
+    setPreguntando(true);
+    void cargar().finally(() => setPreguntando(false));
+    mas.current?.measureInWindow((x, y, ancho, alto) => setIniciando({ x, y, ancho, alto }));
+  }
+
   const conGrupos = disponible('grupos', version);
   const fila =
     visible && (conGrupos || amigos.length > 0) ? (
       <Aparece>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.fila} testID="burbujas-del-grupo">
           {conGrupos && (
-            <Tocable testID="iniciar-grupo" style={estilos.burbuja} onPress={alIniciarGrupo} accessibilityRole="button">
-              <View style={[estilos.cara, estilos.mas]}>
+            <Tocable testID="iniciar-grupo" style={estilos.burbuja} onPress={iniciarGrupo} accessibilityRole="button">
+              <View style={[estilos.cara, estilos.mas]} ref={mas} collapsable={false}>
                 <Text style={estilos.masTexto}>+</Text>
               </View>
               <Text style={estilos.nombre} numberOfLines={1}>
@@ -101,7 +114,98 @@ export default function BurbujasDelGrupo({
     <>
       {fila}
       {tocada && <GloboDelAmigo tocada={tocada} alInvitar={alInvitar} alCerrar={() => setTocada(null)} />}
+      {iniciando && <GloboDeIniciarGrupo lugar={iniciando} amigos={amigos} preguntando={preguntando} alInvitar={alInvitar} alCerrar={() => setIniciando(null)} />}
     </>
+  );
+}
+
+/** Lo que dice el globo después de invitar. */
+function dichoDeInvitar(r: RespuestaDeInvitar, nombre: string) {
+  if (r === 'ok') return { texto: T.social.invitacionEnviada, bien: true };
+  if (r === 'ya-unido') return { texto: T.social.grupoYaEstas, bien: true };
+  return { texto: r === 'ocupado' ? T.social.invitarOcupado(nombre) : r === 'no-entrena' ? T.social.unirseNoEntrena(nombre) : T.social.invitarFallo, bien: false };
+}
+
+function GloboDeIniciarGrupo({
+  lugar,
+  amigos,
+  preguntando,
+  alInvitar,
+  alCerrar,
+}: {
+  lugar: Lugar;
+  amigos: Amigo[];
+  preguntando: boolean;
+  alInvitar: (amigo: string) => Promise<RespuestaDeInvitar>;
+  alCerrar: () => void;
+}) {
+  useTema();
+  const { width } = useWindowDimensions();
+  // Cada fila contesta por su cuenta: se puede invitar a varios sin cerrar.
+  const [dichos, setDichos] = useState<Record<string, { texto: string; bien: boolean }>>({});
+  const [enviando, setEnviando] = useState<string | null>(null);
+  const centro = lugar.x + lugar.ancho / 2;
+
+  async function invitar(a: Amigo) {
+    setEnviando(a.id);
+    const r = await alInvitar(a.id);
+    setDichos((d) => ({ ...d, [a.id]: dichoDeInvitar(r, a.username) }));
+    setEnviando(null);
+  }
+
+  return (
+    <Modal transparent visible animationType="fade" onRequestClose={alCerrar}>
+      <Pressable style={estilos.velo} onPress={alCerrar} accessibilityRole="button" accessibilityLabel={T.general.cerrar} />
+      <View testID="globo-iniciar-grupo" accessibilityViewIsModal style={[estilos.globo, { top: lugar.y + lugar.alto + 32 }]}>
+        <FondoOctogonal relleno={C.hoja} borde={C.lineaFuerte} corte={12} luz={C.claro} />
+        <View style={[estilos.cola, { left: Math.min(Math.max(centro - MARGEN - 7, 18), width - 2 * MARGEN - 32) }]} />
+        <Text style={estilos.quien}>{T.inicio.iniciarGrupo}</Text>
+        {amigos.length === 0 ? (
+          preguntando ? (
+            <ActivityIndicator color={C.sub} style={estilos.cargando} />
+          ) : (
+            <Text testID="iniciar-grupo-nadie" style={estilos.dato}>
+              {T.inicio.nadieEntrenando}
+            </Text>
+          )
+        ) : (
+          <ScrollView style={estilos.lista} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            {amigos.map((a) => {
+              const dicho = dichos[a.id];
+              return (
+                <View key={a.id} style={estilos.filaAmigo} testID="iniciar-grupo-amigo">
+                  <View style={estilos.aro}>
+                    <Avatar url={a.avatar_url} nombre={a.username} tam={32} />
+                  </View>
+                  <View style={estilos.filaTexto}>
+                    <Text style={estilos.filaNombre} numberOfLines={1}>
+                      {a.username}
+                    </Text>
+                    {dicho && (
+                      <Text testID="iniciar-grupo-dijo" style={[estilos.filaDijo, dicho.bien && estilos.dijoBien]} numberOfLines={2}>
+                        {dicho.texto}
+                      </Text>
+                    )}
+                  </View>
+                  {!dicho?.bien && (
+                    <Tocable
+                      testID="iniciar-grupo-invitar"
+                      style={estilos.invitar}
+                      onPress={() => void invitar(a)}
+                      disabled={enviando !== null}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${T.inicio.invitarEnElGrupo} ${a.username}`}
+                    >
+                      <Text style={estilos.invitarTexto}>{enviando === a.id ? '…' : T.inicio.invitarEnElGrupo}</Text>
+                    </Tocable>
+                  )}
+                </View>
+              );
+            })}
+          </ScrollView>
+        )}
+      </View>
+    </Modal>
   );
 }
 
@@ -138,12 +242,7 @@ function GloboDelAmigo({ tocada, alInvitar, alCerrar }: { tocada: Tocada; alInvi
           : { texto: r === 'ocupado' ? T.social.unirseOcupado(amigo.username) : r === 'ya-unido' ? T.social.unirseYaUnido : r === 'no-entrena' ? T.social.unirseNoEntrena(amigo.username) : T.social.invitarFallo, bien: false },
       );
     } else {
-      const r = await alInvitar(amigo.id);
-      setDijo(
-        r === 'ok' || r === 'ya-unido'
-          ? { texto: r === 'ok' ? T.social.invitacionEnviada : T.social.grupoYaEstas, bien: true }
-          : { texto: r === 'ocupado' ? T.social.invitarOcupado(amigo.username) : r === 'no-entrena' ? T.social.unirseNoEntrena(amigo.username) : T.social.invitarFallo, bien: false },
-      );
+      setDijo(dichoDeInvitar(await alInvitar(amigo.id), amigo.username));
     }
     setEnviando(false);
   }
@@ -252,4 +351,11 @@ const estilos = conTema(() => StyleSheet.create({
   botonTexto: { color: C.fondo, fontWeight: '600', fontSize: 14.5 },
   dijo: { marginTop: 8, color: C.sub, fontSize: 13.5 },
   dijoBien: { color: C.tinta },
+  lista: { maxHeight: 264, marginTop: 4 },
+  filaAmigo: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
+  filaTexto: { flex: 1, minWidth: 0 },
+  filaNombre: { color: C.tinta, fontSize: 14 },
+  filaDijo: { color: C.sub, fontSize: 12, marginTop: 1 },
+  invitar: { backgroundColor: C.claro, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14 },
+  invitarTexto: { color: C.fondo, fontWeight: '600', fontSize: 13 },
 }));

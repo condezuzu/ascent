@@ -8957,7 +8957,8 @@ console.log('\n125. Lo que se dibuja con SVG se escribe una vez: las dos apps lo
   chequear('el velo tampoco', bloque('.velo {').includes('radial-gradient'), false);
   chequear('la web las toma de compartido', de('src', 'components', 'FondoEspacial.tsx').includes('ELIPSES_BASE'), true);
   const raiz = de('movil', 'src', 'FondoRaiz.tsx');
-  chequear('la nativa también', raiz.includes('ELIPSES_BASE') && raiz.includes('ELIPSES_VELO'), true);
+  // Desde el 2/11 la nativa no las usa: pidió un cielo de verdad (sección 14 de la galería).
+  chequear('la nativa se quedó sin ellas', raiz.includes('ELIPSES_BASE') || raiz.includes('ELIPSES_VELO'), false);
 
   // El gráfico del peso: una sola cuenta.
   for (const [cual, ruta] of [
@@ -9067,7 +9068,8 @@ console.log('\n128. Inicio entra en una pantalla con el entrenamiento andando');
   chequear('el + toma lo que sobra, con minimo de 64', /\.pantalla\.en-sesion > \.bloque > \.bloque-mas \{\s*flex: 1 1 auto;\s*min-height: 64px;/.test(css), true);
   chequear('Inicio pone la clase con la sesion corriendo', /clase=\{sesion\.estado\.corriendo \? 'en-sesion'/.test(inicio), true);
   chequear('una sola cuenta del bloque: sin el "1 de 3" a la vista (web)', /className="numero"/.test(bloque), false);
-  chequear('una sola cuenta del bloque (nativa)', /cuentaNumero/.test(de128('movil', 'src', 'Bloque.tsx')), false);
+  // Desde el 2/11 la cuenta es el número grande («Cifras»), en vez de los circulitos. Una, igual.
+  chequear('una sola cuenta del bloque (nativa)', [/cuentaNumero/.test(de128('movil', 'src', 'Bloque.tsx')), /PuntoDeSerie/.test(de128('movil', 'src', 'Bloque.tsx'))], [true, false]);
   // LA RACHA SI ESTA DURANTE EL ENTRENAMIENTO (nativa), DESDE EL 25/9. Era al
   // reves y se cuidaba con un test; el pedido lo dio vuelta: "la racha
   // desaparece cuando inicio el entrenamiento. Ya pedi que se quedara y quedo
@@ -11279,8 +11281,8 @@ console.log('\n153. Los bugs del gimnasio: el interbloqueo, la musica y la racha
   // LA TIRA DE LA SEMANA SI SE VA: son siete puntos que no cambian en medio de
   // una sesion y empujan el bloque, que es lo que se toca doce veces.
   chequear('la tira de la semana sigue escondida entrenando',
-    // Desde el 21/10 la tira lleva también el margen de debajo de las vidas.
-    /\{!sesion\.estado\.corriendo && \(\s*<View style=\{\[estilos\.tira[^>]*testID="tira-inicio">/.test(ini153), true);
+    // Desde el 2/11 se va encogiéndose: se cortaba de golpe.
+    /<Aparece visible=\{!sesion\.estado\.corriendo\}>\s*<View style=\{\[estilos\.tira[^>]*testID="tira-inicio">/.test(ini153), true);
 
   // ---- 6. SE PUEDE ENTRAR AL PERFIL ENTRENANDO ----
   //
@@ -11311,10 +11313,10 @@ console.log('\n154. El entrenamiento: el menos, el peso por lado y los sin peso'
   const blo154 = sinComentarios154(de154('movil', 'src', 'Bloque.tsx'));
   chequear('el menos es un boton grande, no un renglon de texto',
     /estilos\.mas, estilos\.menos/.test(blo154), true);
-  // EL + SIGUE MANDANDO: tres cuartos contra un cuarto. Doce sumas contra una
-  // resta; del mismo tamano seria pedirle a la mano que apunte doce veces.
-  chequear('el + se lleva tres cuartos del ancho', /masAncho: \{ flex: 3/.test(blo154), true);
-  chequear('y el − un cuarto', /menos: \{ flex: 1/.test(blo154), true);
+  // EL + SIGUE MANDANDO: doce sumas contra una resta; del mismo tamano seria pedirle a la mano que
+  // apunte doce veces. Desde el 2/11 («Cifras») es todavía más: el − tiene su ancho y el + lo que sobra.
+  chequear('el + se lleva lo que sobra', /masAncho: \{ flex: 1/.test(blo154), true);
+  chequear('y el − su ancho', /menos: \{ width: ANCHO_MENOS/.test(blo154), true);
   // SE APAGA EN CERO EN VEZ DE DESAPARECER: un boton que aparece y se va mueve
   // el + de lugar justo cuando se lo esta tocando.
   chequear('el − se apaga en cero, no se esconde', /menosApagado/.test(blo154), true);
@@ -11446,11 +11448,11 @@ console.log('\n156. El planeta esta siempre, y fuera de Inicio se ve borroso');
   chequear('el desenfoque se mide contra la posicion de la tira',
     /const \{ asoma, x \} = arrastre\(/.test(pes156) && /ponerDesenfoque\(desenfoqueEn\(x, ancho\)\)/.test(pes156), true);
   chequear('y al soltar va a donde va la tira',
-    /ponerDesenfoque\(desenfoqueEn\(llega, ancho\)\)/.test(pes156), true);
+    /moverFondo\(llega, ancho\)/.test(pes156), true);
   const iIrA156 = pes156.indexOf('const irA = useCallback(');
   const irA156 = pes156.slice(iIrA156, pes156.indexOf('eventos.escuchar(IR_A_PESTANA', iIrA156));
   chequear('tocar una pestana tambien lo mueve',
-    /const llega = reposo\(ORDEN\.indexOf\(destino\), ancho\);\s*ponerDesenfoque\(desenfoqueEn\(llega, ancho\)\)/.test(irA156), true);
+    /const llega = reposo\(ORDEN\.indexOf\(destino\), ancho\);\s*moverFondo\(llega, ancho\)/.test(irA156), true);
 
   // ---- CADA PESTANA TIENE SU TECHO (25/9) ----
   //
@@ -11485,16 +11487,18 @@ console.log('\n156. El planeta esta siempre, y fuera de Inicio se ve borroso');
   // 1. EL VELO: una vista opaca del color del fondo. No desenfoca; empuja el
   //    planeta hacia atras. Bajo de 0.4 a 0.2 cuando entro el desenfoque de
   //    verdad: los dos al maximo tapaban el planeta en vez de desenfocarlo.
-  chequear('el velo extra sube con la distancia a Inicio',
-    /opacity: desenfoque \* 0\.2/.test(fon156), true);
+  // DESDE EL 2/11 NO HAY NI VELO EXTRA NI DESENFOQUE: con el planeta como horizonte el fondo ya no compite
+  // con la lectura (sección 14 de la galería). Lo que queda del número es cuánto está tapado.
+  chequear('el velo extra se fue',
+    /opacity: desenfoque \* 0\.2/.test(fon156), false);
   // 2. EL DESENFOQUE DE VERDAD, con expo-blur. Un UIVisualEffectView no
   //    rasteriza a nadie: desenfoca lo que quedo DETRAS suyo una vez ya
   //    compuesto en pantalla, GL incluido. Es justo lo que filter no puede.
-  chequear('y encima va un BlurView, que si puede con GL',
-    /<BlurView[\s\S]*?intensity=\{Math\.round\(desenfoque \* \d+\)\}/.test(fon156), true);
+  chequear('y el BlurView del fondo también',
+    /<BlurView/.test(fon156), false);
   // SOLO SE MONTA CUANDO HACE FALTA: un UIVisualEffectView no es gratis ni con
   // intensidad cero, y en Inicio —donde el planeta importa— no tiene que estar.
-  chequear('y no existe en Inicio', /\{desenfoque > 0 && \(\s*<>/.test(fon156), true);
+  chequear('y el número sigue diciendo cuántos cuadros dibuja el motor', /aplicar\(true\)/.test(fon156), true);
   // LAS DOS VIAJAN JUNTAS: expo-blur mueve la huella, asi que una build que no
   // lo tiene no puede recibir este JS. No hay que cuidar que el velo sobre.
   chequear('expo-blur esta en las dependencias',
@@ -14080,6 +14084,7 @@ console.log('\n182. Las hojas nacen de nuevo en cada apertura');
     'movil/src/Album.tsx': 'el visor de fotos: su estado es qué foto se mira, y es de la pantalla',
     'movil/src/Descanso.tsx': 'el descanso sigue corriendo con la pantalla escondida: su estado es del temporizador',
     'movil/src/GraficoPasos.tsx': 'el estado es del gráfico; lo de la hoja de la meta vive adentro de la hoja',
+    'movil/src/PuertaDeMoss.tsx': 'la entrada es de Stats; lo de adentro no tiene nada que recordar: dice «Pronto»',
     'movil/src/BurbujasDelGrupo.tsx': 'la fila es de Inicio; el globo del amigo se monta recién al tocar una burbuja ({tocada && <GloboDelAmigo />}) y nace en cada apertura',
   };
   const clasificar182 = (ruta, texto) => {
@@ -16796,7 +16801,8 @@ console.log('\n204. Ocho arreglos de la cacería del 12/10, y la guarda de las m
   // ---- LA GUARDA: una migración no corre sobre una base más nueva ----
   // Casi pasa el 12/10: pegar la 66 encima de la 67 bajaba la versión y apagaba
   // "entrenar con otro" en todos los teléfonos, sin un error a la vista.
-  const migraciones = dir204(AQUI204).filter((f) => /^migracion-\d+.*\.sql$/.test(f)).sort();
+  // Por número: desde la 100, como texto «migracion-100» queda antes que «migracion-99».
+  const migraciones = dir204(AQUI204).filter((f) => /^migracion-\d+.*\.sql$/.test(f)).sort((a, b) => Number(/^migracion-(\d+)/.exec(a)[1]) - Number(/^migracion-(\d+)/.exec(b)[1]) || a.localeCompare(b));
   const queMuevenLaVersion = migraciones.filter((f) => /function public\.version_del_esquema\(\)/.test(leer204(join(AQUI204, f), 'utf8')));
   const guardaDe = (f) => {
     const texto = leer204(join(AQUI204, f), 'utf8').replace(/\r\n/g, '\n');
@@ -18361,7 +18367,7 @@ console.log('\n229. La rutina: en Inicio, en su pantalla, y se ordena arrastrand
   const fila = de229('movil', 'src', 'FilaRutina.tsx');
   // 16/10, a pedido: la rutina vuelve a Stats → Entrenamiento; en Inicio queda lo que toca hoy, que trae ahí.
   chequear('lo que toca hoy está en Inicio (no mientras se entrena) y lleva a la rutina, que volvió a Stats → Entrenamiento', [
-    /\{!sesion\.estado\.corriendo && <FilaRutina \/>\}/.test(inicio),
+    /<Aparece visible=\{!sesion\.estado\.corriendo\}>\s*<FilaRutina \/>/.test(inicio),
     /irAPestana\('stats'\);\s*pedirEntrenamiento\(\);/.test(fila),
     hay229(join(R229, 'movil', 'app', 'rutina.tsx')),
     /<MiRutina visible=\{pestana === 'entrenamiento'\}/.test(de229('movil', 'src', 'Stats.tsx')),
@@ -19122,7 +19128,7 @@ console.log('\n249. Los seis globitos de la primera vez salen de lo que explican
   chequear('cada uno en su lugar: el buscador, el +, la píldora del descanso, el buscador de gente, las fotos y el nombre de la rutina', [
     /<GloboPrimeraVez cual="elegir"/.test(de249('movil', 'src', 'SelectorEjercicio.tsx')),
     /globoDelMas=\{\(colaX\) => \(\s*<GloboPrimeraVez cual="series" colaX=\{colaX\}/.test(de249('movil', 'src', 'Inicio.tsx')),
-    /globoDelMas\(\(anchoBotones - 8\) \/ 4 \+ 8 \+ \(\(anchoBotones - 8\) \* 3\) \/ 8\)/.test(de249('movil', 'src', 'Bloque.tsx')),
+    /globoDelMas\(ANCHO_MENOS \+ 8 \+ \(anchoBotones - ANCHO_MENOS - 8\) \/ 2\)/.test(de249('movil', 'src', 'Bloque.tsx')),
     /<GloboPrimeraVez cual="descanso" colaX=\{anchoCabecera - anchoPildora \/ 2\}/.test(de249('movil', 'src', 'Inicio.tsx')),
     /<GloboPrimeraVez cual="amigos"/.test(de249('movil', 'src', 'Ranking.tsx')),
     /<GloboPrimeraVez cual="album"/.test(de249('movil', 'src', 'Album.tsx')),
@@ -20212,7 +20218,8 @@ console.log('\n285. Anotar el peso: el número grande, − y + y la regla (20/10
   const marcas = RP.marcasDeRegla(71.3, 200);
   const entera = marcas.find((m) => m.etiqueta === '71');
   chequear('las rayitas: la del 71 cae tres décimas a la izquierda de la aguja', [Math.round((100 - entera.x) / RP.PX_POR_DECIMA), entera.alto, marcas.every((m) => m.x > -RP.PX_POR_DECIMA * 2 && m.x < 200 + RP.PX_POR_DECIMA * 2)], [3, 'entero', true]);
-  const ap = sinComentarios(deBug('movil', 'src', 'AnotarPeso.tsx'));
+  // Desde el 2/11 la regla y sus botones son una pieza: la usa también la meta de pasos.
+  const ap = sinComentarios(deBug('movil', 'src', 'AnotarPeso.tsx')) + sinComentarios(deBug('movil', 'src', 'ReglaConBotones.tsx'));
   chequear('la pantalla: sin teclado, colores fijos, y los botones con onPress (onPressIn se pierde en un toque corto en la web)', [
     /TextInput/.test(ap), /from '\.\/colores'|usePaleta/.test(ap), /onPressIn/.test(ap), /onPress=\{\(\) => alMover\(paso\)\}/.test(ap), /delayLongPress=\{APRETADO_MS\}/.test(ap),
   ], [false, false, false, true, true]);
@@ -20238,8 +20245,10 @@ console.log('\n287. La rutina de Stats → Entrenamiento muestra sus ejercicios 
   // Solo se abría hoy: un día sin nada dejaba la rutina sin un ejercicio a la vista. La
   // prueba de verdad es la de test:real (probar-rutina-en-perfil); esto pinea la línea.
   const mr = sinComentarios(deBug('movil', 'src', 'MiRutina.tsx'));
-  chequear('fuera de editar, todos los días abiertos; la deducida también', [
-    /testID="rutina-guardada"/.test(mr) && /abiertos=\{!editando\}/.test(mr),
+  // Desde el 2/11 («Tu rutina» en la galería) llegan plegados y se abre uno solo: el de hoy, o el próximo
+  // con algo. Es lo que cuida lo de arriba: que la rutina no quede sin un ejercicio a la vista.
+  chequear('llegan plegados y se abre el primero con algo; la deducida, abierta', [
+    /testID="rutina-guardada"/.test(mr) && /abiertoAlEmpezar=\{abrirHoy \? diaParaAbrir\(actual\.dias\) : undefined\}/.test(mr) && /\n\s*llega\n/.test(mr.replace(/\r\n/g, '\n')),
     /<RutinaPlegada dias=\{deducida\} catalogo=\{catalogo\} soloConAlgo abiertos testID="rutina-deducida" \/>/.test(mr),
   ], [true, true]);
 }
@@ -20288,7 +20297,7 @@ console.log('\n290. Con todos los días abiertos, la rutina no muestra flechitas
   const rp = sinComentarios(deBug('movil', 'src', 'RutinaPlegada.tsx'));
   chequear('la flechita y el toque, solo cuando se puede plegar', [
     /disabled=\{abiertos\}/.test(rp),
-    /\{!abiertos && <Text style=\{estilos\.flecha\}>/.test(rp),
+    /\{!abiertos && <FlechaQueGira abierta=\{esAbierto\} \/>\}/.test(rp),
   ], [true, true]);
 }
 console.log('\n291. El fin del descanso con la app abierta vibra como un despertador, y la píldora se sacude (20/10)');
@@ -20582,10 +20591,10 @@ console.log('\n302. Las vidas son estrellas: en Inicio, arriba de los días; en 
   const ini = sinCom302(deBug('movil', 'src', 'Inicio.tsx'));
   chequear('Inicio: una estrella por vida, llena la que queda y en contorno la usada, y ni un punto', [
     // Desde el 21/10 la fila son las tres, con la que falta ganar punteada (ver la 308).
-    /modosDeLasVidas\(impulsos\)\.map\(\(modo, i\) => \(\s*<(Estrella key=\{i\} tam=\{16\}|EstrellaQueTitila key=\{i\} indice=\{i\}) modo=\{modo\} \/>/.test(ini),
+    /modosDeLasVidas\(impulsos\)\.map\(\(modo, i\) => \(\s*<(Estrella key=\{i\} tam=\{16\}|EstrellaQueTitila key=\{i\} indice=\{i\}) modo=\{modo\}( tam=\{18\})? \/>/.test(ini),
     /estilos\.impulsoVivo|impulso: \{ width: 7/.test(ini),
   ], [true, false]);
-  chequear('y la fila va arriba de los días', [ini.indexOf('testID="vidas-inicio"') > -1, ini.indexOf('testID="vidas-inicio"') < ini.indexOf('testID="tira-inicio"')], [true, true]);
+  chequear('y la fila va arriba de los días', [ini.indexOf('testID="vidas-inicio"') > -1, ini.lastIndexOf('<VidasDeInicio impulsos={impulsos} />') < ini.indexOf('testID="tira-inicio"')], [true, true]);
   const av = sinCom302(deBug('movil', 'src', 'RachaSalvada.tsx'));
   const enOrden = ['testID="aviso-vidas"', 'style={estilos.tira}', 'testID="vida-cuadro"', 'testID="vida-emblema"', 'testID="vida-usar"'].map((m) => av.indexOf(m));
   chequear('el aviso: las vidas arriba de la semana, y el cuadro con su estrella arriba y la de «Usar vida»', [
@@ -20949,8 +20958,8 @@ console.log('\n316. Los días faltados del año: la rutina de cada día, con fec
 
   await db.query('delete from auth.users where id = $1', [u316b]);
   chequear('dar de baja la cuenta no tropieza con el trigger y no deja renglones', (await db.query('select count(*)::int n from rutina_semanas where user_id = $1', [u316b])).rows[0].n, 0);
-  chequear('Stats la muestra siempre, como cuarta celda, contando desde el alta de la cuenta', [
-    /\.\.\.celdaFaltados\(datos\.faltados\)/.test(deBug('movil', 'src', 'Stats.tsx')) && /aISO\(new Date\(alta\)\), hoyISO\(\)\)/.test(deBug('movil', 'src', 'Stats.tsx')),
+  chequear('Stats la muestra siempre, entre los números chicos, contando desde el alta de la cuenta', [
+    /faltados=\{datos\.faltados\}/.test(deBug('movil', 'src', 'Stats.tsx')) && /aISO\(new Date\(alta\)\), hoyISO\(\)\)/.test(deBug('movil', 'src', 'Stats.tsx')),
     /'✓'/.test(deBug('movil', 'src', 'Stats.tsx')),
     // Sin la 97 no se pide la tabla: era un 404 en cada visita a Stats (lo vio test:real).
     /disponible\('diasFaltados', await versionDelEsquema\(supabase\)\)\s*\? await supabase\.from\('rutina_semanas'\)/.test(deBug('movil', 'src', 'Stats.tsx')),
@@ -21279,10 +21288,11 @@ console.log('\n321. El piso de 4,5:1 de la nativa: los colores y lo que los aten
   const inicio321 = leer321(join(raiz321, 'movil', 'src', 'Inicio.tsx'), 'utf8');
   const velo321 = leer321(join(raiz321, 'movil', 'src', 'VeloDeLectura.tsx'), 'utf8');
   const raizF321 = leer321(join(raiz321, 'movil', 'src', 'FondoRaiz.tsx'), 'utf8');
-  chequear('el velo de lectura está en la raíz del fondo, y a la mitad solo en Inicio en reposo', [
-    /<VeloDeLectura entero=\{!op\.lecturaMedia\} \/>/.test(raizF321),
-    /lecturaMedia=\{!sesion\.estado\.corriendo && !cierre\}/.test(inicio321),
-    /toValue: entero \? 1 : 0\.5/.test(velo321),
+  // Desde el 2/11, cuánto lo dice `velosDe`: donde el planeta hace de horizonte, lo oscuro lo pone su noche.
+  chequear('el velo de lectura está en la raíz del fondo, y cuánto lo dice el horizonte', [
+    /<VeloDeLectura cuanto=\{lectura\} \/>/.test(raizF321),
+    /lecturaMedia=\{!sesion\.estado\.corriendo && !cierre && !registradoHoy\}/.test(inicio321),
+    /toValue: cuanto/.test(velo321),
   ], [true, true, true]);
   // Sin esto, en la vista web el motor no arranca y test:real mide el texto contra el vacío: fue así del 28/10 al 30/10.
   for (const f of ['EstrellaQueTitila.tsx', 'PuntoDelDia.tsx', 'RachaSalvada.tsx', 'CampoEstelar.tsx']) {
@@ -21342,7 +21352,7 @@ console.log('\n323. Una sola paleta para toda la nativa (30/10)');
   const fuentes323 = ['movil/src', 'movil/app'].flatMap((d) => dir323(join(raiz323, d), { recursive: true, withFileTypes: true })
     .filter((e) => e.isFile() && /\.tsx?$/.test(e.name) && !e.parentPath.includes('node_modules'))
     .map((e) => join(e.parentPath, e.name)));
-  const FUERA323 = /[\\/](colores\.ts|coloresFijos\.ts|Minimo\.tsx|Raiz\.tsx|HudDiagnostico\.tsx|useTema\.ts)$|bienvenida[\\/]/;
+  const FUERA323 = /[\\/](colores\.ts|coloresFijos\.ts|coloresDeMoss\.ts|Minimo\.tsx|Raiz\.tsx|HudDiagnostico\.tsx|useTema\.ts)$|bienvenida[\\/]/;
   // El logo y la estrella de las vidas son dibujos con sus colores, iguales en todos los rangos.
   const CON_COLOR323 = /(EntradaDeLaApp\.tsx|Estrella\.tsx)$/;
   const TENIDO323 = /(?<![A-Za-z0-9_])C\.(fondo|claro|principal|linea|lineaFuerte|diaLleno|diaVacio|bordeChip|bordeMeta|fondoMeta|bordeSerie|bordeOcto|cuadro|celdaVacia|barra[A-Z]\w*)(?![A-Za-z0-9_])/;
@@ -21399,7 +21409,8 @@ console.log('\n324. Las letras de la nativa: Inter, Outfit solo para la racha, G
   chequear('nadie usa el Text de React Native: pasaría por la fuente del sistema', conTextoDeRN.map((r) => r.slice(raiz324.length + 1)), []);
   chequear('ni Animated.Text', fuentes324.filter((r) => !RN324.test(r) && /Animated\.Text(?![A-Za-z0-9_])/.test(leer324(r, 'utf8'))).map((r) => r.slice(raiz324.length + 1)), []);
   const conRacha = fuentes324.filter((r) => /L\.racha/.test(leer324(r, 'utf8')) && !/[\\/]Texto\.tsx$/.test(r)).map((r) => r.split(/[\\/]/).pop()).sort();
-  chequear('Outfit es solo el número de la racha', conRacha, ['Inicio.tsx', 'RachaConRotulo.tsx', 'VidasExplicadas.tsx']);
+  // Desde el 2/11 («Cifras») es el número grande de cada pantalla: la racha, la serie, los días del año.
+  chequear('Outfit es solo el número grande', conRacha, ['Bloque.tsx', 'CifrasDelAno.tsx', 'Inicio.tsx', 'RachaConRotulo.tsx']);
 
   const fu324 = leer324(join(raiz324, 'movil', 'src', 'fuentes.ts'), 'utf8');
   const archivos324 = [...fu324.matchAll(/require\('\.\.\/assets\/fuentes\/([A-Za-z0-9_]+)\.ttf'\)/g)].map((m) => m[1]);
@@ -21448,7 +21459,8 @@ console.log('\n325. La forma de la nativa: octágono o píldora (30/10)');
   const DIBUJOS325 = ['PuntoDelDia.tsx', 'Bloque.tsx'];
   chequear('ningún radio del medio', delMedio325.filter((d) => !DIBUJOS325.some((f) => d.includes('/' + f + ':'))), []);
   const stats325 = leer325(join(raiz325, 'movil', 'src', 'Stats.tsx'), 'utf8');
-  chequear('las cuatro cifras de Stats van en caja cortada', [/<Caja key=\{c\.e\} style=\{estilos\.celda\}>/.test(stats325), /valor: \{ \.\.\.R\.cifra \}/.test(stats325)], [true, true]);
+  // Desde el 2/11 («Cifras») van sin caja: un número grande y tres chicos.
+  chequear('las cifras de Stats ya no van en caja', [/<Caja key=\{c\.e\} style=\{estilos\.celda\}>/.test(stats325), /valor: \{ \.\.\.R\.cifra \}/.test(stats325)], [false, false]);
   const spec325 = leer325(join(raiz325, 'spec', 'estetica.md'), 'utf8');
   chequear('la spec dice las dos decisiones', [/octágono o píldora/i.test(spec325), /caja cortada/i.test(spec325)], [true, true]);
   // Los roles se dicen una vez: una etiqueta copiada a mano es lo que esta técnica vino a sacar.
@@ -21491,7 +21503,7 @@ console.log('\n327. El movimiento de la nativa: llega con una curva, se va más 
   const hoja327 = leer327(join(raiz327, 'movil', 'src', 'Hoja.tsx'), 'utf8');
   chequear('la hoja sube sola y el velo no sube con ella', [/animationType="none"/.test(hoja327), /useQueSube\(visible\)/.test(hoja327), /estilos\.fondo, \{ opacity: avance/.test(hoja327)], [true, true, true]);
   // Lo tocable se hunde. Lo que queda afuera tapa una pantalla entera, o usa `pressed` para otra cosa.
-  const SIN_HUNDIR327 = new Set(['CampoTexto.tsx', 'AnotarPeso.tsx', 'BurbujasDelGrupo.tsx', 'CalendarioDias.tsx', 'DiaListo.tsx', 'FilaRutina.tsx', 'FilasArrastrables.tsx', 'FotoGrande.tsx', 'Globito.tsx', 'Hoja.tsx', 'ListaDePesos.tsx', 'RachaSalvada.tsx', 'Ranking.tsx', 'RutinaDe.tsx', 'RutinaPlegada.tsx', 'SubidaRango.tsx', 'VentanaRutina.tsx', 'Bloque.tsx']);
+  const SIN_HUNDIR327 = new Set(['CampoTexto.tsx', 'AnotarPeso.tsx', 'ReglaConBotones.tsx', 'BurbujasDelGrupo.tsx', 'CalendarioDias.tsx', 'DiaListo.tsx', 'FilaRutina.tsx', 'FilasArrastrables.tsx', 'FotoGrande.tsx', 'Globito.tsx', 'Hoja.tsx', 'ListaDePesos.tsx', 'RachaSalvada.tsx', 'Ranking.tsx', 'RutinaDe.tsx', 'RutinaPlegada.tsx', 'SubidaRango.tsx', 'VentanaRutina.tsx', 'Bloque.tsx']);
   chequear('todo lo tocable se hunde', fuentes327.filter((r) => !FUERA327.test(r) && /<Pressable(?![A-Za-z])/.test(sinComentarios(leer327(r, 'utf8'))) && !SIN_HUNDIR327.has(r.split(/[\\/]/).pop())).map((r) => r.split(/[\\/]/).pop()), []);
   const paq327 = JSON.parse(leer327(join(raiz327, 'movil', 'package.json'), 'utf8'));
   chequear('sin Reanimated: lo que lo necesita queda para la 1.2.0, y esto sale por OTA', 'react-native-reanimated' in paq327.dependencies, false);
@@ -21514,7 +21526,6 @@ console.log('\n328. Menos texto, más visual: lo que se dejó de leer, VoiceOver
     ['T.ajustes.mostrarUltimaVezNota', 'Ajustes.tsx'], ['T.ajustes.registrarRepsNota', 'Ajustes.tsx'],
     ['T.ajustes.metaPasosNota', 'ajustes/MetaDePasos.tsx'],
     ['T.album.vacioPie', 'AlbumVacio.tsx'],
-    ['T.social.vacioPie', 'SocialVacio.tsx'],
     ['T.rutina.arrastrarAyuda', 'FilasArrastrables.tsx'],
   ];
   const escrita328 = (k) => {
@@ -21537,10 +21548,6 @@ console.log('\n328. Menos texto, más visual: lo que se dejó de leer, VoiceOver
   // El doble de Salud de la sonda no puede llegar a la app publicada.
   chequear('el doble de Salud, solo en desarrollo', [/saludDeSonda = __DEV__ \? /.test(de328('plataforma/index.ts')), /salud: saludDeSonda \?\? saludNativa/.test(de328('plataforma/index.ts'))], [true, true]);
   const PA328 = await import('../nucleo/pasos.ts');
-  const { min: min328, max: max328, paso: paso328 } = PA328.META_DESLIZADOR;
-  chequear('la barra se mueve entre metas que se pueden guardar, y la de omisión cae en un paso', [PA328.metaValida(min328), PA328.metaValida(max328), PA328.META_PASOS_POR_OMISION >= min328 && PA328.META_PASOS_POR_OMISION <= max328, (PA328.META_PASOS_POR_OMISION - min328) % paso328], [true, true, true, 0]);
-  const des328 = de328('Deslizador.tsx');
-  chequear('y se arrastra con lo que trae React Native, y con VoiceOver', [/PanResponder\.create/.test(des328), /accessibilityRole="adjustable"/.test(des328), /gesture-handler|reanimated/.test(des328)], [true, true, false]);
   chequear('el recorrido está en test:real', /probar-menos-texto\.mjs/.test(leer328(join(raiz328, 'supabase', 'pruebas-reales.mjs'), 'utf8')), true);
 }
 console.log('\n329. Los gráficos de línea: el progreso de un ejercicio y el tiempo a escala (1/11)');
@@ -21673,6 +21680,118 @@ console.log('\n329. Los gráficos de línea: el progreso de un ejercicio y el ti
   chequear('la ventana sin dos anotaciones lo dice, con los botones para volver', /T\.stats\.pesoSinVentana/.test(pe329), true);
   chequear('el objetivo llega a la gráfica', /objetivo=\{objetivoPeso\}/.test(de329('movil', 'src', 'StatsGeneral.tsx')), true);
   chequear('el recorrido está en test:real', /probar-progreso\.mjs/.test(leer329(join(raiz329, 'supabase', 'pruebas-reales.mjs'), 'utf8')), true);
+}
+console.log('\n330. La vuelta grande: cielo, horizonte, cifras, barra, rutina, movimiento, y lo que se pidió encima (2/11)');
+{
+  const { readFileSync: leer330, existsSync: hay330 } = await import('node:fs');
+  const raiz330 = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const de330 = (...p) => sinComentarios(leer330(join(raiz330, ...p), 'utf8')).replace(/\r\n/g, '\n');
+  const app330 = (a) => de330('movil', 'src', a);
+
+  // ---- LA INVITACIÓN: 15 MINUTOS EN SOCIAL, Y LA MECHA ES LO QUE ESTÁ EN PANTALLA ----
+  const [a330, b330] = [await nuevoUsuario(), await nuevoUsuario()];
+  await db.query(`insert into friendships (solicitante, destinatario, estado) values ($1, $2, 'aceptada')`, [a330, b330]);
+  const como330 = async (u, sql, args = []) => {
+    await comoUsuario(u);
+    return (await db.query(sql, args)).rows;
+  };
+  const uniones330 = async (u) => (await como330(u, 'select mis_uniones() as v'))[0].v;
+  for (const u of [a330, b330]) await como330(u, 'select iniciar_sesion()');
+  chequear('A invita a B', (await como330(a330, 'select invitar_al_grupo($1) as v', [b330]))[0].v, 'ok');
+  await db.exec('reset role');
+  const dura330 = async () => (await db.query(`select extract(epoch from hasta - creado)::int as s from entrenos_compartidos where solicitante = $1 and destinatario = $2`, [a330, b330])).rows[0]?.s;
+  chequear('la invitación dura 15 minutos', await dura330(), 900);
+  const vencer330 = async () => {
+    await db.exec('reset role');
+    await db.query(`update entrenos_compartidos set hasta = now() - interval '1 second' where solicitante = $1 and destinatario = $2`, [a330, b330]);
+  };
+  chequear('mientras dura, B la ve', (await uniones330(b330)).map((u) => u.tipo), ['invitacion']);
+  const id330 = (await uniones330(b330))[0].id;
+  await vencer330();
+  chequear('vencida, ya no la ve ninguno de los dos', [(await uniones330(b330)).length, (await uniones330(a330)).length], [0, 0]);
+  await como330(b330, 'select responder_union($1, true)', [id330]);
+  chequear('y aceptarla no mete a nadie en el grupo', (await uniones330(b330)).filter((u) => u.estado === 'aceptada').length, 0);
+  chequear('una vencida no traba la siguiente, y la nueva es otra (el cartel se muestra de nuevo)', [
+    (await como330(a330, 'select invitar_al_grupo($1) as v', [b330]))[0].v,
+    (await uniones330(b330)).map((u) => u.id === id330),
+  ], ['ok', [false]]);
+  await vencer330();
+  await db.exec('reset role');
+  const cartel330 = app330('CartelDeArriba.tsx');
+  chequear('quemar la mecha no contesta: la invitación sigue en Social', [/acepta !== null\) void responderUnion/.test(cartel330), /responderUnion\(supabase, novedad\.id, acepta === true\)/.test(cartel330)], [true, false]);
+  chequear('Social la dibuja, con Aceptar y No, y Inicio no le pone tarjeta', [/T\.social\.teInvita/.test(app330('Juntos.tsx')), /juntos-aceptar/.test(app330('Juntos.tsx')), /!u\.invitacion/.test(app330('EnVivoDeInicio.tsx'))], [true, true, true]);
+
+  // ---- INICIAR GRUPO: LA LISTA DE LOS QUE ENTRENAN ----
+  const bur330 = app330('BurbujasDelGrupo.tsx');
+  chequear('«Iniciar grupo» abre la lista, no entrena ni comparte nada', [/alIniciarGrupo/.test(bur330), /linkDelGrupo|Share\./.test(bur330), /linkDelGrupo/.test(app330('Inicio.tsx')), /iniciar-grupo-invitar/.test(bur330)], [false, false, false, true]);
+  chequear('sin nadie entrenando lo dice, y no hay nada para tocar', /amigos\.length === 0 \?[\s\S]{0,320}T\.inicio\.nadieEntrenando/.test(bur330), true);
+
+  // ---- LA META DE PASOS, CON LA REGLA ----
+  const PA330 = await import('../nucleo/pasos.ts');
+  chequear('la regla no se sale de lo que se puede guardar', [PA330.metaValida(PA330.metaAcotada(0)), PA330.metaValida(PA330.metaAcotada(1e9)), PA330.metaAcotada(8049)], [true, true, 8000]);
+  chequear('arrastrar a la izquierda sube: de a 100 por marca', [PA330.metaArrastrada(8000, -PA330.PX_POR_CIEN), PA330.metaArrastrada(8000, PA330.PX_POR_CIEN * 2)], [8100, 7800]);
+  const marcas330 = PA330.marcasDeMeta(8000, 180, String);
+  const enElMedio330 = marcas330.find((m) => m.etiqueta === '8000');
+  chequear('el mil lleva número y cae debajo de la aguja', [enElMedio330?.x, enElMedio330?.alto], [90, 'entero']);
+  chequear('afuera de los topes no hay rayas', [PA330.marcasDeMeta(PA330.META_PASOS_MIN, 180).every((m) => m.x >= 90), PA330.marcasDeMeta(PA330.META_PASOS_MAX, 180).every((m) => m.x <= 90)], [true, true]);
+  chequear('se elige con la misma regla que el peso, sin barra', [/ReglaConBotones/.test(app330('ajustes/MetaDePasos.tsx')), /ReglaConBotones/.test(app330('AnotarPeso.tsx')), hay330(join(raiz330, 'movil', 'src', 'Deslizador.tsx'))], [true, true, false]);
+
+  // ---- SOCIAL SIN AMIGOS: LA ESTRELLA ----
+  const soc330 = app330('SocialVacio.tsx');
+  chequear('la estrella es un botón, dice qué hace y termina al lado de invitar', [/testID="social-estrella"[\s\S]{0,160}accessibilityRole="button"/.test(soc330), /T\.social\.vacioBoton/.test(soc330), /T\.social\.vacioInvitar/.test(soc330), /compartirInvitacion/.test(soc330)], [true, true, true, true]);
+  chequear('con «reducir movimiento» no viaja, y no toca datos', [/sinMovimiento\(\)/.test(soc330), /supabase|\.rpc\(/.test(soc330)], [true, false]);
+  const ran330 = app330('Ranking.tsx');
+  chequear('sin amigos, el buscador lo trae ella y la píldora de abajo no se repite', [/sinAmigos \? \(\s*<SocialVacio/.test(ran330), /!sinAmigos && \(\s*<View style=\{estilos\.seccion\}>\s*<InvitarConLink/.test(ran330)], [true, true]);
+
+  // ---- HORIZONTE ----
+  const HO330 = await import('../nucleo/horizonte.ts');
+  chequear('lo que tiene superficie es lo que hace de horizonte', [1, 2, 3, 4, 5, 6, 7].map(HO330.tieneBorde), [false, true, true, true, false, false, false]);
+  chequear('asoma mucho en Inicio, menos entrenando, y apenas en el resto', ['alta', 'media', 'baja'].map((h) => { const c = HO330.cuerpoEn(4, 'Marte', h); return c.y - c.R; }), [505, 640, 768]);
+  chequear('Saturno, más chico: lleva sus anillos', HO330.cuerpoEn(4, 'Saturno', 'alta').R < HO330.cuerpoEn(4, 'Marte', 'alta').R, true);
+  chequear('cada pantalla sabe cuál le toca', [HO330.alturaDe('abajo-derecha', true), HO330.alturaDe('abajo-derecha', false), HO330.alturaDe(undefined, false), HO330.alturaDe('arriba-derecha', false)], ['alta', 'media', 'baja', 'baja']);
+  const lug330 = HO330.horizonteDe(4, 'Marte');
+  chequear('al mundo del motor: la cima de Inicio cae donde debe', Math.round((1 - (lug330.lugares['abajo-derecha'].y + lug330.radio)) * 422), 505);
+  const raiz330F = app330('FondoRaiz.tsx');
+  chequear('lo pide la nativa, con el cielo; la web sigue igual', [/cielo: true, horizonte: horizonteDe/.test(raiz330F), /horizonte|cielo:/.test(de330('src', 'motor', 'escena.ts'))], [true, false]);
+  chequear('se fueron las elipses y el desenfoque del fondo', [/ElipsesDeLuz/.test(raiz330F), /BlurView/.test(raiz330F)], [false, false]);
+  chequear('y NO hay arco sobre el planeta: la barra de progreso se queda', [/punta-del-progreso/.test(app330('RachaConRotulo.tsx')), /marcas|arcoLleno|dibujarArco/.test(raiz330F)], [true, false]);
+
+  // ---- CIELO ----
+  const fir330 = de330('compartido', 'motor', 'firmamento.ts');
+  chequear('sin texturas ni canvas: expo-gl no tiene texStorage2D, y three lo pide', /DataTexture|CanvasTexture|WebGLRenderTarget|getContext\(|document\./.test(fir330), false);
+  chequear('siempre el mismo cielo para el mismo rango', /Math\.random/.test(fir330), false);
+
+  // ---- CIFRAS ----
+  const BL330 = await import('../nucleo/bloques.ts');
+  chequear('las series arrancan en ×2, y sigue el +', [[...BL330.METAS], BL330.pildorasDeMeta(3), /testID="meta-a-mano"/.test(app330('Bloque.tsx'))], [[2, 3, 4, 5], [2, 3, 4, 5], true]);
+  chequear('el número grande reemplaza a los circulitos, y VoiceOver sigue leyendo «de cuántas»', [/PuntoDeSerie/.test(app330('Bloque.tsx')), /cuenta-de-series[\s\S]{0,140}T\.sesion\.deMeta/.test(app330('Bloque.tsx'))], [false, true]);
+  const fue330 = app330('fuentes.ts');
+  chequear('el número usa Outfit liviana, y el archivo está', [/n <= 200 \? 'Outfit_200ExtraLight'/.test(fue330), hay330(join(raiz330, 'movil', 'assets', 'fuentes', 'Outfit_200ExtraLight.ttf'))], [true, true]);
+  chequear('sin rótulos a la vista, y VoiceOver los dice', [/accessibilityLabel=\{T\.impulso\.titulo\}/.test(app330('Inicio.tsx')), /T\.rutina\.hoyRotulo/.test(app330('FilaRutina.tsx')), /estiloLetra/.test(app330('Inicio.tsx'))], [true, false, false]);
+  chequear('los números de Stats sin caja, y el año entero se abre tocando los meses', [/<Caja /.test(app330('Stats.tsx')), /anoAbierto/.test(app330('StatsGeneral.tsx')), /meses-del-ano/.test(app330('CifrasDelAno.tsx'))], [false, true, true]);
+
+  // ---- LA BARRA ----
+  const AR330 = await import('../nucleo/arcoDeLaBarra.ts');
+  const barra330 = app330('Pestanas.tsx');
+  chequear('sin caja ni línea recta: lo de abajo del arco va borroso', [/borderTopWidth/.test(barra330.slice(barra330.indexOf('barra: {'), barra330.indexOf('barra: {') + 120)), /BlurView/.test(app330('ArcoDeLaBarra.tsx')), /borderRadius: radio/.test(app330('ArcoDeLaBarra.tsx'))], [false, true, true]);
+  chequear('el nombre va debajo del icono, donde no pisa el arco', barra330.indexOf("testID={'nombre-' + p}") > barra330.indexOf("testID={'luz-' + p}"), true);
+  chequear('los iconos siguen siendo los mismos', /<IconoDePestana cual=\{p\} color=\{C\.apagado\} \/>/.test(barra330), true);
+  chequear('el arco: arriba en el medio, y en los costados baja hasta el borde', [AR330.alturaDelArco(195, 390), AR330.alturaDelArco(0, 390), AR330.alturaDelArco(390, 390)], [0, AR330.SUBE_EL_ARCO, AR330.SUBE_EL_ARCO]);
+  const r330 = AR330.radioDelArco(390);
+  chequear('y el círculo que recorta lo borroso pasa por ahí mismo', Math.round(r330 - Math.sqrt(r330 * r330 - 195 * 195)), AR330.SUBE_EL_ARCO);
+
+  // ---- TU RUTINA Y EL MOVIMIENTO ----
+  const pl330 = app330('RutinaPlegada.tsx');
+  chequear('abrir un día corre, y con todos', [/<Aparece visible=\{esAbierto\}>/.test(pl330), /FlechaQueGira/.test(pl330)], [true, true]);
+  chequear('las rayas se dibujan y hoy se abre solo, si el dedo no eligió otro', [/RayaQueSeDibuja/.test(pl330), /if \(!tocado\.current\) setAbierto\(abiertoAlEmpezar\)/.test(pl330)], [true, true]);
+  chequear('con «reducir movimiento» nada de esto viaja', ['RutinaPlegada.tsx', 'NumeroQueRueda.tsx', 'Entra.tsx', 'PuertaDeMoss.tsx', 'DiaDeLaTira.tsx', 'CifrasDelAno.tsx'].filter((a) => !/sinMovimiento\(\)/.test(app330(a))), []);
+  chequear('la cascada es solo tocando la barra: deslizando, la pantalla ya venía a la vista', [/setLlegadas\(\(n\) => n \+ 1\)/.test(barra330.slice(barra330.indexOf('const irA = useCallback'), barra330.indexOf('const pan = useMemo'))), (barra330.match(/setLlegadas\(/g) ?? []).length], [true, 1]);
+
+  // ---- MOSS ----
+  const mo330 = app330('PuertaDeMoss.tsx');
+  chequear('se entra tirando desde el tope o tocando, y se vuelve', [/onScrollEndDrag/.test(app330('Stats.tsx')), /TIRON_PARA_ENTRAR/.test(app330('Stats.tsx')), /entrada-a-moss/.test(mo330), /moss-volver/.test(mo330), /T\.moss\.pronto/.test(mo330)], [true, true, true, true, true]);
+  chequear('con las letras de Moss, cargadas aparte', [/cargarFuentesDeMoss\(\)/.test(mo330), ['CormorantGaramond_400Regular_Italic', 'Jost_400Regular'].every((f) => hay330(join(raiz330, 'movil', 'assets', 'fuentes', f + '.ttf')))], [true, true]);
+  chequear('los colores de Moss no se tiñen, y el rango no los toca', [/from '\.\/colores'/.test(mo330), /C\.claro/.test(mo330)], [false, false]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
