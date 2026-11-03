@@ -116,11 +116,15 @@ try {
   });
   chequear('el sólido lleva su luz dibujada, cuatro anillos', anillos, { poligonos: 5, color: CLARO });
   const barra = await page.locator('[role="tablist"]').first().evaluate((n) => {
-    // Desde el 2/11 lo borroso va adentro del arco: un círculo enorme lo recorta.
+    // Desde el 3/11 sin desenfoque: el recortado por un círculo enorme es el sospechoso del reinicio del teléfono.
     const hijos = [...n.querySelectorAll('*')];
-    return { desenfoque: hijos.some((h) => /blur/.test(getComputedStyle(h).backdropFilter || getComputedStyle(h).webkitBackdropFilter || '')), fondo: getComputedStyle(n).backgroundColor };
+    return {
+      desenfoque: hijos.some((h) => /blur/.test(getComputedStyle(h).backdropFilter || getComputedStyle(h).webkitBackdropFilter || '')),
+      oscuro: !!n.querySelector('[data-testid="arco-de-la-barra"] path[fill^="url("]'),
+      fondo: getComputedStyle(n).backgroundColor,
+    };
   });
-  chequear('la barra de abajo es translúcida y desenfoca', barra, { desenfoque: true, fondo: 'rgba(0, 0, 0, 0)' });
+  chequear('la barra de abajo es translúcida: oscura con la forma del arco, sin desenfoque', barra, { desenfoque: false, oscuro: true, fondo: 'rgba(0, 0, 0, 0)' });
   const luzDelIcono = await page.getByTestId('luz-inicio').first().evaluate((n) => {
     const boton = n.closest('button') ?? n.parentElement.parentElement;
     return [...boton.querySelectorAll('[stroke-opacity]')].some((p) => Number(p.getAttribute('stroke-opacity')) < 0.3);
