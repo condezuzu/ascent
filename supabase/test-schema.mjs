@@ -12667,12 +12667,14 @@ console.log('\n168. El guardian de la OTA: EAS corre adentro de movil, con la CL
   // qué deja pasar el guardián.
   const { mkdtempSync, mkdirSync: carpeta168, writeFileSync: escribir168, rmSync } = await import('node:fs');
   const { tmpdir } = await import('node:os');
-  const paquete = (sellos) => {
+  const DIRECCION = 'https://proyecto.supabase.co';
+  const LLAVE = 'eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYW5vbiJ9.firma-de_prueba';
+  const paquete = (sellos, supabase = DIRECCION + '\u0000' + LLAVE) => {
     const dist = mkdtempSync(unir168(tmpdir(), 'ascent-dist-'));
     for (const [plataforma, textos] of Object.entries(sellos)) {
       carpeta168(unir168(dist, '_expo', 'static', 'js', plataforma), { recursive: true });
       // Como en el paquete de verdad: los textos van pegados, entre bytes sueltos.
-      escribir168(unir168(dist, '_expo', 'static', 'js', plataforma, 'index-abc.hbc'), Buffer.from('\u0000\u0001basura' + textos.join('') + 'tate\u0000', 'latin1'));
+      escribir168(unir168(dist, '_expo', 'static', 'js', plataforma, 'index-abc.hbc'), Buffer.from('\u0000\u0001basura' + textos.join('') + 'tate\u0000' + supabase + '\u0000', 'latin1'));
     }
     return dist;
   };
@@ -12680,8 +12682,8 @@ console.log('\n168. El guardian de la OTA: EAS corre adentro de movil, con la CL
   const SIN = 'ascent-sello:EXPO_PUBLIC_DIAGNOSTICO=no;';
   const MIN_NO = 'ascent-sello:EXPO_PUBLIC_MINIMO=no;';
   const MIN_SI = 'ascent-sello:EXPO_PUBLIC_MINIMO=1;';
-  const revisar = (canal, sellos) => {
-    const dist = paquete(sellos);
+  const revisar = (canal, sellos, supabase) => {
+    const dist = paquete(sellos, supabase);
     try {
       return H.revisarPaquete(canal, dist).length;
     } finally {
@@ -12699,6 +12701,12 @@ console.log('\n168. El guardian de la OTA: EAS corre adentro de movil, con la CL
   chequear('ni uno con los dos sellos a la vez', revisar('store', { ios: [SIN, CON, MIN_NO], android: [SIN, MIN_NO] }) > 0, true);
   // Sin sello no se pudo comprobar: tampoco se sube.
   chequear('un paquete sin sello no se sube', [revisar('store', { ios: [], android: [] }) > 0, revisar('telefono', { ios: [CON, MIN_NO] }) > 0], [true, true]);
+  // Lo del 3/11: las OTA de la 10 se exportaban desde una copia sin `movil/.env`, y la app cortaba al arrancar.
+  chequear('ni uno sin la dirección o sin la llave de Supabase', [
+    revisar('store', deTienda, LLAVE) > 0,
+    revisar('store', deTienda, DIRECCION) > 0,
+    revisar('store', deTienda, '') > 0,
+  ], [true, true, true]);
   // CADA VARIABLE DE CADA PERFIL TIENE SU SELLO. Si se agrega una a `eas.json`
   // y no a `sello.ts`, el guardián no tendría qué buscar: esto falla antes.
   const selloTs = leer168(unir168(import.meta.dirname, '..', 'movil', 'src', 'sello.ts'), 'utf8');
@@ -20482,7 +20490,7 @@ console.log('\n298. El arranque: los datos de Inicio, una vez y durante la entra
     /const pre = tomarPrecarga\(uid\);/.test(ini),
   ], [true, true, true]);
   const act = sinComentarios(deBug('movil', 'src', 'actualizaciones.ts'));
-  // Desde el 3/11 se aplica al volver: recargada en el fondo, la 10 la contaba como un arranque fallido.
+  // Desde el 3/11 se aplica al volver, con la entrada delante de quien vuelve (ver nucleo/actualizacion.ts).
   const { alCambiarDeEstado } = await import('../nucleo/actualizacion.ts');
   const aplicadas = (estados) => {
     let salio = false;

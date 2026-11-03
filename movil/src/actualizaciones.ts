@@ -123,9 +123,8 @@ let esperandoVolver: NativeEventSubscription | null = null;
 /**
  * SE APLICA AL VOLVER (3/11). Bajada la actualización con la app abierta, reiniciar en el acto la
  * rehacía delante de quien la estaba usando (21/10: Inicio ya dibujado, la entrada otra vez e Inicio
- * cargando de cero). Del 21/10 al 3/11 se aplicaba al pasar al fondo, y ahí fallaba: ver
- * `nucleo/actualizacion.ts`. Ahora espera a que se vaya y vuelva, y arranca con la nueva desde la
- * entrada. Con un entrenamiento andando, tampoco ahí: queda para la vuelta siguiente o el próximo arranque.
+ * cargando de cero). Del 21/10 al 3/11 se aplicaba al pasar al fondo: ver `nucleo/actualizacion.ts`.
+ * Ahora espera a que se vaya y vuelva, y arranca con la nueva desde la entrada. Con un entrenamiento andando, tampoco ahí: queda para la vuelta siguiente o el próximo arranque.
  */
 export function aplicarAlVolver(puedeReiniciar: () => boolean) {
   if (!Updates.isEnabled || esperandoVolver) return;

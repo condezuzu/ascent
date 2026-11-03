@@ -154,6 +154,9 @@ export function sellosEsperados(canal, eas = JSON.parse(readFileSync(join(MOVIL,
  * Devuelve la lista de problemas (vacía = se puede subir). Se mira el paquete
  * de cada plataforma: tiene que traer el sello que corresponde y NINGUNO de los
  * otros. Si no se encuentra ninguno, tampoco se sube: no se pudo comprobar.
+ *
+ * Y tiene que traer la dirección y la llave de Supabase: sin ellas `movil/src/supabase.ts` corta al
+ * arrancar. Las OTA de la 10 salían de una copia de la rama sin `movil/.env`, que git no lleva (3/11).
  */
 export function revisarPaquete(canal, dist = join(MOVIL, 'dist'), eas = undefined) {
   const esperados = eas ? sellosEsperados(canal, eas) : sellosEsperados(canal);
@@ -171,9 +174,14 @@ export function revisarPaquete(canal, dist = join(MOVIL, 'dist'), eas = undefine
       if (!contenido.includes(s.tiene)) problemas.push(`${plataforma}: falta ${s.tiene}`);
       for (const otro of s.noTiene) if (contenido.includes(otro)) problemas.push(`${plataforma}: trae ${otro} y no corresponde a \`${canal}\``);
     }
+    if (!CON_SUPABASE.direccion.test(contenido)) problemas.push(`${plataforma}: no trae la dirección de Supabase (¿falta movil/.env?)`);
+    if (!CON_SUPABASE.llave.test(contenido)) problemas.push(`${plataforma}: no trae la llave anon de Supabase (¿falta movil/.env?)`);
   }
   return problemas;
 }
+
+/** Lo que deja en el paquete un `movil/.env` leído: la dirección del proyecto y una llave con forma de JWT. */
+export const CON_SUPABASE = { direccion: /https:\/\/[a-z0-9]+\.supabase\.co/, llave: /eyJ[\w-]+\.eyJ[\w-]+\.[\w-]+/ };
 
 /**
  * LO QUE CONTESTÓ UN COMANDO QUE FALLÓ, y no solo que falló.
