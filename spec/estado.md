@@ -62,7 +62,9 @@ las cuentas las pinea la sección 330 de `test:db`. **Nada de esto se vio en un 
   lo tapaba y una cuenta nueva no podía tocarlo (lo cazó `test:real`). En Stats, los días del año, una raya por mes
   y tres números sin caja; el año semana por semana se abre tocando los meses. Las letras de los meses van en
   `C.sub`: más tenues, en el rango 6 quedaban en 3,6:1.
-- **Barra** (`ArcoDeLaBarra.tsx`): un arco con lo de abajo borroso y un punto que sigue a la tira. El nombre
+- **Barra** (`ArcoDeLaBarra.tsx`): un arco con lo de abajo oscuro y un punto que sigue a la tira. Iba borroso
+  hasta el 3/11: el desenfoque nativo, recortado por un círculo enorme, es el sospechoso de que el teléfono
+  se reiniciara al deslizar (ver `spec/trampas.md`). El nombre
   aparece un rato al cambiar de pestaña, **debajo** del icono: arriba pisaba el arco.
 - **Tu rutina**: las rayas se dibujan, los días suben en cascada y se abre el de hoy, o el próximo con algo. Antes
   estaban todos abiertos (20/10). Abrir y cerrar corre, en todos lados. En Entrenamiento, lo de abajo espera a que

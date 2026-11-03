@@ -21836,12 +21836,26 @@ console.log('\n330. La vuelta grande: cielo, horizonte, cifras, barra, rutina, m
   // ---- LA BARRA ----
   const AR330 = await import('../nucleo/arcoDeLaBarra.ts');
   const barra330 = app330('Pestanas.tsx');
-  chequear('sin caja ni línea recta: lo de abajo del arco va borroso', [/borderTopWidth/.test(barra330.slice(barra330.indexOf('barra: {'), barra330.indexOf('barra: {') + 120)), /BlurView/.test(app330('ArcoDeLaBarra.tsx')), /borderRadius: radio/.test(app330('ArcoDeLaBarra.tsx'))], [false, true, true]);
+  // Sin desenfoque nativo desde el 3/11: el que iba, recortado por un círculo de 1750 pt, es el sospechoso del reinicio.
+  const arco330 = app330('ArcoDeLaBarra.tsx');
+  chequear('sin caja ni línea recta, y sin desenfoque nativo: lo de abajo del arco va oscuro, con su forma', [
+    /borderTopWidth/.test(barra330.slice(barra330.indexOf('barra: {'), barra330.indexOf('barra: {') + 120)),
+    /BlurView/.test(arco330),
+    /borderRadius: radio/.test(arco330),
+    /d=\{`\$\{caminoDelArco\(ancho\)\} L/.test(arco330),
+    /<Path d=\{caminoDelArco\(ancho\)\} fill="none"/.test(arco330),
+  ], [false, false, false, true, true]);
   chequear('el nombre va debajo del icono, donde no pisa el arco', barra330.indexOf("testID={'nombre-' + p}") > barra330.indexOf("testID={'luz-' + p}"), true);
   chequear('los iconos siguen siendo los mismos', /<IconoDePestana cual=\{p\} color=\{C\.apagado\} \/>/.test(barra330), true);
   chequear('el arco: arriba en el medio, y en los costados baja hasta el borde', [AR330.alturaDelArco(195, 390), AR330.alturaDelArco(0, 390), AR330.alturaDelArco(390, 390)], [0, AR330.SUBE_EL_ARCO, AR330.SUBE_EL_ARCO]);
-  const r330 = AR330.radioDelArco(390);
-  chequear('y el círculo que recorta lo borroso pasa por ahí mismo', Math.round(r330 - Math.sqrt(r330 * r330 - 195 * 195)), AR330.SUBE_EL_ARCO);
+  // La curva que se dibuja, punto por punto, contra la que sigue el punto que corre: tienen que ser la misma.
+  const [x0330, y0330, cx330, cy330, x2330, y2330] = AR330.caminoDelArco(390).match(/-?[\d.]+/g).map(Number);
+  const desvio330 = [0.1, 0.25, 0.5, 0.8].map((t) => {
+    const x = (1 - t) ** 2 * x0330 + 2 * t * (1 - t) * cx330 + t * t * x2330;
+    const y = (1 - t) ** 2 * y0330 + 2 * t * (1 - t) * cy330 + t * t * y2330;
+    return Math.round(Math.abs(y - 1 - AR330.alturaDelArco(x, 390)) * 1000);
+  });
+  chequear('y la línea del arco pasa por donde corre el punto', desvio330, [0, 0, 0, 0]);
 
   // ---- TU RUTINA Y EL MOVIMIENTO ----
   const pl330 = app330('RutinaPlegada.tsx');

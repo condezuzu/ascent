@@ -944,6 +944,20 @@ toda copia de la que se publica lleva `movil/.env`. Publicada no quiere decir qu
 llegó: bajar el paquete que reparte el servidor y mirar `update:insights` antes de
 decirlo.
 
+**El teléfono se reiniciaba al deslizar entre pestañas (3/11, causa sin confirmar).**
+El primer día que la vuelta grande llegó de verdad a la 10: a veces, deslizando,
+la pantalla se apagaba y volvía la de bloqueo. Eso no es la app cayéndose (volvería
+al inicio del teléfono): se cayó el compositor de iOS. Desde la app no queda
+rastro, ni en `errores_js` ni en `update:insights`. Lo más nuevo y lo más pesado que
+le llegaba al compositor era el desenfoque de la barra: un `UIVisualEffectView`
+recortado por un círculo de unos 1750 pt (cuatro pantallas de ancho) para que su
+borde fuera el arco. Se sacó (`ArcoDeLaBarra.tsx`): lo de abajo del arco va oscuro,
+con un degradado de SVG. Lo que lo confirmaría es un `backboardd-…` o un
+`JetsamEvent-…` en Datos de análisis del teléfono.
+→ **Regla:** nada que necesite al compositor de iOS más grande que la pantalla, y
+lo visual nuevo se mira en un iPhone antes de la tienda: la web no tiene compositor
+que se caiga.
+
 ---
 
 ---
