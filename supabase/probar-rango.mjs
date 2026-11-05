@@ -134,7 +134,9 @@ try {
   const ceremonia = page.locator('[aria-modal="true"]');
   await ceremonia.first().waitFor({ timeout: 20000 }).catch(() => {});
   for (let i = 0; i < 12 && (await ceremonia.count()) > 0; i++) {
-    await page.mouse.click(195, 420);
+    // Entre la racha y las vidas, donde debajo no hay nada que tocar: en la vista web el clic que cierra la
+    // ceremonia sigue de largo (en el teléfono no), y en (195, 420) abría «Ver lista» desde el 5/11.
+    await page.mouse.click(195, 125);
     await page.waitForTimeout(1000);
   }
   // Y lo que había sigue ahí: la sesión corre y cuenta.

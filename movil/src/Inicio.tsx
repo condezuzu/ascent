@@ -195,6 +195,7 @@ export default function Inicio({
   // Terminar pregunta antes, en el mismo lugar: es el botón más fácil de tocar
   // sin querer, y lo que hace no se deshace.
   const [terminando, setTerminando] = useState(false);
+  const [globoDelMas, setGloboDelMas] = useState(false);
   // El resumen se guarda CON SU DÍA: ver `cierreVigente`. Lo que se dibuja es
   // `cierre`, más abajo, que es el de hoy o nada.
   const [cierreGuardado, setCierreGuardado] = useState<{ de: string; cierre: CierreDeSesion } | null>(null);
@@ -963,7 +964,7 @@ export default function Inicio({
             // encuentra abierto. El cardio no tiene +: el globito espera a la fuerza.
             // También se va al ir a terminar: la pregunta sale justo donde él flota.
             globoDelMas={(colaX) => (
-              <GloboPrimeraVez cual="series" colaX={colaX} alinear="centro" cerrarCuando={sesion.estado.series > 0 || terminando}>
+              <GloboPrimeraVez cual="series" colaX={colaX} alinear="centro" cerrarCuando={sesion.estado.series > 0 || terminando} alMostrarse={setGloboDelMas}>
                 {T.inicio.globoSeries}
               </GloboPrimeraVez>
             )}
@@ -992,14 +993,11 @@ export default function Inicio({
                   )}
                 </Text>
               </Text>
-              {/* "Seguir" se queda con el botón sólido: el que llegó acá sin
-                  querer toca donde ya estaba tocando y no pasa nada. */}
-              <Tocable style={estilos.solido} onPress={() => setTerminando(false)}>
-                <FondoOctogonal relleno={C.claro} luz={C.claro} />
-                <Text style={estilos.textoSolido}>{T.sesion.seguir}</Text>
-              </Tocable>
+              {/* UNO AL LADO DEL OTRO (5/11, a pedido), como el − y el +. "Seguir" se queda con el
+                  sólido y con el centro: el que llegó acá sin querer toca donde ya estaba tocando y no pasa nada. */}
+              <View style={estilos.filaTerminar}>
               <Tocable
-                style={estilos.secundario}
+                style={estilos.terminarAhora}
                 disabled={sesion.estado.ocupado}
                 onPress={async () => {
                   const c = await sesion.terminar();
@@ -1018,15 +1016,19 @@ export default function Inicio({
                   cargar();
                 }}
               >
-                <View style={estilos.subrayado}>
-                  <Text style={estilos.enlace}>{sesion.estado.ocupado ? T.sesion.guardando : T.sesion.terminar}</Text>
-                </View>
+                <FondoOctogonal relleno={C.superficie} superficie borde={C.bordeOcto} corte={12} />
+                <Text style={estilos.terminarAhoraTexto}>{sesion.estado.ocupado ? T.sesion.guardando : T.sesion.terminar}</Text>
               </Tocable>
+              <Tocable style={estilos.seguir} onPress={() => setTerminando(false)}>
+                <FondoOctogonal relleno={C.claro} luz={C.claro} corte={12} />
+                <Text style={estilos.textoSolido}>{T.sesion.seguir}</Text>
+              </Tocable>
+              </View>
             </>
           ) : (
             <Surgir demora={MS.terminar}>
               {/* Un enlace (2/11, «Cifras»): lo sólido de esta pantalla es el +, que se toca doce veces. */}
-              <Fantasma texto={T.sesion.terminar} alTocar={() => setTerminando(true)} estilo={estilos.terminar} />
+              <Fantasma texto={T.sesion.terminar} alTocar={() => setTerminando(true)} estilo={globoDelMas ? estilos.terminarBajoElGlobo : estilos.terminar} />
             </Surgir>
           )}
         </View>
@@ -1328,8 +1330,13 @@ const estilos = conTema(() => StyleSheet.create({
   // Pegada a las vidas, como en el aviso: se leen juntas.
   tiraBajoVidas: { marginTop: 14 },
   alFondo: { marginTop: 'auto' },
-  // Más abajo de donde llega el globo del +, que flota sin correr nada: tapaba este enlace y no se podía tocar.
-  terminar: { marginTop: 48 },
+  // Pegado a «Ver lista» (5/11, a pedido). Solo con el globo del + a la vista baja: flota sin correr nada, y lo tapaba.
+  terminar: { marginTop: 8 },
+  terminarBajoElGlobo: { marginTop: 48 },
+  filaTerminar: { flexDirection: 'row', gap: 8, marginTop: 18 },
+  terminarAhora: { width: 116, paddingVertical: 15, alignItems: 'center', justifyContent: 'center' },
+  terminarAhoraTexto: { color: C.tinta, fontSize: 15 },
+  seguir: { flex: 1, paddingVertical: 15, alignItems: 'center' },
 
   impulsos: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 20 },
   impulsosCompactas: { marginTop: 0 },
@@ -1378,7 +1385,6 @@ const estilos = conTema(() => StyleSheet.create({
   nota: { ...R.nota, marginTop: 8  },
   pregunta: { color: C.sub, fontSize: 14, lineHeight: 20, marginTop: 24 },
   preguntaFuerte: { color: C.tinta, fontWeight: '600' },
-  secundario: { paddingVertical: 14, alignItems: 'center' },
 
   // MAS CHICO QUE ANTES (25/9): era marginTop 34 y 22 de alto con el numero
   // en 40. Es un premio, se lee una vez, y arriba de el va lo que queda por

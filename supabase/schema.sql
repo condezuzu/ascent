@@ -1084,6 +1084,59 @@ begin
 end;
 $$;
 
+-- LA RACHA QUE DA EL HISTORIAL ENTERO, CON LA REGLA DE §12 (migración 101): cada
+-- hueco que no cubren un descanso ni una vida resta 10, una vez, y no vuelve a
+-- cero. Devuelve también la base y la fecha de la última pérdida como las deja
+-- `aplicar_perdida_al`, así la cuenta de siempre —la base más lo contado desde
+-- la pérdida— da el mismo número.
+--
+-- `p_con_la_cobrada`: la pérdida del hueco que llega hasta hoy no se ve entre
+-- dos días; se cobró al abrir la app. Al corregir un día del medio se respeta
+-- como estaba, una vez. «Recalcular» la deja afuera porque la vuelve a revisar.
+create or replace function public.estado_de_la_racha(p_user uuid, p_con_la_cobrada boolean, out base int, out perdida date, out racha int)
+language plpgsql stable security definer set search_path = public as $$
+declare
+  r record;
+  anterior date := null;
+  d date;
+  cobrada date;
+begin
+  base := 0;
+  racha := 0;
+  for r in
+    select fecha, es_descanso from logs where user_id = p_user order by fecha
+  loop
+    if anterior is not null then
+      d := anterior + 1;
+      while d < r.fecha loop
+        if not (extract(dow from d)::int = any(descansos_vigentes(p_user, d)))
+           and not exists (
+             select 1 from vidas_usadas
+              where user_id = p_user and fecha = d and not devuelta
+           )
+        then
+          racha := greatest(0, racha - 10);
+          base := racha;
+          perdida := r.fecha - 1;
+          exit;
+        end if;
+        d := d + 1;
+      end loop;
+    end if;
+    if not r.es_descanso then racha := racha + 1; end if;
+    anterior := r.fecha;
+  end loop;
+  if p_con_la_cobrada then
+    select perdida_fecha into cobrada from profiles where id = p_user;
+    if cobrada is not null and (anterior is null or cobrada > anterior) then
+      racha := greatest(0, racha - 10);
+      base := racha;
+      perdida := cobrada;
+    end if;
+  end if;
+end;
+$$;
+
 -- Cambiar los días de descanso. Rige desde hoy hacia adelante: el pasado
 -- queda congelado con la configuración que estaba vigente entonces.
 create or replace function public.fijar_descansos(p_dias int[])
@@ -1148,10 +1201,15 @@ create or replace function public.logs_after_change()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := coalesce(new.user_id, old.user_id);
-  desde date := coalesce(new.fecha, old.fecha);
+  desde date := least(coalesce(new.fecha, old.fecha), coalesce(old.fecha, new.fecha));
   hasta date;
   base int;
   r int;
+  cobrada date;
+  nueva date;
+  antes int;
+  otra int;
+  otra_base int;
 begin
   -- UN CAMBIO QUE NO MUEVE LA RACHA NO RECALCULA NADA (migración 57). Desde que
   -- el log guarda etiquetas —el día de racha, el planeta—, escribirlas es un
@@ -1188,7 +1246,22 @@ begin
   -- racha en 0 al instante, salteándose la regla de -10: bajar la racha es
   -- tarea exclusiva de verificar_perdida.
   select coalesce(max(fecha), current_date) into hasta from logs where user_id = uid;
-  select racha_base into base from profiles where id = uid;
+  select racha_base, perdida_fecha, racha_actual into base, cobrada, antes from profiles where id = uid;
+  -- UN DÍA DEL MEDIO CAMBIA LA CUENTA ENTERA (migración 101). La base más lo contado desde la última pérdida
+  -- sirve para el día que llega al final. Uno del medio, o de antes de la pérdida, vuelve a contar el historial
+  -- con la regla de §12: marcar «Fui» el día que la cobró la deshace (antes no cambiaba nada: la racha quedaba
+  -- en lo que dejó la pérdida, o en 0), y sacar uno del medio resta 10 en vez de cortar en seco.
+  --
+  -- Y corregir no va en contra de lo que se hizo: poner un día nunca baja la racha (marcar uno en el medio de
+  -- un hueco de tres lo parte en dos, y serían dos pérdidas donde se cobró una), y sacarlo nunca la sube. Si la
+  -- cuenta entera va para el otro lado, queda la de siempre.
+  if desde < hasta or (cobrada is not null and desde <= cobrada) then
+    select e.base, e.perdida, e.racha into otra_base, nueva, otra from estado_de_la_racha(uid, true) e;
+    if (tg_op = 'INSERT' and otra > antes) or (tg_op = 'DELETE' and otra < antes) or (tg_op = 'UPDATE' and otra <> antes) then
+      base := otra_base;
+      update profiles set racha_base = base, perdida_fecha = nueva where id = uid;
+    end if;
+  end if;
   r := base + calcular_racha(uid, hasta);
   update profiles set
     racha_actual = r,
@@ -1449,26 +1522,32 @@ revoke execute on function public.logs_antes_revisar_perdida() from public, anon
 revoke execute on function public.barrer_perdidas() from public, anon, authenticated;
 grant execute on function public.barrer_perdidas() to service_role;
 
--- Corrección manual: recalcular todo desde los logs, sin piso de misericordia,
--- y aplicar la pérdida en la MISMA transacción. Devuelve el número final:
--- el usuario nunca puede ver una racha que después baja sola al recargar.
+-- Corrección manual: recalcular todo desde los logs y aplicar la pérdida en la
+-- MISMA transacción. Devuelve el número final: el usuario nunca puede ver una
+-- racha que después baja sola al recargar.
+--
+-- CON LA REGLA DE §12 (migración 101). Antes la base volvía a 0 y se contaba
+-- solo desde el último hueco: el piso de cada pérdida vieja se iba, y quien
+-- había perdido alguna vez arrancaba de nuevo desde ahí. Y no baja lo que
+-- había: si el historial da menos (un hueco partido en dos por una corrección,
+-- ver `logs_after_change`), queda la cuenta guardada.
 create or replace function public.recalcular_desde_cero()
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
-  hasta date;
+  b int;
+  p date;
   r int;
   perdida jsonb;
   perfil profiles;
 begin
-  select coalesce(max(fecha), mi_hoy()) into hasta from logs where user_id = uid;
-  update profiles set racha_base = 0, perdida_fecha = null where id = uid;
-  r := calcular_racha(uid, hasta);
+  -- Sin la pérdida del hueco que llega hasta hoy: esa la vuelve a revisar `verificar_perdida`, abajo.
+  select e.base, e.perdida, e.racha into b, p, r from estado_de_la_racha(uid, false) e;
+  update profiles set racha_base = b, perdida_fecha = p, racha_actual = r, rango_actual = rango_de_racha(r)
+   where id = uid and racha_actual <= r;
   update profiles set
-    racha_actual = r,
     -- Recalcular es mirar el historial de nuevo: el techo vale (ver `logs_after_change`).
-    mejor_racha = greatest(least(mejor_racha, techo_de_mejor_racha(uid)), mejor_racha_real(uid), r),
-    rango_actual = rango_de_racha(r)
+    mejor_racha = greatest(least(mejor_racha, techo_de_mejor_racha(uid)), mejor_racha_real(uid), racha_actual)
   where id = uid;
   perdida := verificar_perdida();
   select * into perfil from profiles where id = uid;
@@ -4383,6 +4462,7 @@ revoke execute on function
   public.calcular_racha(uuid, date),
   public.mejor_racha_real(uuid),
   public.techo_de_mejor_racha(uuid),
+  public.estado_de_la_racha(uuid, boolean),
   public.descansos_vigentes(uuid, date),
   public.impulsos_ganados(uuid),
   public.impulsos_disponibles(uuid, date),
@@ -4880,7 +4960,7 @@ create trigger rutinas_anotar_semana
   for each row execute function public.anotar_semana_de_rutina();
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 100; $$;
+returns int language sql immutable as $$ select 101; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

@@ -76,7 +76,7 @@ for (let i = 0; i < 90; i++) {
   await new Promise((r) => setTimeout(r, 1000));
 }
 
-const NOMBRES = ['Polvo', 'Asteroide', 'Luna', 'Planeta', 'Sol', 'Galaxia', 'Agujero negro'];
+const NOMBRES = ['Polvo estelar', 'Asteroide', 'Luna', 'Planeta', 'Sol', 'Galaxia', 'Agujero negro'];
 
 // CON GPU: sin estos flags Chromium headless no da WebGL y el motor no dibuja
 // —la foto sale con "no hay ningún cuerpo" y el fondo de CSS—. Los mismos que

@@ -944,7 +944,9 @@ toda copia de la que se publica lleva `movil/.env`. Publicada no quiere decir qu
 llegó: bajar el paquete que reparte el servidor y mirar `update:insights` antes de
 decirlo.
 
-**El teléfono se reiniciaba al deslizar entre pestañas (3/11, causa sin confirmar).**
+**El teléfono se reiniciaba al deslizar entre pestañas (3/11).** Con el desenfoque
+afuera no se volvió a apagar (lo contó el dueño el 5/11): la causa la confirma el uso,
+no un registro del teléfono.
 El primer día que la vuelta grande llegó de verdad a la 10: a veces, deslizando,
 la pantalla se apagaba y volvía la de bloqueo. Eso no es la app cayéndose (volvería
 al inicio del teléfono): se cayó el compositor de iOS. Desde la app no queda
@@ -957,6 +959,17 @@ con un degradado de SVG. Lo que lo confirmaría es un `backboardd-…` o un
 → **Regla:** nada que necesite al compositor de iOS más grande que la pantalla, y
 lo visual nuevo se mira en un iPhone antes de la tienda: la web no tiene compositor
 que se caiga.
+
+**Una escena soltada mientras three la sondeaba (5/11).** Con la extensión de
+compilación en paralelo (la web y la vista web; el iPhone no la tiene y compila de
+una, ver el arreglo del 27/9), `compileAsync` sigue sondeando los programas después
+de dibujar. Si llega otro cambio de fondo en esa ventana —al subir de rango vienen
+dos seguidos— `soltar()` les borraba los programas y `checkMaterialsReady` tiraba
+en el aire: un error en la consola en producción, la pantalla roja en desarrollo.
+Lo destapó `test:real` cuando la vista web se puso más lenta: sin arreglo falló 4
+de 5 corridas.
+→ **Regla:** lo de three que todavía se está usando no se suelta: `soltar()` corta
+todo menos los materiales, que se van cuando el sondeo termina (`sondeando`).
 
 ---
 
@@ -1400,6 +1413,22 @@ porque `usuarios_publicos` esconde a los bloqueados, pero `en_vivo` y
 
 **Regla:** adentro de funciones que juntan gente, `bloqueo_entre` (interna, sin
 mirar quién llama) contra cada uno de los que quedan juntos.
+
+## Corregir el día no devolvía la racha (lo contó un usuario, 5/11/2026)
+
+«Cuando corregís el día no se sigue tu racha, empezás de cero.» Los días hasta la
+última pérdida viven en `racha_base`, y `logs_after_change` solo contaba desde
+`perdida_fecha`: marcar «Fui» el día que había cobrado la pérdida no cambiaba nada,
+y con menos de 10 días la pérdida ya la había dejado en 0. «Recalcular» ponía la
+base en 0 y contaba solo desde el último hueco, así que quien había perdido alguna
+vez arrancaba de nuevo desde ahí. Los tests fijaban esos números (20, 5, 31) como
+buenos: probaban la cuenta del disparador, no la regla de §12.
+
+**Regla:** un cambio en el medio del historial se cuenta con el historial entero
+(`estado_de_la_racha`, migración 101), y corregir nunca va en contra de lo que se
+hizo. Partir un hueco de tres en dos con un «Fui» serían dos pérdidas donde se
+cobró una: poner un día no baja la racha. La sección 331 de `test:db` va por
+`corregir_dia`, como el calendario.
 
 ## Tests / proceso
 

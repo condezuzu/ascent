@@ -116,15 +116,24 @@ try {
   });
   chequear('el sólido lleva su luz dibujada, cuatro anillos', anillos, { poligonos: 5, color: CLARO });
   const barra = await page.locator('[role="tablist"]').first().evaluate((n) => {
-    // Desde el 3/11 sin desenfoque: el recortado por un círculo enorme es el sospechoso del reinicio del teléfono.
+    // Desde el 5/11 desenfoca en columnas que bajan desde el arco (el recortado por un círculo enorme reiniciaba
+    // el teléfono), con un oscuro parejo y no un degradé, y sin nada redondeado que lo recorte.
     const hijos = [...n.querySelectorAll('*')];
+    const conDesenfoque = hijos.filter((h) => /blur/.test(getComputedStyle(h).backdropFilter || getComputedStyle(h).webkitBackdropFilter || ''));
+    // A la altura de los iconos, un solo desenfoque de lado a lado: cada columna desenfoca solo lo suyo, y con
+    // columnas hasta el fondo, sobre la nube del rango 1, se veían franjas verticales de colores (5/11).
+    const icono = n.querySelector('[data-testid="luz-inicio"]')?.getBoundingClientRect();
+    const y = icono ? icono.top + icono.height / 2 : innerHeight - 30;
+    const bajoLosIconos = conDesenfoque.map((h) => h.getBoundingClientRect()).filter((r) => r.top <= y && r.bottom >= y);
     return {
-      desenfoque: hijos.some((h) => /blur/.test(getComputedStyle(h).backdropFilter || getComputedStyle(h).webkitBackdropFilter || '')),
+      desenfoque: conDesenfoque.length > 1,
+      unaPiezaBajoLosIconos: bajoLosIconos.length === 1 && bajoLosIconos[0].left <= 0 && bajoLosIconos[0].right >= innerWidth,
       oscuro: !!n.querySelector('[data-testid="arco-de-la-barra"] path[fill^="url("]'),
+      recortado: conDesenfoque.some((h) => { for (let a = h; a && a !== n; a = a.parentElement) if (parseFloat(getComputedStyle(a).borderTopLeftRadius) > 40) return true; return false; }),
       fondo: getComputedStyle(n).backgroundColor,
     };
   });
-  chequear('la barra de abajo es translúcida: oscura con la forma del arco, sin desenfoque', barra, { desenfoque: false, oscuro: true, fondo: 'rgba(0, 0, 0, 0)' });
+  chequear('la barra de abajo es translúcida: desenfoque parejo, de una pieza bajo los iconos, sin degradé ni círculo', barra, { desenfoque: true, unaPiezaBajoLosIconos: true, oscuro: false, recortado: false, fondo: 'rgba(0, 0, 0, 0)' });
   const luzDelIcono = await page.getByTestId('luz-inicio').first().evaluate((n) => {
     const boton = n.closest('button') ?? n.parentElement.parentElement;
     return [...boton.querySelectorAll('[stroke-opacity]')].some((p) => Number(p.getAttribute('stroke-opacity')) < 0.3);

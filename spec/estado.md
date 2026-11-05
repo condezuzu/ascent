@@ -57,15 +57,19 @@ las cuentas las pinea la sección 330 de `test:db`. **Nada de esto se vio en un 
 - **Cielo** (`compartido/motor/firmamento.ts`): tres capas de estrellas y una banda, sin texturas ni render
   targets (`expo-gl` no tiene `texStorage2D`). Las capas se corren al cambiar de pestaña; el giróscopo pide build.
 - Se fueron las elipses, el velo parejo y el desenfoque de las otras pestañas. La web no cambia: pide lo de siempre.
-- **Cifras**: un número grande por pantalla (Outfit 200). Los días son puntos sin letras, las vidas sin rótulo, la
-  serie en grande reemplaza a los circulitos, el + es sólido y «Terminar» un enlace, 48 px más abajo: el globo del +
-  lo tapaba y una cuenta nueva no podía tocarlo (lo cazó `test:real`). En Stats, los días del año, una raya por mes
+- **Cifras**: un número grande por pantalla (Outfit 200). Los días son puntos sin letras, las vidas sin rótulo, el +
+  es sólido y «Terminar» un enlace. **Desde el 5/11 (galería 17)** la serie volvió a los puntitos, sin número
+  grande; el ejercicio queda arriba de ellos, la racha de entrenando pasó de 44 a 64, y «Terminar» va pegado a «Ver
+  lista»: baja 48 pt solo mientras el globo del + está a la vista (lo tapaba, lo cazó `test:real`). Confirmar
+  terminar es una fila, como el − y el +: «Terminar» con borde y «Seguir entrenando» sólido. En Stats, los días del año, una raya por mes
   y tres números sin caja; el año semana por semana se abre tocando los meses. Las letras de los meses van en
   `C.sub`: más tenues, en el rango 6 quedaban en 3,6:1.
-- **Barra** (`ArcoDeLaBarra.tsx`): un arco con lo de abajo oscuro y un punto que sigue a la tira. Iba borroso
-  hasta el 3/11: el desenfoque nativo, recortado por un círculo enorme, es el sospechoso de que el teléfono
-  se reiniciara al deslizar (ver `spec/trampas.md`). El nombre
-  aparece un rato al cambiar de pestaña, **debajo** del icono: arriba pisaba el arco.
+- **Barra** (`ArcoDeLaBarra.tsx`): un arco con todo lo de abajo desenfocado parejo y un oscuro muy leve, y un
+  punto que sigue a la tira. El desenfoque es una pieza de donde arranca el arco para abajo y columnas solo en
+  la franja curva (`columnasDelArco`, 5/11): recortado por un círculo enorme reiniciaba el teléfono, del 3/11
+  al 5/11 fue una franja oscura que se notaba como caja, en franjas de 2 pt de alto casi no desenfocaba (ver
+  `spec/trampas.md`), y con columnas hasta el fondo, sobre la nube del rango 1, se veían franjas de colores. El nombre aparece un rato
+  al soltar el dedo o tocar el icono, **debajo** del icono: arriba pisaba el arco.
 - **Tu rutina**: las rayas se dibujan, los días suben en cascada y se abre el de hoy, o el próximo con algo. Antes
   estaban todos abiertos (20/10). Abrir y cerrar corre, en todos lados. En Entrenamiento, lo de abajo espera a que
   el día termine de abrirse (`YA_SE_ABRIO_EL_DIA_MS`): si no, llegaba y el día lo empujaba a la vista.
@@ -76,8 +80,10 @@ las cuentas las pinea la sección 330 de `test:db`. **Nada de esto se vio en un 
   link». Reemplaza a la constelación del 31/10.
 - **Iniciar grupo**: abre la lista de los que entrenan. Sin nadie, una frase y nada para tocar. Invitar empieza a
   entrenar; ya no comparte un link (sigue en Social).
-- **La entrada a Moss**, arriba de Stats: se entra tirando para abajo desde el tope, o tocando. Adentro, «Pronto»,
-  con los colores y las letras de Moss (`coloresDeMoss.ts`). **El tirón no se pudo probar**: la vista web no rebota.
+- **La entrada a Moss**, arriba de Stats: se entra tirando para abajo desde el tope, o tocando. Desde el 5/11 es un
+  globito con el logo de Moss («Moss · Pronto»); adentro, el logo (la estrella del ícono con su órbita), estrellas y
+  la aurora, con los colores y las letras de Moss (`coloresDeMoss.ts`). Vincular espera a que Moss salga (galería
+  16). **El tirón no se pudo probar**: la vista web no rebota.
 
 En Moss, Ascent se muda de Hábitos a Progreso (subiendo desde abajo), pendiente de su aprobación en esa galería.
 

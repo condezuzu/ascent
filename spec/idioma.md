@@ -74,7 +74,7 @@ cuatro verbos para cosas parecidas y ninguno significaba algo estable.
 
 ## Lo que NO se toca
 
-- **Los nombres de los rangos y los planetas.** Polvo, Asteroide, Luna, Marte…
+- **Los nombres de los rangos y los planetas.** Polvo estelar, Asteroide, Luna, Marte…
   Son vocabulario propio, no texto de interfaz, y viven en `rangos.ts` y
   `reglas.ts`.
 - **~~El sentido y el autor de las citas.~~** **Ya no hay citas.** El
