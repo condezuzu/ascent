@@ -1110,22 +1110,26 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
   } catch {
     tieneCompilacionParalela = false;
   }
+  // MIENTRAS THREE SONDEA, LOS MATERIALES DE ESTA ESCENA NO SE SUELTAN (5/11). Con la extensión el sondeo
+  // sigue en pie, y una escena soltada a la mitad —dos cambios de fondo seguidos, como al subir de rango— le
+  // borraba los programas: `checkMaterialsReady` tiraba en el aire. En producción quedaba un error en la
+  // consola; en la vista de desarrollo, la pantalla roja tapando la app. `soltar()` los deja para cuando el
+  // sondeo termina.
+  let sondeando = false;
+  let soltarAlTerminar: (() => void) | null = null;
+  const terminoElSondeo = () => {
+    sondeando = false;
+    clearTimeout(respaldoPrimerCuadro);
+    arrancar();
+    soltarAlTerminar?.();
+  };
   if (tieneCompilacionParalela) {
     respaldoPrimerCuadro = setTimeout(arrancar, 400);
     try {
-      rend
-        .compileAsync(escena, camara)
-        .then(() => {
-          clearTimeout(respaldoPrimerCuadro);
-          arrancar();
-        })
-        .catch(() => {
-          clearTimeout(respaldoPrimerCuadro);
-          arrancar();
-        });
+      sondeando = true;
+      rend.compileAsync(escena, camara).then(terminoElSondeo, terminoElSondeo);
     } catch {
-      clearTimeout(respaldoPrimerCuadro);
-      arrancar();
+      terminoElSondeo();
     }
   } else {
     // Sincrónico y contenido: si un material falla, se atrapa acá y se dibuja el
@@ -1250,11 +1254,21 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     dejarDeEscuchar();
     // se sueltan las geometrías y materiales de ESTA escena, pero el
     // renderer y el canvas siguen vivos para la próxima pantalla
-    escena.traverse((o) => {
-      const m = o as THREE.Mesh;
-      if (m.geometry && m.geometry !== QUAD) m.geometry.dispose();
-      if (m.material) (Array.isArray(m.material) ? m.material : [m.material]).forEach((x) => x.dispose());
-    });
+    let desechada = false;
+    const desechar = () => {
+      if (desechada) return;
+      desechada = true;
+      soltarAlTerminar = null;
+      escena.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.geometry && m.geometry !== QUAD) m.geometry.dispose();
+        if (m.material) (Array.isArray(m.material) ? m.material : [m.material]).forEach((x) => x.dispose());
+      });
+    };
+    if (!sondeando) return desechar();
+    // Con three todavía sondeando, después: ver `sondeando`. Y si el sondeo no termina nunca, igual a los 5 s.
+    soltarAlTerminar = desechar;
+    setTimeout(desechar, 5000);
   };
 
   const pausar = (si: boolean) => {

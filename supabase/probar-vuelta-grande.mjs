@@ -99,8 +99,10 @@ try {
 
   console.log('Cifras, entrenando');
   await page.waitForTimeout(1500);
+  // Desde el 5/11 las series son otra vez los puntitos, sin el número grande.
   const cuenta_ = page.getByTestId('cuenta-de-series').first();
-  chequear('el número grande dice las series, sin circulitos', (await cuenta_.innerText()).replace(/\s+/g, ' ').startsWith('0'), true);
+  const llenos = () => cuenta_.locator('[data-testid="punto-lleno"]').count();
+  chequear('los puntitos dicen las series, sin número grande', [await llenos(), await cuenta_.locator('[data-testid="punto-vacio"]').count() > 0, /\d/.test(await cuenta_.innerText())], [0, true, false]);
   for (const m of ['×2', '×3', '×4', '×5', '+']) chequear(`está ${m}`, await seVe(m) >= 1, true);
   for (const m of ['×1', '×6', '×8', '×10', '×12']) chequear(`no está ${m}`, await seVe(m), 0);
   await foto('entrenando');
@@ -109,7 +111,7 @@ try {
   await page.waitForTimeout(120);
   await foto('entrenando-rueda');
   await page.waitForTimeout(900);
-  chequear('al sumar, el número cambia', (await cuenta_.innerText()).replace(/\s+/g, ' ').startsWith('1'), true);
+  chequear('al sumar, se llena un puntito', await llenos(), 1);
   const terminar = texto(TX.sesion.terminar);
   await terminar.click({ timeout: 10000 });
   await page.waitForTimeout(700);
@@ -156,13 +158,17 @@ try {
   const abiertoEl = (d) => page.getByTestId(`rutina-dia-${d}`).first().evaluate((n) => [...n.parentElement.parentElement.querySelectorAll('[aria-label]')].some((e) => /serie/i.test(e.getAttribute('aria-label') ?? '')));
   chequear('hoy no tiene nada: se abre solo el próximo', [await abiertoEl(hoyD), await abiertoEl(proximo)], [false, true]);
   await foto('rutina-abierta');
-  const otro = (hoyD + 3) % 7;
+  // El de abajo es el que sigue EN LA PANTALLA, no el día que sigue: la lista empieza el lunes, y un jueves
+  // «hoy + 3» era el domingo, el último, con el lunes arriba de todo. Fallaba todos los jueves (5/11).
+  const orden = [...new Set(await page.evaluate(() => [...document.querySelectorAll('[data-testid^="rutina-dia-"]')].map((n) => Number(n.getAttribute('data-testid').slice('rutina-dia-'.length)))))];
+  const otro = orden.slice(0, -1).find((d) => d !== hoyD && d !== proximo);
+  const deAbajo = orden[orden.indexOf(otro) + 1];
   await page.getByTestId(`rutina-dia-${otro}`).first().scrollIntoViewIfNeeded();
-  const bajo = await page.getByTestId(`rutina-dia-${(otro + 1) % 7}`).first().boundingBox();
+  const bajo = await page.getByTestId(`rutina-dia-${deAbajo}`).first().boundingBox();
   await page.getByTestId(`rutina-dia-${otro}`).first().click();
   const posiciones = new Set();
   for (let i = 0; i < 10; i++) {
-    const b = await page.getByTestId(`rutina-dia-${(otro + 1) % 7}`).first().boundingBox();
+    const b = await page.getByTestId(`rutina-dia-${deAbajo}`).first().boundingBox();
     if (b) posiciones.add(Math.round(b.y));
     await page.waitForTimeout(40);
   }

@@ -101,7 +101,7 @@ function RachaConRotulo({
               <Ellipse cx={AURA_ANCHO / 2} cy={AURA_ALTO / 2} rx={AURA_ANCHO / 2} ry={AURA_ALTO / 2} fill="url(#aura)" />
             </Svg>
           )}
-          <NumeroQueRueda valor={racha} alto={compacto ? 44 : 150} style={[compacto ? estilos.numeroCompacto : estilos.numero, { color: C.claro }]} />
+          <NumeroQueRueda valor={racha} alto={compacto ? 64 : 150} style={[compacto ? estilos.numeroCompacto : estilos.numero, { color: C.claro }]} />
         </View>
         {derecha && <View style={estilos.derecha}>{derecha}</View>}
       </View>
@@ -134,12 +134,13 @@ const estilos = conTema(() => StyleSheet.create({
   rotulo: { paddingBottom: 24, alignItems: 'center' },
   filaCompacta: { alignItems: 'center' },
   rotuloCompacto: { paddingBottom: 0 },
-  letraCompacta: { fontSize: 7.5, lineHeight: 9 },
+  letraCompacta: { fontSize: 9, lineHeight: 11.5 },
   // `lineHeight` chico y `letterSpacing` en cero: acá la separación entre
   // letras es la separación entre FILAS, que es lo que hace el efecto.
   letra: { color: C.sub, fontSize: 10, lineHeight: 14, textTransform: 'uppercase', fontWeight: '500' },
   numero: { fontSize: 148, fontWeight: '200', lineHeight: 150, fontFamily: L.racha, letterSpacing: -5, marginLeft: -6 },
-  numeroCompacto: { fontSize: 44, fontWeight: '300', lineHeight: 46, fontFamily: L.racha, letterSpacing: -1 },
+  // Un poco más grande desde el 5/11: con los puntitos, arriba quedaba vacío.
+  numeroCompacto: { fontSize: 64, fontWeight: '300', lineHeight: 66, fontFamily: L.racha, letterSpacing: -1.5 },
   derecha: { marginLeft: 'auto' },
   barra: { height: 3, width: '62%', borderRadius: 2, marginTop: 20, marginBottom: 8 },
   llena: { height: '100%' },

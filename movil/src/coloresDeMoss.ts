@@ -12,6 +12,15 @@ export const MOSS = {
   oroBrillo: 'rgba(232,196,106,0.22)',
   // Su musgo profundo, apenas: abajo de todo.
   musgoTenue: 'rgba(47,74,42,0.55)',
+  // El de su aurora.
+  musgo: '#7fae6a',
+  // La estrella del logo: casi blanca en el centro, oro hondo en las puntas.
+  oroCentro: '#fffdf4',
+  oroHondo: '#d9ab4c',
+  // El globito de la puerta, arriba de Stats.
+  oroBorde: 'rgba(232,196,106,0.34)',
+  oroPunto: 'rgba(232,196,106,0.6)',
+  nocheVidrio: 'rgba(13,26,56,0.62)',
   pergamino: '#efe6cf',
   pergaminoTenue: 'rgba(239,230,207,0.62)',
 } as const;

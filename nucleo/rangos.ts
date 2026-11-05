@@ -18,9 +18,9 @@ export type Rango = {
 // SIETE rangos, de duración creciente (5/10/15/20/25/30 días, y el último sin
 // techo). El viejo "Sistema" se sacó. Los `desde` salen de `DESDE_RANGO` para
 // que no puedan contradecir a `numeroDeRango` ni a la base.
-const NOMBRES = ['Polvo', 'Asteroide', 'Luna', 'Planeta', 'Sol', 'Galaxia', 'Agujero negro'];
+const NOMBRES = ['Polvo estelar', 'Asteroide', 'Luna', 'Planeta', 'Sol', 'Galaxia', 'Agujero negro'];
 // En inglés (14/10). El nombre se lee al usarlo: cambia con el idioma.
-const NOMBRES_EN = ['Dust', 'Asteroid', 'Moon', 'Planet', 'Sun', 'Galaxy', 'Black hole'];
+const NOMBRES_EN = ['Stardust', 'Asteroid', 'Moon', 'Planet', 'Sun', 'Galaxy', 'Black hole'];
 export const RANGOS: Rango[] = NOMBRES.map((nombre, i) => ({
   n: i + 1,
   get nombre() {

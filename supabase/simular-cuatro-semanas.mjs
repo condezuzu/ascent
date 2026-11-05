@@ -137,7 +137,8 @@ try {
   {
     await supabase.from('logs').delete().eq('user_id', uid).eq('fecha', dia(10));
     const corta = (await supabase.rpc('recalcular_desde_cero')).data;
-    chequear('sin el día 10 la racha es lo de después (7)', corta?.racha_historial, 7);
+    // Desde la migración 101, sacar un día del medio es una falta: resta 10 y no corta en seco. 16 − 10 + 7.
+    chequear('sin el día 10 la racha es lo de antes menos 10, más lo de después (13)', corta?.racha_historial, 13);
     await supabase.from('logs').insert({ user_id: uid, fecha: dia(10) });
     const vuelta = (await supabase.rpc('recalcular_desde_cero')).data;
     chequear('reponerlo devuelve los 24', vuelta?.racha, 24);

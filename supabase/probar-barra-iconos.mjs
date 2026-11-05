@@ -103,6 +103,17 @@ try {
   chequear('el punto del arco está arriba de la pestaña en la que se está', [Math.round(punto.x + punto.width / 2), Math.abs(punto.y + punto.height / 2 - arcoEn(195)) < 2], [195, true]);
   await page.waitForTimeout(1800);
   chequear('el nombre se va solo', await opacidad('nombre-album') < 0.05, true);
+  // AL SOLTAR, NO AL LLEGAR (5/11): deslizando a Stats, su nombre se prende mientras la pantalla viaja.
+  await page.mouse.move(340, 500);
+  await page.mouse.down();
+  for (let i = 1; i <= 16; i++) await page.mouse.move(340 - (280 * i) / 16, 500);
+  await page.mouse.up();
+  let alViajar = 0;
+  for (const desde = Date.now(); Date.now() - desde < 280; ) {
+    alViajar = Math.max(alViajar, await opacidad('nombre-stats'));
+    await page.waitForTimeout(30);
+  }
+  chequear('deslizando, el nombre se prende al soltar, sin esperar a que la pantalla llegue', alViajar > 0.5, true);
 } catch (e) {
   fallos++;
   console.log('  FALLA ' + String(e).split('\n')[0].slice(0, 200));

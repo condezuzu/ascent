@@ -874,7 +874,8 @@ console.log('\n19b. Corregir un día viejo recalcula los planetas posteriores');
     antes.rows.map((x) => x.planeta_del_dia),
     []
   );
-  chequear('y la racha es la de después del hueco', (await perfil(u)).racha_actual, 20);
+  // Sacar un día del medio es una falta: resta 10 y no corta en seco (migración 101). 18 - 10 + 20.
+  chequear('y la racha es la de después del hueco, con lo que sobrevive de antes', (await perfil(u)).racha_actual, 28);
   // ahora se corrige el día que faltaba
   await db.query(`insert into logs (user_id, fecha) values ($1, mi_hoy() - $2::int)`, [u, faltante]);
   chequear('la racha se completa', (await perfil(u)).racha_actual, 39);
@@ -7225,7 +7226,7 @@ console.log('\n102. Nadie pregunta por los datos de otro (migracion 41)');
   // cualquiera se reconstruia con calcular_racha dia por dia. Probado contra
   // la base real en supabase/probar-privacidad.mjs; esto lo fija aca.
   const ajenas = [
-    'calcular_racha(uuid, date)', 'mejor_racha_real(uuid)', 'descansos_vigentes(uuid, date)',
+    'calcular_racha(uuid, date)', 'mejor_racha_real(uuid)', 'estado_de_la_racha(uuid, boolean)', 'descansos_vigentes(uuid, date)',
     'impulsos_ganados(uuid)', 'impulsos_disponibles(uuid, date)',
     'peso_actual(uuid)', 'mejores_marcas(uuid)', 'dots_de(uuid)', 'hoy_de(uuid)', 'bloqueo_hasta(uuid)',
   ];
@@ -8908,8 +8909,18 @@ console.log('\n124. El shader de cuerpos compila rápido en Direct3D y sin traba
   const m = montar.replace(/\s+/g, ' ');
   chequear('compila sin bloquear', m.includes('.compileAsync(escena, camara)'), true);
   chequear('el primer cuadro lo dibuja arrancar()', /function arrancar\(\) \{/.test(m), true);
-  chequear('arrancar cuelga del .then de compileAsync', m.includes('.compileAsync(escena, camara) .then(() => { clearTimeout(respaldoPrimerCuadro); arrancar(); })'), true);
-  chequear('y del .catch, para que un rechazo no deje el fondo negro', m.includes('.catch(() => { clearTimeout(respaldoPrimerCuadro); arrancar(); })'), true);
+  // Desde el 5/11 las dos salidas del sondeo pasan por `terminoElSondeo`, que además suelta lo que quedó pendiente.
+  chequear('arrancar cuelga de las dos salidas de compileAsync', [
+    m.includes('.compileAsync(escena, camara).then(terminoElSondeo, terminoElSondeo)'),
+    /const terminoElSondeo = \(\) => \{ sondeando = false; clearTimeout\(respaldoPrimerCuadro\); arrancar\(\); soltarAlTerminar\?\.\(\); \};/.test(m),
+  ], [true, true]);
+  // Y LA CARRERA DEL 5/11: una escena soltada mientras three la sondeaba (dos cambios de fondo seguidos, al
+  // subir de rango) le borraba los programas y `checkMaterialsReady` tiraba en la web. Ahora espera.
+  chequear('mientras three sondea, soltar() no tira los materiales: los deja para cuando termina', [
+    /if \(!sondeando\) return desechar\(\);/.test(m),
+    /soltarAlTerminar = desechar; setTimeout\(desechar, 5000\);/.test(m),
+    /if \(desechada\) return;/.test(m),
+  ], [true, true, true]);
   chequear('y hay un respaldo por si el sondeo interno se cuelga', m.includes('setTimeout(arrancar, 400)'), true);
   // EL CRASH DEL 27/9: sin KHR_parallel_shader_compile (el iPhone), el sondeo de
   // compileAsync hace program.isReady() sobre un material undefined y TIRA dentro
@@ -9068,8 +9079,8 @@ console.log('\n128. Inicio entra en una pantalla con el entrenamiento andando');
   chequear('el + toma lo que sobra, con minimo de 64', /\.pantalla\.en-sesion > \.bloque > \.bloque-mas \{\s*flex: 1 1 auto;\s*min-height: 64px;/.test(css), true);
   chequear('Inicio pone la clase con la sesion corriendo', /clase=\{sesion\.estado\.corriendo \? 'en-sesion'/.test(inicio), true);
   chequear('una sola cuenta del bloque: sin el "1 de 3" a la vista (web)', /className="numero"/.test(bloque), false);
-  // Desde el 2/11 la cuenta es el número grande («Cifras»), en vez de los circulitos. Una, igual.
-  chequear('una sola cuenta del bloque (nativa)', [/cuentaNumero/.test(de128('movil', 'src', 'Bloque.tsx')), /PuntoDeSerie/.test(de128('movil', 'src', 'Bloque.tsx'))], [true, false]);
+  // Del 2/11 al 5/11 la cuenta fue el número grande («Cifras»); desde el 5/11, otra vez los puntitos. Una, igual.
+  chequear('una sola cuenta del bloque (nativa)', [/cuentaNumero/.test(de128('movil', 'src', 'Bloque.tsx')), /PuntoDeSerie/.test(de128('movil', 'src', 'Bloque.tsx'))], [false, true]);
   // LA RACHA SI ESTA DURANTE EL ENTRENAMIENTO (nativa), DESDE EL 25/9. Era al
   // reves y se cuidaba con un test; el pedido lo dio vuelta: "la racha
   // desaparece cuando inicio el entrenamiento. Ya pedi que se quedara y quedo
@@ -12539,7 +12550,8 @@ console.log('\n167. Deslizar rapido: el gesto parte de la pestaña a la que va l
       noMiraLaActiva: cuerpo !== '' && !bordeDePalabra('pestana').test(cuerpo) && !/enReposo/.test(cuerpo),
       elRumboCambiaAntesDelViaje: iRumbo > -1 && iRumbo < cuerpo.indexOf('Animated.timing('),
       unViajeCortadoNoDecide: /\.start\(\(\{ finished \}\) => \{\s*if \(!finished\) return;/.test(cuerpo),
-      noSeRearmaConLaPestana: /\[ancho, correr\]\s*\);/.test(cuerpo),
+      // `mostrarNombre` no cambia nunca (5/11): ver el chequeo del nombre, abajo.
+      noSeRearmaConLaPestana: /\[ancho, correr(, mostrarNombre)?\]\s*\);/.test(cuerpo),
     };
   };
   chequear('el gesto parte del rumbo, lo cambia al soltar, y un viaje cortado no decide', gesto167(pes167), {
@@ -12570,7 +12582,14 @@ console.log('\n167. Deslizar rapido: el gesto parte de la pestaña a la que va l
   const iRumboBarra167 = irA167.indexOf('rumbo.current = destino;');
   chequear('la barra compara contra el rumbo', /if \(destino === rumbo\.current\) return;/.test(irA167), true);
   chequear('y lo cambia antes de mover la tira', iRumboBarra167 > -1 && iRumboBarra167 < irA167.indexOf('Animated.timing('), true);
-  chequear('sin depender de la pestaña que se esta dibujando', /\[ancho, correr\]/.test(irA167) && !/\[pestana/.test(irA167), true);
+  chequear('sin depender de la pestaña que se esta dibujando', /\[ancho, correr(, mostrarNombre)?\]/.test(irA167) && !/\[pestana/.test(irA167), true);
+  // EL NOMBRE AL SOLTAR (5/11): se dice con el rumbo, no con la pestaña que cambia al llegar; y la función
+  // que lo dice depende solo de los valores animados, así el gesto no se rearma debajo del dedo.
+  chequear('el nombre de la pestaña se dice al soltar y al tocar, con una función que no cambia', [
+    /const mostrarNombre = useCallback\([\s\S]*?\[nombres\]\s*\);/.test(pes167),
+    /if \(ORDEN\[hasta\] !== rumbo\.current\) mostrarNombre\(ORDEN\[hasta\]\);\s*rumbo\.current = ORDEN\[hasta\];/.test(pes167),
+    /rumbo\.current = destino;\s*mostrarNombre\(destino\);/.test(irA167),
+  ], [true, true, true]);
 }
 
 console.log('\n168. El guardian de la OTA: EAS corre adentro de movil, con la CLI fija, y el error se ve');
@@ -14367,19 +14386,21 @@ console.log('\n186. La mejor racha no baja sola después de una pérdida (migrac
   // ---- EL HISTORIAL NO SUBE EL RÉCORD A NADIE (lo vio la revisión) ----
   //
   // El techo cuenta "un corte resta 10" en TODO hueco, pero la racha de verdad
-  // no siempre arrastra: borrar un día del medio y recalcular desde cero cortan
-  // en seco. Usarlo para subir le daba a la persona un récord que nunca tuvo.
+  // no siempre arrastra: hasta la migración 101, borrar un día del medio y
+  // recalcular cortaban en seco, y un hueco partido en dos por una corrección
+  // sigue cobrando uno solo. Usarlo para subir le daba a la persona un récord
+  // que nunca tuvo.
   const recalculo = await nuevoUsuario();
   await rachaDe(recalculo, 40, 6);
   await rachaDe(recalculo, 5, 0);
   chequear('40 días, un corte y 5 más: racha 35, récord 40', await estado186(recalculo), [35, 40]);
   await comoUsuario(recalculo);
   await db.query(`select recalcular_desde_cero()`);
-  chequear('recalcular desde cero: racha 5, y el récord sigue en 40', await estado186(recalculo), [5, 40]);
+  chequear('recalcular: la racha sigue en 35 (desde la 101 no corta en seco), y el récord en 40', await estado186(recalculo), [35, 40]);
 
-  // Lo mismo, pero con días DESPUÉS del recálculo. No se puede adelantar el
-  // reloj, así que el recálculo se deja escrito como lo deja la función (base 0,
-  // sin pérdida anotada, la racha de la tirada) en mitad del historial.
+  // Lo mismo, pero con días DESPUÉS de un recálculo de antes de la 101. No se
+  // puede adelantar el reloj, así que se deja escrito como lo dejaba la función
+  // (base 0, sin pérdida anotada, la racha de la tirada) en mitad del historial.
   const despues = await nuevoUsuario();
   await rachaDe(despues, 40, 37);
   await rachaDe(despues, 5, 31);
@@ -16258,7 +16279,7 @@ console.log('\n199. Ranking: la cara de cada uno y la medalla del rango más alt
     nombreDe199({ racha_actual: 3, mejor_racha: 50 }),
     nombreDe199({ racha_actual: 0, mejor_racha: 0 }),
     nombreDe199({ racha_actual: 80, mejor_racha: 80 }),
-  ], ['Sol', 'Planeta', 'Polvo', 'Galaxia']);
+  ], ['Sol', 'Planeta', 'Polvo estelar', 'Galaxia']);
   chequear('sin la mejor racha (la base todavía no la manda) vale el de hoy, que nunca es más', [
     nombreDe199({ racha_actual: 20 }), nombreDe199({ racha_actual: 20, mejor_racha: null }), nombreDe199({ racha_actual: 60, mejor_racha: 12 }),
   ], ['Luna', 'Luna', 'Sol']);
@@ -18062,8 +18083,8 @@ console.log('\n222. El idioma: español o inglés según el teléfono, y a mano 
   ID.aplicarIdioma('es');
   const deVuelta = [TX.T.idioma, TX.T.nav.ajustes, FE.DIAS_SEMANA_LARGO[1], RG.RANGOS[0].nombre, ES222.CATEGORIAS[0].nombre];
   chequear('el cambio pisa los textos en su lugar: los días, los rangos, las categorías y el recorrido cambian; y vuelve', [enIngles, deVuelta], [
-    ['en', 'Settings', 'Monday', true, 'Dust', 'Beginner', 'Your streak', '5 kg to go for beginner'],
-    ['es', 'Ajustes', 'Lunes', 'Polvo', 'Principiante'],
+    ['en', 'Settings', 'Monday', true, 'Stardust', 'Beginner', 'Your streak', '5 kg to go for beginner'],
+    ['es', 'Ajustes', 'Lunes', 'Polvo estelar', 'Principiante'],
   ]);
 
   // ---- A MANO, EN AJUSTES: se guarda en el teléfono y se avisa a la raíz ----
@@ -18929,7 +18950,8 @@ console.log('\n243. Cacería del 15/10, vuelta 8: "+ Serie hecha" con la cinta s
   const r = (await db.query(`select devolver_impulsos(array[(mi_hoy() - 1)::date]) as r`)).rows[0].r;
   const tras = await racha();
   await db.query(`select corregir_dia(mi_hoy() - 10, 'descanso')`);
-  chequear('guardar la vida con hoy ya anotado corta la racha como promete (41 → 31) y una corrección después no la tira a 1', [antes, r.perdida?.perdida ?? null, tras, await racha()], [41, true, 31, 31]);
+  // Desde la migración 101 la corrección de antes de la pérdida cuenta: un día que pasa a descanso deja de sumar (30).
+  chequear('guardar la vida con hoy ya anotado corta la racha como promete (41 → 31) y una corrección después no la tira a 1', [antes, r.perdida?.perdida ?? null, tras, await racha()], [41, true, 31, 30]);
 
   const { readFileSync: leer243 } = await import('node:fs');
   const de243 = (...p) => leer243(join(dirname(fileURLToPath(import.meta.url)), '..', ...p), 'utf8').replace(/\r\n/g, '\n');
@@ -21434,8 +21456,9 @@ console.log('\n324. Las letras de la nativa: Inter, Outfit solo para la racha, G
   chequear('nadie usa el Text de React Native: pasaría por la fuente del sistema', conTextoDeRN.map((r) => r.slice(raiz324.length + 1)), []);
   chequear('ni Animated.Text', fuentes324.filter((r) => !RN324.test(r) && /Animated\.Text(?![A-Za-z0-9_])/.test(leer324(r, 'utf8'))).map((r) => r.slice(raiz324.length + 1)), []);
   const conRacha = fuentes324.filter((r) => /L\.racha/.test(leer324(r, 'utf8')) && !/[\\/]Texto\.tsx$/.test(r)).map((r) => r.split(/[\\/]/).pop()).sort();
-  // Desde el 2/11 («Cifras») es el número grande de cada pantalla: la racha, la serie, los días del año.
-  chequear('Outfit es solo el número grande', conRacha, ['Bloque.tsx', 'CifrasDelAno.tsx', 'Inicio.tsx', 'RachaConRotulo.tsx']);
+  // Desde el 2/11 («Cifras») es el número grande de cada pantalla: la racha y los días del año. La serie lo
+  // dejó el 5/11, cuando volvieron los puntitos.
+  chequear('Outfit es solo el número grande', conRacha, ['CifrasDelAno.tsx', 'Inicio.tsx', 'RachaConRotulo.tsx']);
 
   const fu324 = leer324(join(raiz324, 'movil', 'src', 'fuentes.ts'), 'utf8');
   const archivos324 = [...fu324.matchAll(/require\('\.\.\/assets\/fuentes\/([A-Za-z0-9_]+)\.ttf'\)/g)].map((m) => m[1]);
@@ -21789,7 +21812,8 @@ console.log('\n330. La vuelta grande: cielo, horizonte, cifras, barra, rutina, m
   // ---- CIFRAS ----
   const BL330 = await import('../nucleo/bloques.ts');
   chequear('las series arrancan en ×2, y sigue el +', [[...BL330.METAS], BL330.pildorasDeMeta(3), /testID="meta-a-mano"/.test(app330('Bloque.tsx'))], [[2, 3, 4, 5], [2, 3, 4, 5], true]);
-  chequear('el número grande reemplaza a los circulitos, y VoiceOver sigue leyendo «de cuántas»', [/PuntoDeSerie/.test(app330('Bloque.tsx')), /cuenta-de-series[\s\S]{0,140}T\.sesion\.deMeta/.test(app330('Bloque.tsx'))], [false, true]);
+  // Del 2/11 al 5/11 la serie fue un número enorme; pidió volver a los puntitos, sin ese número.
+  chequear('los puntitos dicen las series, sin número grande, y VoiceOver sigue leyendo «de cuántas»', [/<PuntoDeSerie /.test(app330('Bloque.tsx')), /cuentaNumero/.test(app330('Bloque.tsx')), /cuenta-de-series[\s\S]{0,140}T\.sesion\.deMeta/.test(app330('Bloque.tsx'))], [true, false, true]);
   const fue330 = app330('fuentes.ts');
   chequear('el número usa Outfit liviana, y el archivo está', [/n <= 200 \? 'Outfit_200ExtraLight'/.test(fue330), hay330(join(raiz330, 'movil', 'assets', 'fuentes', 'Outfit_200ExtraLight.ttf'))], [true, true]);
   chequear('sin rótulos a la vista, y VoiceOver los dice', [/accessibilityLabel=\{T\.impulso\.titulo\}/.test(app330('Inicio.tsx')), /T\.rutina\.hoyRotulo/.test(app330('FilaRutina.tsx')), /estiloLetra/.test(app330('Inicio.tsx'))], [true, false, false]);
@@ -21798,15 +21822,29 @@ console.log('\n330. La vuelta grande: cielo, horizonte, cifras, barra, rutina, m
   // ---- LA BARRA ----
   const AR330 = await import('../nucleo/arcoDeLaBarra.ts');
   const barra330 = app330('Pestanas.tsx');
-  // Sin desenfoque nativo desde el 3/11: el que iba, recortado por un círculo de 1750 pt, es el sospechoso del reinicio.
+  // El desenfoque recortado por un círculo de 1750 pt reiniciaba el teléfono (3/11). Volvió el 5/11: una pieza de
+  // donde arranca el arco para abajo y columnas solo en la franja curva (en franjas de 2 pt casi no desenfocaba y se
+  // veía un rectángulo; con columnas hasta el fondo, sobre un cielo claro se veían franjas verticales).
   const arco330 = app330('ArcoDeLaBarra.tsx');
-  chequear('sin caja ni línea recta, y sin desenfoque nativo: lo de abajo del arco va oscuro, con su forma', [
+  chequear('sin caja ni línea recta: lo de abajo del arco desenfoca parejo, de una pieza bajo la franja curva, sin el círculo ni un degradé', [
     /borderTopWidth/.test(barra330.slice(barra330.indexOf('barra: {'), barra330.indexOf('barra: {') + 120)),
-    /BlurView/.test(arco330),
-    /borderRadius: radio/.test(arco330),
-    /d=\{`\$\{caminoDelArco\(ancho\)\} L/.test(arco330),
+    /<BlurView /.test(arco330),
+    /borderRadius: radio|overflow: 'hidden'/.test(arco330),
+    /columnasDelArco\(ancho\)\.map/.test(arco330),
+    /style=\{\{ position: 'absolute', left: 0, width: ancho, top: 0, height: ALTO_DEL_FONDO \}\}/.test(arco330),
+    /height: ALTO_DEL_FONDO - c\.top/.test(arco330),
+    /barra-abajo|stopOpacity|LinearGradient/.test(arco330),
     /<Path d=\{caminoDelArco\(ancho\)\} fill="none"/.test(arco330),
-  ], [false, false, false, true, true]);
+  ], [false, true, false, true, true, false, false, true]);
+  // Las columnas, contra el arco: van de borde a borde sin huecos ni encimarse, y el tope de cada una se aparta
+  // del arco medio paso como mucho (1,5 pt de paso), así no queda nada sin desenfocar ni asoma por arriba.
+  const columnas330 = AR330.columnasDelArco(390);
+  const enOrden330 = [...columnas330].sort((a, b) => a.left - b.left);
+  const pegadas330 = enOrden330.every((c, i) => Math.abs(c.left - (i ? enOrden330[i - 1].left + enOrden330[i - 1].ancho : 0)) < 1e-6) && Math.abs(enOrden330.at(-1).left + enOrden330.at(-1).ancho - 390) < 1e-6;
+  const arcoEn330 = (x) => AR330.alturaDelArco(x, 390) - AR330.SUBE_EL_ARCO;
+  const aparta330 = Math.max(...columnas330.flatMap((c) => [c.left, c.left + c.ancho].map((x) => Math.abs(arcoEn330(x) - c.top))));
+  const medio330 = columnas330.find((c) => c.left < 195 && c.left + c.ancho > 195);
+  chequear('las columnas cubren de borde a borde, se apartan del arco 0,75 pt como mucho, y la del medio es la más ancha', [pegadas330, aparta330 <= 0.75 + 1e-9, medio330.ancho === Math.max(...columnas330.map((c) => c.ancho))], [true, true, true]);
   chequear('el nombre va debajo del icono, donde no pisa el arco', barra330.indexOf("testID={'nombre-' + p}") > barra330.indexOf("testID={'luz-' + p}"), true);
   chequear('los iconos siguen siendo los mismos', /<IconoDePestana cual=\{p\} color=\{C\.apagado\} \/>/.test(barra330), true);
   chequear('el arco: arriba en el medio, y en los costados baja hasta el borde', [AR330.alturaDelArco(195, 390), AR330.alturaDelArco(0, 390), AR330.alturaDelArco(390, 390)], [0, AR330.SUBE_EL_ARCO, AR330.SUBE_EL_ARCO]);
@@ -21831,6 +21869,68 @@ console.log('\n330. La vuelta grande: cielo, horizonte, cifras, barra, rutina, m
   chequear('se entra tirando desde el tope o tocando, y se vuelve', [/onScrollEndDrag/.test(app330('Stats.tsx')), /TIRON_PARA_ENTRAR/.test(app330('Stats.tsx')), /entrada-a-moss/.test(mo330), /moss-volver/.test(mo330), /T\.moss\.pronto/.test(mo330)], [true, true, true, true, true]);
   chequear('con las letras de Moss, cargadas aparte', [/cargarFuentesDeMoss\(\)/.test(mo330), ['CormorantGaramond_400Regular_Italic', 'Jost_400Regular'].every((f) => hay330(join(raiz330, 'movil', 'assets', 'fuentes', f + '.ttf')))], [true, true]);
   chequear('los colores de Moss no se tiñen, y el rango no los toca', [/from '\.\/colores'/.test(mo330), /C\.claro/.test(mo330)], [false, false]);
+}
+
+console.log('\n331. Corregir un día del pasado no te deja la racha en cero (migración 101)');
+{
+  // LO QUE CONTÓ UN USUARIO (5/11): «cuando corregís el día no se sigue tu racha, empezás de cero». Los días hasta
+  // la última pérdida vivían congelados en `racha_base`: marcar «Fui» el día que la cobró no cambiaba nada (y con
+  // menos de 10 días, la pérdida la había dejado en 0). Y «Recalcular» ponía la base en 0 y contaba solo desde el
+  // último hueco. Por el mismo camino que el calendario: `corregir_dia`, con la sesión de la persona.
+  await cuotaDeVidas(0);
+  const corregir331 = async (u, hace, destino) => {
+    await comoUsuario(u);
+    await db.query('select corregir_dia(mi_hoy() - $1::int, $2)', [hace, destino]);
+  };
+  const racha331 = async (u) => (await perfil(u)).racha_actual;
+
+  const a = await nuevoUsuario();
+  await rachaDe(a, 6, 2);
+  await perder(a);
+  const cobradaA = await racha331(a);
+  await corregir331(a, 1, 'fui');
+  chequear('6 días, faltó ayer y se cobró (0); «Fui» ayer la devuelve con el día: 7', [cobradaA, await racha331(a)], [0, 7]);
+  // Quien ya quedó trabado antes de la 101 (el día puesto y la racha en lo que dejó la pérdida) se destraba con
+  // «Recalcular racha desde el historial». Se deja escrito como lo dejaba el disparador viejo.
+  await db.query('update profiles set racha_actual = 0, racha_base = 0, perdida_fecha = mi_hoy() - 1 where id = $1', [a]);
+  await comoUsuario(a);
+  chequear('trabado en 0 con el día ya corregido: «Recalcular» lo deja en 7', (await db.query('select recalcular_desde_cero() as v')).rows[0].v.racha, 7);
+
+  const b = await nuevoUsuario();
+  await rachaDe(b, 19, 2);
+  await perder(b);
+  const cobradaB = await racha331(b);
+  await corregir331(b, 1, 'fui');
+  chequear('19 días, se cobró (9); «Fui» ayer: 20', [cobradaB, await racha331(b)], [9, 20]);
+
+  // Una pérdida vieja de verdad: 19 días, un hueco que se cobró al volver, y 11 más hasta hoy.
+  const c = await nuevoUsuario();
+  await rachaDe(c, 19, 12);
+  await rachaDe(c, 11);
+  const antesC = await racha331(c);
+  await comoUsuario(c);
+  const recalculo = (await db.query('select recalcular_desde_cero() as v')).rows[0].v;
+  chequear('19, hueco (-10) y 11 = 20; «Recalcular» no tira el piso de esa pérdida', [antesC, recalculo.racha, await racha331(c)], [20, 20, 20]);
+  await corregir331(c, 11, 'fui');
+  chequear('y tapar ese hueco con «Fui» deshace la pérdida: 31 seguidos', await racha331(c), 31);
+  // Sacar un día del medio es una falta: resta 10 y el día, no corta en seco. Y ponerlo de vuelta deja lo de antes.
+  await corregir331(c, 5, 'nada');
+  const sinElDia = await racha331(c);
+  await corregir331(c, 5, 'fui');
+  chequear('sacar un día del medio: 25, hueco y 5 = 20 (no 5); ponerlo de vuelta: 31', [sinElDia, await racha331(c)], [20, 31]);
+
+  // La pérdida del hueco que llega hasta hoy se cobró después del último día: no se ve entre dos días, y al corregir
+  // algo viejo se respeta, una vez. Ni se olvida (24) ni se ignora la corrección (15).
+  const d = await nuevoUsuario();
+  await rachaDe(d, 25, 2);
+  await perder(d);
+  await corregir331(d, 20, 'descanso');
+  const conDescanso = await racha331(d);
+  await perder(d);
+  chequear('25 días y se cobró ayer (15); un día viejo pasa a descanso: 14, y abrir la app no cobra de nuevo', [conDescanso, await racha331(d)], [14, 14]);
+  await comoUsuario(d);
+  const dos = [(await db.query('select recalcular_desde_cero() as v')).rows[0].v.racha, (await db.query('select recalcular_desde_cero() as v')).rows[0].v.racha];
+  chequear('y «Recalcular» da lo mismo, dos veces', dos, [14, 14]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

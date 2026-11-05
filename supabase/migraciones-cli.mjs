@@ -26,5 +26,6 @@ for (const f of readdirSync(AQUI)) {
 console.log(`${n} migraciones copiadas a supabase/migrations/`);
 const args = process.argv.slice(2);
 if (args.length === 0) process.exit(0);
-const r = spawnSync('npx', ['--no-install', 'supabase', ...args], { cwd: join(AQUI, '..'), stdio: 'inherit', shell: true });
+// Con la versión fija (5/11): sin ella, `supabase` pasó a ser la 3.0.0, que no está bajada, y `--no-install` la frena.
+const r = spawnSync('npx', ['--no-install', 'supabase@2.122.0', ...args], { cwd: join(AQUI, '..'), stdio: 'inherit', shell: true });
 process.exit(r.status ?? 1);
