@@ -8,8 +8,9 @@ se rediscute; lo marcado PENDIENTE se pregunta antes de asumir.
 
 ## Reglas de trabajo
 
-- Verificá con `npx tsc --noEmit`, `npm run test:db` y `npm run test:conexion`
-  antes de dar algo por terminado.
+- Verificá con `npm run typecheck`, `npm run test:db` y `npm run test:conexion`
+  antes de dar algo por terminado. `npx tsc --noEmit` solo no alcanza: el
+  tsconfig de la raíz deja afuera `movil/`, que es la app que usa la gente.
 - **Nunca `npm run build` con el dev server prendido**: comparten `.next` y se
   corrompe.
 - Las migraciones SQL **las aplica Claude con la CLI de Supabase** (desde el
@@ -91,7 +92,7 @@ seguro.
 | Comando | Qué hace |
 |---|---|
 | `npm run dev` | dev server, puerto 3020 |
-| `npx tsc --noEmit` | tipos |
+| `npm run typecheck` | tipos de la web y de la nativa |
 | `npm run test:db` | schema contra PGlite + deriva entre schema.sql y las migraciones |
 | `npm run test:conexion` | humo contra el Supabase real, solo lectura |
 | `npm run test:e2e` | flujo completo con 2 cuentas (pide `E2E_EMAIL`) |

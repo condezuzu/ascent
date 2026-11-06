@@ -33,8 +33,8 @@ Desde la migración 61 (4/10/2026) son dos reglas, según qué pasó con los log
 El techo (`techo_de_mejor_racha`) cuenta el historial con la regla de la racha
 —un corte resta 10—, y **solo se usa para bajar**. Subir el récord desde el
 historial le daría a la persona un número que nunca tuvo: la racha de verdad no
-siempre arrastra (borrar un día del medio o recalcular desde cero cortan en
-seco).
+siempre arrastra (un hueco partido en dos por una corrección cobra uno solo, y
+hasta la migración 101 borrar un día del medio o recalcular cortaban en seco).
 
 ### logs
 `id`, `user_id`, `fecha`, `es_descanso`, `planeta_del_dia`
@@ -103,6 +103,13 @@ o después de tres meses da lo mismo: se retoma desde los días conservados. Una
 ausencia larga no castiga más que una corta — el resto es una sola vez por corte.
 
 Corolario: tiene que existir una forma de corregir días a mano desde el principio.
+
+**Y corregir cuenta con esta misma regla (migración 101).** Cambiar un día del
+medio, o de antes de la última pérdida, vuelve a contar el historial entero
+(`estado_de_la_racha`): marcar «Fui» el día que cobró la pérdida la deshace, y
+sacar uno del medio resta 10 en vez de cortar en seco. Corregir nunca va en
+contra de lo que se hizo: poner un día no baja la racha y sacarlo no la sube.
+«Recalcular racha desde el historial» cuenta igual y no baja lo que había.
 
 ---
 

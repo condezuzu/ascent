@@ -17,7 +17,6 @@ import { ponerNombres } from '@compartido/enCurso';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import SelectorEjercicio from './SelectorEjercicio';
 import ListaDeBloques from './ListaDeBloques';
-import NumeroQueRueda from './NumeroQueRueda';
 import CampoPeso from './CampoPeso';
 import CampoReps from './CampoReps';
 import CampoDistancia from './CampoDistancia';
@@ -39,7 +38,7 @@ const MINUTOS_DE_ARRANQUE = 20;
 import EtiquetaDeCarga from './EtiquetaDeCarga';
 import Globito from './Globito';
 import { esPropio, nombreVisible } from '@nucleo/propios';
-import { C, conAlfa, DESHABILITADO, HALO, conTema } from './colores';
+import { C, conAlfa, DESHABILITADO, HALO, conTema, luz } from './colores';
 import { useTema } from './useTema';
 import { leerRecordados, marcarSubida } from '@compartido/pesosRecordados';
 import { claveDeSubida, loQueSePuedeSubir, type Subida } from '@nucleo/subir';
@@ -417,13 +416,16 @@ export default function Bloque({
         </Aparece>
       )}
 
-      {/* UNA SOLA CUENTA DEL BLOQUE (19/9), y desde «Cifras» (2/11) es la cifra de esta pantalla: el número
-          grande reemplaza a los circulitos. Dos lecturas de lo mismo hicieron creer que se perdían series. */}
+      {/* UNA SOLA CUENTA DEL BLOQUE (19/9): los puntitos, y el total chico al lado. Del 2/11 al 5/11 fue un
+          número enorme («Cifras»); pidió volver a esto: el número sobresalía demasiado. Una sola lectura, que
+          dos de lo mismo hicieron creer que se perdían series. El "1 de 3" queda para el lector de pantalla. */}
       {!esTiempo && (
-        <View style={estilos.cuenta} testID="cuenta-de-series" accessible accessibilityRole="image" accessibilityLabel={T.sesion.deMeta(estado.hechas, estado.meta)} accessibilityLiveRegion="polite">
-          <NumeroQueRueda valor={estado.hechas} alto={132} style={estilos.cuentaNumero} />
-          <Text style={estilos.cuentaMeta}>/{estado.meta}</Text>
-          <View style={estilos.cuentaHueco} />
+        <View style={estilos.cuenta} accessibilityLiveRegion="polite">
+          <View style={estilos.puntos} testID="cuenta-de-series" accessible accessibilityRole="image" accessibilityLabel={T.sesion.deMeta(estado.hechas, estado.meta)}>
+            {Array.from({ length: Math.max(estado.meta, estado.hechas) }).map((_, i) => (
+              <PuntoDeSerie key={i} lleno={i < estado.hechas} extra={i >= estado.meta} />
+            ))}
+          </View>
           <Tic valor={total}>
             <Text style={estilos.cuentaTotal}>{T.sesion.totalHoy(total)}</Text>
           </Tic>
@@ -700,6 +702,28 @@ export default function Bloque({
 const CURVA_SALE = LLEGA;
 const ANCHO_MENOS = 66;
 
+/**
+ * EL PUNTO DE UNA SERIE (15/10, aprobada en la galería): el que se acaba de llenar
+ * se llena desde el centro en 0,26 s. Los que ya estaban llenos al montar, no: es
+ * la serie que se suma, no la pantalla que aparece.
+ */
+function PuntoDeSerie({ lleno, extra }: { lleno: boolean; extra: boolean }) {
+  useTema();
+  const relleno = useRef(new Animated.Value(lleno ? 1 : 0)).current;
+  const antes = useRef(lleno);
+  useEffect(() => {
+    if (lleno === antes.current) return;
+    antes.current = lleno;
+    if (!lleno) return relleno.setValue(0);
+    Animated.timing(relleno, { toValue: 1, duration: 260, easing: CURVA_SALE, useNativeDriver: true }).start();
+  }, [lleno, relleno]);
+  return (
+    <View testID={lleno ? 'punto-lleno' : 'punto-vacio'} style={[estilos.punto, lleno && estilos.puntoBorde, extra && estilos.puntoExtra]}>
+      <Animated.View style={[estilos.puntoRelleno, { transform: [{ scale: relleno }] }]} />
+    </View>
+  );
+}
+
 const PressableAnimado = Animated.createAnimatedComponent(Pressable);
 
 /** EL + QUE SE HUNDE Y SE ILUMINA al tocarlo (15/10): 0,3 s, nada más. */
@@ -798,10 +822,13 @@ const estilos = conTema(() => StyleSheet.create({
   opcionTexto: { color: C.claro, fontSize: 13 },
   nota: { color: C.apagado, fontSize: 12, marginTop: 8 },
   luzDelMas: { ...StyleSheet.absoluteFillObject, backgroundColor: conAlfa(C.negro, 0.14) },
-  cuenta: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 10 },
-  cuentaNumero: { color: C.tinta, fontFamily: L.racha, fontWeight: '200', fontSize: 132, lineHeight: 132, letterSpacing: -5, marginLeft: -6 },
-  cuentaMeta: { color: C.apagado, fontFamily: L.dato, fontWeight: '300', fontSize: 30 },
-  cuentaHueco: { flex: 1 },
+  cuenta: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 18 },
+  puntos: { flexDirection: 'row', justifyContent: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 1 },
+  punto: { width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: C.bordeSerie },
+  puntoBorde: { borderColor: C.claro },
+  puntoRelleno: { ...StyleSheet.absoluteFillObject, borderRadius: 8, backgroundColor: C.claro, ...luz(C.claro, 0.42, 4) },
+  // Las que pasan la meta: más chicas, para que la meta se siga leyendo.
+  puntoExtra: { width: 11, height: 11, borderRadius: 6, marginTop: 2.5 },
   cuentaDeCardio: { flexDirection: 'row', justifyContent: 'center', marginTop: 22 },
   cuentaTotal: { color: C.sub, fontSize: 11.5, fontFamily: L.dato },
   // La fila de los dos botones: el − angosto y el + con todo lo que sobra.

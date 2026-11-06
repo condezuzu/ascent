@@ -11,7 +11,7 @@ Lo que está acá ya está decidido y no se rediscute salvo que se indique.
 
 Ocho rangos, escalados por magnitud física:
 
-1. Polvo
+1. Polvo estelar
 2. Asteroide
 3. Luna
 4. Planeta
@@ -156,7 +156,7 @@ Cada rango define tres colores: fondo/apagado, principal, y claro/acento.
 
 | Rango | Apagado | Principal | Claro |
 |---|---|---|---|
-| 1 · Polvo | `#4A4945` | `#6E6C66` | `#9C9A92` |
+| 1 · Polvo estelar | `#4A4945` | `#6E6C66` | `#9C9A92` |
 | 2 · Asteroide | `#7A3A15` | `#B4581F` | `#E08A3C` |
 | 3 · Luna | `#5B7BA8` | `#7E8CA8` | `#C4C2BA` |
 | 4 · Planeta | según el planeta del día | | |

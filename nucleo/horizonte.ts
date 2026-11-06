@@ -67,8 +67,12 @@ export function alturaDe(esquina: string | undefined, enReposo: boolean | undefi
  * `conTextoAbajo`: lo que se lee sobre el borde encendido del planeta, como el resumen al terminar o el
  * día listo. Medido con `probar-contraste`: sin esto, «minutos» daba 1,21:1. El Sol y la nebulosa son lo
  * más claro que llega a la franja de abajo de las otras pantallas, y por eso llevan más.
+ *
+ * 5/11: un poco más en las otras pantallas. Con el cuerpo moviéndose, lo tenue de Stats quedaba entre 4,2 y
+ * 5:1 según dónde lo agarrara la foto («0 de 27» con el Sol, el «—» del rango 3): el piso no puede depender
+ * de la suerte.
  */
 export function velosDe(rango: number, altura: Altura, conTextoAbajo = false) {
-  if (altura === 'baja') return { velo: 0.4, lectura: rango === 5 ? 0.9 : rango === 1 ? 0.75 : 0.6 };
+  if (altura === 'baja') return { velo: 0.4, lectura: rango === 5 ? 1 : rango === 1 ? 0.82 : 0.68 };
   return { velo: rango === 5 ? 0.16 : rango === 7 ? 0.2 : 0.1, lectura: conTextoAbajo ? 1 : rango === 5 ? 0.42 : 0 };
 }

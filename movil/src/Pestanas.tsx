@@ -345,6 +345,34 @@ export default function Pestanas({
   );
 
   /**
+   * EL NOMBRE APARECE UN RATO, Y DEBAJO DEL ICONO (2/11). La barra ya no lleva palabras: el nombre se
+   * ve al cambiar de pestaña y se va. Abajo del icono, que es donde estaba siempre: arriba pisaba el arco.
+   */
+  const nombres = useRef(ORDEN.map(() => new Animated.Value(0))).current;
+  const nombreAndando = useRef<Animated.CompositeAnimation | null>(null);
+  // AL SOLTAR, NO AL LLEGAR (5/11, a pedido): dice a dónde se va mientras va. Esperando a `pestana`, que
+  // cambia cuando el viaje termina, se prendía 340 ms tarde, con la pantalla ya quieta.
+  const mostrarNombre = useCallback(
+    (destino: Pestana) => {
+      const i = ORDEN.indexOf(destino);
+      nombreAndando.current?.stop();
+      nombres.forEach((v, j) => {
+        if (j === i) return;
+        v.stopAnimation();
+        v.setValue(0);
+      });
+      nombreAndando.current = Animated.sequence([
+        Animated.timing(nombres[i], { toValue: 1, duration: 180, easing: LLEGA, useNativeDriver: true }),
+        Animated.delay(1100),
+        Animated.timing(nombres[i], { toValue: 0, duration: 320, easing: SE_VA, useNativeDriver: true }),
+      ]);
+      nombreAndando.current.start();
+    },
+    [nombres]
+  );
+  useEffect(() => () => nombreAndando.current?.stop(), []);
+
+  /**
    * IR A UNA PESTAÑA, tocando el botón de abajo.
    *
    * SE MUEVE Y SE ANIMA, igual que el gesto. Antes el toque era instantáneo
@@ -359,6 +387,7 @@ export default function Pestanas({
       // todavía es la de antes y la tira ya va para otro lado.
       if (destino === rumbo.current) return;
       rumbo.current = destino;
+      mostrarNombre(destino);
       montadas.current.add(destino);
       setPestana(destino);
       setAsomando(null);
@@ -374,37 +403,12 @@ export default function Pestanas({
         useNativeDriver: true,
       }).start();
     },
-    [ancho, correr]
+    [ancho, correr, mostrarNombre]
   );
 
   // "Ir a Ajustes" desde el texto de otra pantalla: ver `irAPestana.ts`.
   useEffect(() => eventos.escuchar(IR_A_PESTANA, (p) => irA(p as Pestana)), [irA]);
 
-  /**
-   * EL NOMBRE APARECE UN RATO, Y DEBAJO DEL ICONO (2/11). La barra ya no lleva palabras: el nombre se
-   * ve al cambiar de pestaña y se va. Abajo del icono, que es donde estaba siempre: arriba pisaba el arco.
-   */
-  const nombres = useRef(ORDEN.map(() => new Animated.Value(0))).current;
-  const yaSeMostro = useRef(false);
-  useEffect(() => {
-    if (!yaSeMostro.current) {
-      yaSeMostro.current = true;
-      return;
-    }
-    const i = ORDEN.indexOf(pestana);
-    nombres.forEach((v, j) => {
-      if (j === i) return;
-      v.stopAnimation();
-      v.setValue(0);
-    });
-    const anim = Animated.sequence([
-      Animated.timing(nombres[i], { toValue: 1, duration: 180, easing: LLEGA, useNativeDriver: true }),
-      Animated.delay(1100),
-      Animated.timing(nombres[i], { toValue: 0, duration: 320, easing: SE_VA, useNativeDriver: true }),
-    ]);
-    anim.start();
-    return () => anim.stop();
-  }, [pestana, nombres]);
 
   const pan = useMemo(
     () =>
@@ -452,6 +456,7 @@ export default function Pestanas({
           // EL RUMBO CAMBIA ACÁ, AL SOLTAR, y no cuando el viaje termina: el
           // gesto que venga en los próximos 340 ms ya parte de la pestaña a la
           // que va la tira. Esperar al final era el titileo.
+          if (ORDEN[hasta] !== rumbo.current) mostrarNombre(ORDEN[hasta]);
           rumbo.current = ORDEN[hasta];
           const llega = reposo(hasta, ancho);
           // Al soltar, el desenfoque va A DONDE VA LA TIRA y no a donde está:
@@ -501,7 +506,7 @@ export default function Pestanas({
     // SIN `pestana`: el gesto no puede depender de lo que se está dibujando.
     // Además así el PanResponder no se rearma debajo del dedo a mitad de un
     // gesto, que le ponía el arrastre en cero.
-    [ancho, correr]
+    [ancho, correr, mostrarNombre]
   );
 
   const dibujar = (cual: Pestana) => {

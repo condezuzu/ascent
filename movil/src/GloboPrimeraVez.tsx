@@ -30,6 +30,7 @@ export default function GloboPrimeraVez({
   subir,
   cerrarCuando = false,
   vistoAlMostrar = false,
+  alMostrarse,
 }: {
   cual: Globo;
   children: string;
@@ -39,6 +40,8 @@ export default function GloboPrimeraVez({
   subir?: number;
   cerrarCuando?: boolean;
   vistoAlMostrar?: boolean;
+  /** Para que lo de abajo le deje lugar solo mientras está: flota sin correr nada (ver «Terminar» en Inicio). */
+  alMostrarse?: (si: boolean) => void;
 }) {
   const [visible, setVisible] = useState(false);
   const [uid, setUid] = useState('');
@@ -72,6 +75,12 @@ export default function GloboPrimeraVez({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cerrarCuando, visible]);
 
-  if (!visible || !enPantalla) return null;
+  const seVe = visible && enPantalla;
+  useEffect(() => {
+    alMostrarse?.(seVe);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seVe]);
+
+  if (!seVe) return null;
   return <GloboComic texto={children} alCerrar={cerrar} colaX={colaX} alinear={alinear} subir={subir} testID={`globo-${cual}`} />;
 }
