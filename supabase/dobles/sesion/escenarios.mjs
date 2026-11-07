@@ -1676,7 +1676,7 @@ async function segundaCambia() {
   datos.set('ascent:rutina-activa', JSON.stringify({ de: 'yo', id: 'r1', dias }));
   const { hoyISO } = await import('@nucleo/fechas');
   const { diaDeLaSesion, rutinaTrasLaVentana } = await import('@nucleo/rutina');
-  const { sesionesRutinaRef } = await import('@compartido/sesionViva');
+  const { sesionesRutinaRef, historialConPesosRef } = await import('@compartido/sesionViva');
   const una = montar(() => useSesion());
   await asentar();
   await una.r.empezar();
@@ -1699,9 +1699,10 @@ async function segundaCambia() {
   const segunda = await otra.r.terminar();
   await asentar();
   // Lo mismo que hace la ventana de la nativa (`preguntarPorLaRutina`): lo de antes hoy, del historial.
-  const antesHoy = sesionesRutinaRef.current.filter((x) => x.fecha === hoyISO()).flatMap((x) => x.ejercicios);
+  const vistos = new Set(sesionesRutinaRef.current.filter((x) => x.fecha === hoyISO()).flatMap((x) => x.ejercicios));
+  const antesHoy = diaDeLaSesion(historialConPesosRef.current.filter((x) => x.fecha === hoyISO()).flatMap((x) => x.bloques)).ejercicios.filter((e) => vistos.has(e.ejercicio));
   const tras = rutinaTrasLaVentana(dias, 1, diaDeLaSesion(segunda?.bloques ?? []), 'reemplazar', antesHoy);
-  return { propone, antesHoy, diaDespues: tras[1].ejercicios.map((e) => e.ejercicio) };
+  return { propone, antesHoy: antesHoy.map((e) => e.ejercicio), diaDespues: tras[1].ejercicios.map((e) => e.ejercicio) };
 }
 
 async function dueno() {

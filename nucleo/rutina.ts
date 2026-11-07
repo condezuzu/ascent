@@ -380,16 +380,38 @@ export function rutinaConLoHecho<D extends DiaConEjercicios>(dias: D[], dia: num
   return conDiaReemplazado(dias, dia, { ...hecho, descanso: false, ejercicios: [...ejercicios, ...nuevos.slice(usados)] });
 }
 
+/**
+ * LO QUE GUARDA «CREAR RUTINA NUEVA» (6/11, bug del gimnasio: "hoy hice pecho y espalda nada
+ * más, y quiero hacer eso los viernes"): el día como se entrenó, en el orden en que se hizo,
+ * con las series de hoy y sin lo que quedó sin hacer. Iba por `rutinaConLoHecho`, que es la de
+ * «Reemplazar»: quedaban el orden y las series de la rutina, y lo no hecho seguía ahí. Lo de las
+ * sesiones anteriores de hoy va adelante. Lo que el día ya tenía conserva lo suyo (la meta de
+ * repeticiones; los minutos, si hoy no se anotaron).
+ */
+export function rutinaConElDiaHecho<D extends DiaConEjercicios>(dias: D[], dia: number, hecho: D, antesHoy: EjercicioDeRutina[] = []): D[] {
+  const delDia = dias[dia];
+  const antes = delDia && !delDia.descanso ? delDia.ejercicios : [];
+  const ejercicios = ejerciciosConSeries([...antesHoy, ...hecho.ejercicios]).map((e) => {
+    const era = antes.find((a) => a.ejercicio === e.ejercicio);
+    if (!era) return e;
+    return e.minutos ? { ...era, series: e.series, minutos: e.minutos } : { ...era, series: e.series };
+  });
+  return conDiaReemplazado(dias, dia, { ...hecho, descanso: false, ejercicios });
+}
+
 /** Lo que se elige en la ventana del final. */
 export type EleccionDeLaVentana = 'reemplazar' | 'nueva' | 'olvidar';
 
 /**
- * CÓMO QUEDAN LOS DÍAS SEGÚN LO QUE SE ELIGE (20/10). «Reemplazar» y «Crear rutina nueva»
- * guardan el día con lo que cambió (`rutinaConLoHecho`; la nueva, aparte). «Olvidar este
- * día» no guarda nada: el cambio de ese día se descarta y la rutina queda como estaba.
+ * CÓMO QUEDAN LOS DÍAS SEGÚN LO QUE SE ELIGE (20/10). «Reemplazar» guarda el día con lo que
+ * cambió (`rutinaConLoHecho`); «Crear rutina nueva», el día como se entrenó, aparte
+ * (`rutinaConElDiaHecho`, 6/11). «Olvidar este día» no guarda nada: el cambio de ese día se
+ * descarta y la rutina queda como estaba. `antesHoy`: las sesiones ya terminadas de hoy.
  */
-export function rutinaTrasLaVentana<D extends DiaConEjercicios>(dias: D[], dia: number, hecho: D, eleccion: EleccionDeLaVentana, antesHoy: string[] = []): D[] | null {
-  return eleccion === 'olvidar' ? null : rutinaConLoHecho(dias, dia, hecho, antesHoy);
+export function rutinaTrasLaVentana<D extends DiaConEjercicios>(dias: D[], dia: number, hecho: D, eleccion: EleccionDeLaVentana, antesHoy: EjercicioDeRutina[] = []): D[] | null {
+  if (eleccion === 'olvidar') return null;
+  if (eleccion === 'nueva') return rutinaConElDiaHecho(dias, dia, hecho, antesHoy);
+  return rutinaConLoHecho(dias, dia, hecho, antesHoy.map((e) => e.ejercicio));
 }
 
 /**

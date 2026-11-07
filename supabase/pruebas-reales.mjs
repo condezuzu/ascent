@@ -97,6 +97,8 @@
 //  43. probar-vuelta-grande — lo de la sección 14: Iniciar grupo abre la lista, el número grande, la rutina
 //      que llega, la cascada al tocar la barra, y la entrada a Moss.
 //      escala, cada anotación sobre la línea, leer tocando y arrastrando (1/11), en la nativa.
+//  44. probar-rutina-nueva — «Crear rutina nueva» al terminar guarda el día como se entrenó (orden,
+//      series, sin lo que no se hizo, con un propio creado en el medio), y Entrenamiento ya la tiene (6/11).
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -160,6 +162,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'menos texto, más visual', archivo: 'probar-menos-texto.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'las gráficas de línea', archivo: 'probar-progreso.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la vuelta grande', archivo: 'probar-vuelta-grande.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: '«Crear rutina nueva» guarda lo que se entrenó', archivo: 'probar-rutina-nueva.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {
