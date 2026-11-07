@@ -1,16 +1,19 @@
 import { T } from '@nucleo/textos';
 import { hoyISO } from '@nucleo/fechas';
-import { diaDeLaSesion, hayQuePreguntarPorLaRutina, rutinaTrasLaVentana } from '@nucleo/rutina';
+import { diaDeLaSesion, hayQuePreguntarPorLaRutina, rutinaTrasLaVentana, type EjercicioDeRutina } from '@nucleo/rutina';
 import { nombreNuevo, type DiaDeSemana, type Rutina } from '@nucleo/rutinas';
 import { cargarMisRutinas, guardarRutina, rutinaActivaDelTelefono } from '@compartido/rutinas';
-import { sesionesRutinaRef } from '@compartido/sesionViva';
+import { historialConPesosRef, sesionesRutinaRef } from '@compartido/sesionViva';
 import { plataforma } from '@plataforma';
 import { supabase } from './supabase';
 
 type BloqueGuardado = { ejercicio?: string | null; series?: number | null; minutos?: number | null };
 
-/** `antesHoy`: lo hecho en las sesiones anteriores de hoy (20/10), para no pisar su lugar. */
-export type PreguntaDeRutina = { rutinas: Rutina[]; actual: Rutina; dia: number; hecho: ReturnType<typeof diaDeLaSesion>; antesHoy: string[] };
+/**
+ * `antesHoy`: lo hecho en las sesiones anteriores de hoy, con sus series. «Reemplazar» no pisa
+ * su lugar (20/10); «Crear rutina nueva» lo pone adelante (6/11).
+ */
+export type PreguntaDeRutina = { rutinas: Rutina[]; actual: Rutina; dia: number; hecho: ReturnType<typeof diaDeLaSesion>; antesHoy: EjercicioDeRutina[] };
 
 /** El día que se eligió «Olvidar este día»: ese día la ventana no vuelve a preguntar. */
 export const CLAVE_DIA_OLVIDADO = 'ascent:rutina-dia-olvidado';
@@ -33,8 +36,11 @@ export async function rutinaParaPreguntar(bloques: BloqueGuardado[]): Promise<Pr
   const actual = rutinas?.find((r) => r.activa);
   if (!rutinas || !actual || !hayQuePreguntarPorLaRutina(actual.dias[dia], hecho)) return null;
   // El historial lo trajo la sesión al empezar: son las sesiones ya terminadas de hoy, sin esta.
+  // Las series salen del que tiene los bloques; los ejercicios que no se ven (un propio borrado),
+  // del otro, que ya los sacó.
   const hoy = hoyISO();
-  const antesHoy = sesionesRutinaRef.current.filter((x) => x.fecha === hoy).flatMap((x) => x.ejercicios);
+  const vistos = new Set(sesionesRutinaRef.current.filter((x) => x.fecha === hoy).flatMap((x) => x.ejercicios));
+  const antesHoy = diaDeLaSesion(historialConPesosRef.current.filter((x) => x.fecha === hoy).flatMap((x) => x.bloques)).ejercicios.filter((e) => vistos.has(e.ejercicio));
   return { rutinas, actual, dia, hecho, antesHoy };
 }
 

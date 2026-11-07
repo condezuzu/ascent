@@ -76,7 +76,7 @@ Necesita una **rutina guardada** (Stats → Entrenamiento) que tenga algo cargad
 | 3.3 | «Reemplazar» | «¿Estás seguro?» con Sí / No | — |
 | 3.4 | «No» | No cambia nada | — |
 | 3.5 | Repetir y elegir «Sí» | Stats → Entrenamiento: el día de hoy de esa rutina ahora tiene lo que entrenaste | Si no cambió, captura de la rutina |
-| 3.6 | Otra vez, elegir «Crear una rutina nueva» | Sin confirmación. Aparece «Entrenamiento N» en Stats → Entrenamiento; la activa sigue siendo la de antes | Si cambió la activa, captura |
+| 3.6 | Otra vez, elegir «Crear una rutina nueva» | Sin confirmación. Aparece «Entrenamiento N» en Stats → Entrenamiento apenas se entra; la activa sigue siendo la de antes. El día de hoy de la nueva es lo que entrenaste: en ese orden, con esas series y sin lo que no hiciste (6/11) | Si cambió la activa, o el día no es lo que hiciste, captura |
 
 ---
 

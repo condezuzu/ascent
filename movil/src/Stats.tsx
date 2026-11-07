@@ -39,7 +39,7 @@ import KilosPorSemana from './KilosPorSemana';
 import { useRecargarAlVolver } from './irAPestana';
 import MiRutina from './MiRutina';
 import { precargarRutina } from '@compartido/rutinaPrecargada';
-import { eventos } from '@compartido/eventos';
+import { eventos, RUTINA_CAMBIO } from '@compartido/eventos';
 import { ABRIR_ENTRENAMIENTO, seAcabaDePedir } from './abrirEntrenamiento';
 import { paletaDe } from '@nucleo/paletas';
 import { useArriba } from './zonaSegura';
@@ -138,6 +138,9 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     seAcabaDePedir();
     setPestana('entrenamiento');
   }), []);
+  // Con Entrenamiento cerrado, una rutina guardada en otro lado (la ventana del final) se vuelve a
+  // pedir, para que al abrirlo ya esté (6/11). Abierto, la pide `MiRutina`.
+  useEffect(() => (pestana === 'entrenamiento' ? undefined : eventos.escuchar(RUTINA_CAMBIO, () => void precargarRutina(supabase))), [pestana]);
   // Mientras se arrastra un ejercicio de la rutina, la pantalla no se mueve.
   const [arrastrando, setArrastrando] = useState(false);
   const [tocada, setTocada] = useState<number | null>(null);
