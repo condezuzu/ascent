@@ -20231,11 +20231,12 @@ console.log('\n283. «Olvidar este día» en la ventana del final: descarta el c
   const { rutinaTrasLaVentana, rutinaConLoHecho } = await import('../nucleo/rutina.ts');
   const d = (ids) => ({ descanso: false, ejercicios: ids.map((e) => ({ ejercicio: e, series: 3 })) });
   const dias = [d([]), d(['a', 'b'])];
-  chequear('la regla: olvidar no deja nada que guardar; reemplazar y nueva, el día con lo que cambió', [
+  // Desde el 6/11 «Crear rutina nueva» guarda el día como se entrenó (ver la 332).
+  chequear('la regla: olvidar no deja nada que guardar; reemplazar, el día con lo que cambió; nueva, el día como se entrenó', [
     rutinaTrasLaVentana(dias, 1, d(['x']), 'olvidar'),
     JSON.stringify(rutinaTrasLaVentana(dias, 1, d(['x']), 'reemplazar')) === JSON.stringify(rutinaConLoHecho(dias, 1, d(['x']))),
-    JSON.stringify(rutinaTrasLaVentana(dias, 1, d(['x']), 'nueva')) === JSON.stringify(rutinaConLoHecho(dias, 1, d(['x']))),
-  ], [null, true, true]);
+    rutinaTrasLaVentana(dias, 1, d(['x']), 'nueva')[1].ejercicios.map((e) => e.ejercicio),
+  ], [null, true, ['x']]);
   const pr = sinComentarios(deBug('movil', 'src', 'preguntarPorLaRutina.ts'));
   chequear('la app: olvidar no guarda la rutina, anota el día, y ese día la ventana no vuelve a preguntar', [
     /como: 'esta' \| 'nueva' \| 'olvidar'/.test(pr),
@@ -20452,8 +20453,9 @@ console.log('\n295. «Reemplazar» en la segunda sesión del día no pisa lo que
     con([], ['y']), con(['a'], ['y']), con(['x'], ['y']), con(['a', 'b'], ['y']),
   ], [['y', 'b', 'c'], ['a', 'y', 'c'], ['a', 'y', 'c'], ['a', 'b', 'y']]);
   const pr = sinComentarios(deBug('movil', 'src', 'preguntarPorLaRutina.ts'));
+  // Desde el 6/11 con sus series, del historial con bloques (ver la 332).
   chequear('la ventana de la nativa le pasa lo de antes hoy', [
-    /const antesHoy = sesionesRutinaRef\.current\.filter\(\(x\) => x\.fecha === hoy\)\.flatMap\(\(x\) => x\.ejercicios\);/.test(pr),
+    /const antesHoy = diaDeLaSesion\(historialConPesosRef\.current\.filter\(\(x\) => x\.fecha === hoy\)/.test(pr),
     /rutinaTrasLaVentana\(actual\.dias, dia, hecho, como === 'esta' \? 'reemplazar' : como, antesHoy\)/.test(pr),
   ], [true, true]);
 }
@@ -21969,6 +21971,76 @@ console.log('\n331. Corregir un día del pasado no te deja la racha en cero (mig
   await comoUsuario(d);
   const dos = [(await db.query('select recalcular_desde_cero() as v')).rows[0].v.racha, (await db.query('select recalcular_desde_cero() as v')).rows[0].v.racha];
   chequear('y «Recalcular» da lo mismo, dos veces', dos, [14, 14]);
+}
+console.log('\n332. «Crear rutina nueva» guarda el día como se entrenó: orden, series y sin lo que no se hizo (6/11, bug del gimnasio)');
+{
+  // Lo que contó el dueño: el viernes era pecho, espalda, hombros y brazos; hizo solo pecho y
+  // espalda, en otro orden, con un propio nuevo, y tocó «Crear rutina nueva». Quedaba el orden y
+  // las series de la rutina, y el curl, las elevaciones y el tríceps que no hizo.
+  const V = 5;
+  const vacio = () => ({ descanso: false, ejercicios: [] });
+  const dias = [0, 1, 2, 3, 4, 5, 6].map(vacio);
+  dias[1] = { descanso: false, ejercicios: [{ ejercicio: 'sentadilla', series: 4 }] };
+  dias[V] = { descanso: false, ejercicios: [
+    { ejercicio: 'press_inclinado', series: 4 }, { ejercicio: 'jalon', series: 4 }, { ejercicio: 'pec_deck', series: 3 },
+    { ejercicio: 'press_banca', series: 4, reps: 8 }, { ejercicio: 'remo_maquina', series: 4 }, { ejercicio: 'elevaciones_polea', series: 3 },
+    { ejercicio: 'martillo', series: 3 }, { ejercicio: 'triceps_polea', series: 3 },
+  ] };
+  // Los bloques como los manda `terminar`: el press de banca en dos tandas, el propio al final.
+  const hecho = RB.diaDeLaSesion([
+    { ejercicio: 'press_inclinado', series: 3 }, { ejercicio: 'jalon', series: 4 }, { ejercicio: 'press_banca', series: 2 },
+    { ejercicio: 'remo_maquina', series: 3 }, { ejercicio: 'press_banca', series: 1 }, { ejercicio: 'pec_deck', series: 2 },
+    { ejercicio: 'propio_pulldown', series: 3 },
+  ]);
+  const ver = (d) => d.ejercicios.map((e) => [e.ejercicio, e.series, ...(e.reps ? [e.reps] : [])]);
+  const nueva = RB.rutinaTrasLaVentana(dias, V, hecho, 'nueva');
+  chequear('el viernes de la nueva: lo de hoy, en el orden en que se hizo y con sus series; la meta de repeticiones del press se queda', ver(nueva[V]), [
+    ['press_inclinado', 3], ['jalon', 4], ['press_banca', 3, 8], ['remo_maquina', 3], ['pec_deck', 2], ['propio_pulldown', 3],
+  ]);
+  chequear('los otros días, copia de la activa', JSON.stringify(nueva.filter((_, i) => i !== V)) === JSON.stringify(dias.filter((_, i) => i !== V)), true);
+  // «Reemplazar» queda como el 20/10 ("cambié el primer ejercicio y me editó todo"): solo lo nuevo.
+  chequear('«Reemplazar» no cambia: el propio en el lugar del primero que no se hizo, lo demás como estaba', ver(RB.rutinaTrasLaVentana(dias, V, hecho, 'reemplazar')[V]), [
+    ['press_inclinado', 4], ['jalon', 4], ['pec_deck', 3], ['press_banca', 4, 8], ['remo_maquina', 4], ['propio_pulldown', 3], ['martillo', 3], ['triceps_polea', 3],
+  ]);
+  // Lo de una sesión anterior de hoy va adelante con sus series; si se repite, se suma.
+  const conLaManana = RB.rutinaTrasLaVentana(dias, V, hecho, 'nueva', [{ ejercicio: 'martillo', series: 2 }, { ejercicio: 'jalon', series: 1 }]);
+  chequear('con una sesión de antes hoy: lo suyo adelante, y lo repetido una vez con las series juntas', ver(conLaManana[V]).slice(0, 3), [['martillo', 2], ['jalon', 5], ['press_inclinado', 3]]);
+  chequear('y «Reemplazar» con la misma sesión de antes: lo de antes cubre su lugar, como en la 295', ver(RB.rutinaTrasLaVentana(dias, V, hecho, 'reemplazar', [{ ejercicio: 'martillo', series: 2 }])[V]).map((e) => e[0]), [
+    'press_inclinado', 'jalon', 'pec_deck', 'press_banca', 'remo_maquina', 'propio_pulldown', 'martillo', 'triceps_polea',
+  ]);
+  // El cardio: los minutos de hoy si los hubo.
+  const cinta = RB.rutinaTrasLaVentana([vacio(), { descanso: false, ejercicios: [{ ejercicio: 'cinta', series: 1, minutos: 20 }] }], 1, RB.diaDeLaSesion([{ ejercicio: 'cinta', series: 1, minutos: 32 }]), 'nueva');
+  chequear('el cardio, con los minutos de hoy', cinta[1].ejercicios, [{ ejercicio: 'cinta', series: 1, minutos: 32 }]);
+
+  // Y en la base: se guarda así, sin reordenar.
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  await db.query("select guardar_rutina(null, 'Entrenamiento 1', $1::jsonb)", [JSON.stringify(dias)]);
+  await db.query("select guardar_rutina(null, 'Entrenamiento 2', $1::jsonb)", [JSON.stringify(nueva)]);
+  const mias = (await db.query('select mis_rutinas() as v')).rows[0].v;
+  chequear('en la base: la nueva con el viernes de hoy, y la activa sigue siendo la de antes', [mias.map((r) => [r.nombre, r.activa]), ver(mias[1].dias[V])], [
+    [['Entrenamiento 1', true], ['Entrenamiento 2', false]],
+    [['press_inclinado', 3], ['jalon', 4], ['press_banca', 3, 8], ['remo_maquina', 3], ['pec_deck', 2], ['propio_pulldown', 3]],
+  ]);
+
+  // La app: la ventana le pasa lo de antes hoy con sus series, por el mismo camino para las dos.
+  const pr = sinComentarios(deBug('movil', 'src', 'preguntarPorLaRutina.ts'));
+  chequear('la ventana arma lo de antes hoy con sus series, de las sesiones de hoy que se ven', [
+    /const vistos = new Set\(sesionesRutinaRef\.current\.filter\(\(x\) => x\.fecha === hoy\)\.flatMap\(\(x\) => x\.ejercicios\)\);/.test(pr),
+    /const antesHoy = diaDeLaSesion\(historialConPesosRef\.current\.filter\(\(x\) => x\.fecha === hoy\)\.flatMap\(\(x\) => x\.bloques\)\)\.ejercicios\.filter\(\(e\) => vistos\.has\(e\.ejercicio\)\);/.test(pr),
+    /rutinaTrasLaVentana\(actual\.dias, dia, hecho, como === 'esta' \? 'reemplazar' : como, antesHoy\)/.test(pr),
+  ], [true, true, true]);
+  // Y la nueva tardaba en aparecer en Stats → Entrenamiento (montado atrás, no se enteraba). Lo de
+  // verdad lo prueba probar-rutina-nueva, por la pantalla; acá, que el cableado no se pierda.
+  const mr332 = sinComentarios(deBug('movil', 'src', 'MiRutina.tsx'));
+  const st332 = sinComentarios(deBug('movil', 'src', 'Stats.tsx'));
+  chequear('Entrenamiento se entera de lo guardado en otro lado, y lo suyo no lo vuelve a pedir', [
+    /eventos\.escuchar\(RUTINA_CAMBIO, \(\) => \{\s*if \(propias\.current === 0\) void cargar\(\);/.test(mr332),
+    (mr332.match(/await propia\(\(\) => (guardarRutina|activarRutina|borrarRutina)\(/g) ?? []).length,
+    (mr332.match(/await (guardarRutina|activarRutina|borrarRutina)\(/g) ?? []).length,
+    /pestana === 'entrenamiento' \? undefined : eventos\.escuchar\(RUTINA_CAMBIO, \(\) => void precargarRutina\(supabase\)\)/.test(st332),
+  ], [true, 4, 0, true]);
+  chequear('y está en test:real', /probar-rutina-nueva\.mjs/.test(deBug('supabase', 'pruebas-reales.mjs')), true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

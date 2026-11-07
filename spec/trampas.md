@@ -1430,6 +1430,21 @@ hizo. Partir un hueco de tres en dos con un «Fui» serían dos pérdidas donde 
 cobró una: poner un día no baja la racha. La sección 331 de `test:db` va por
 `corregir_dia`, como el calendario.
 
+## «Crear rutina nueva» guardaba otra cosa que lo entrenado (lo contó el dueño, 6/11/2026)
+
+Cambió el viernes: hizo solo pecho y espalda, en otro orden y con un propio nuevo,
+y tocó «Crear rutina nueva». La nueva quedó con el orden y las series de la rutina,
+y con el curl, las elevaciones y el tríceps que no hizo. Los dos botones de la
+ventana iban por `rutinaConLoHecho`, que es la regla de «Reemplazar» (20/10: cambiar
+solo lo nuevo, porque pisar el día borraba lo que quedaba). Para «crear otra rutina
+con este entrenamiento», esa regla es justo lo contrario de lo que dice el botón.
+Y Stats → Entrenamiento, montado atrás, seguía con la lista vieja: nadie le avisaba.
+
+**Regla:** cada opción de la ventana guarda lo que dice su texto, con su función y
+su prueba (`rutinaConElDiaHecho`, sección 332). Una pantalla que se queda montada
+escucha lo que se guarda en otro lado (`RUTINA_CAMBIO`), sin volver a pedir lo que
+guarda ella misma. `probar-rutina-nueva` lo recorre como él.
+
 ## Tests / proceso
 
 **La consulta que se le pasa al humano se corre antes de pasarla.** El 7/10 se

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
+import { eventos, EJERCICIOS_CAMBIO, RUTINA_CAMBIO } from '@compartido/eventos';
 import { Animated, StyleSheet, View } from 'react-native';
 import type { Ejercicio } from '@nucleo/tipos';
 import {
@@ -138,6 +138,21 @@ export default function MiRutina({
   }, [visible, cargar]);
   // Un ejercicio propio recién agregado tiene que verse con su nombre.
   useEffect(() => eventos.escuchar(EJERCICIOS_CAMBIO, () => void cargarCatalogo()), [cargarCatalogo]);
+  // LO QUE SE GUARDA EN OTRO LADO (6/11, bug del gimnasio): «Crear rutina nueva» al terminar
+  // guarda con esta pantalla montada atrás, y seguía la lista vieja. Lo que guarda esta misma ya
+  // está en pantalla: pedirlo de nuevo pisaría lo recién tocado (cacería del 15/10).
+  const propias = useRef(0);
+  async function propia<R>(guardar: () => Promise<R>): Promise<R> {
+    propias.current++;
+    try {
+      return await guardar();
+    } finally {
+      propias.current--;
+    }
+  }
+  useEffect(() => eventos.escuchar(RUTINA_CAMBIO, () => {
+    if (propias.current === 0) void cargar();
+  }), [cargar]);
 
   const actual = rutinas.find((r) => r.id === sel) ?? null;
 
@@ -164,7 +179,7 @@ export default function MiRutina({
     const antes = rutinas;
     setRutinas((rs) => rs.map((r) => (r.id === nueva.id ? nueva : r)));
     setError('');
-    const id = await guardarRutina(supabase, nueva);
+    const id = await propia(() => guardarRutina(supabase, nueva));
     if (!id) {
       setRutinas(antes);
       setError(T.general.noSePudo);
@@ -178,7 +193,7 @@ export default function MiRutina({
     try {
       setError('');
       const nombre = nombreNuevo(rutinas.map((r) => r.nombre), T.rutina.nombreBase);
-      const id = await guardarRutina(supabase, { id: null, nombre, dias });
+      const id = await propia(() => guardarRutina(supabase, { id: null, nombre, dias }));
       if (!id) return setError(T.general.noSePudo);
       await cargar();
       setSel(id);
@@ -190,7 +205,7 @@ export default function MiRutina({
 
   async function activar(id: string) {
     setError('');
-    if (!(await activarRutina(supabase, id, rutinas.find((r) => r.id === id)?.dias))) return setError(T.general.noSePudo);
+    if (!(await propia(() => activarRutina(supabase, id, rutinas.find((r) => r.id === id)?.dias)))) return setError(T.general.noSePudo);
     setRutinas((rs) => rs.map((r) => ({ ...r, activa: r.id === id })));
     void cargarMisRutinas(supabase);
   }
@@ -198,7 +213,7 @@ export default function MiRutina({
   async function borrar(id: string) {
     setPreguntaBorrar(false);
     setError('');
-    if (!(await borrarRutina(supabase, id))) return setError(T.general.noSePudo);
+    if (!(await propia(() => borrarRutina(supabase, id)))) return setError(T.general.noSePudo);
     setEditando(false);
     setSel(null);
     await cargar();
