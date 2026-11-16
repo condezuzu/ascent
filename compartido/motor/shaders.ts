@@ -417,49 +417,50 @@ float alturaRoca(vec3 s) {
 // superficie. Si crecen mucho se comen la pantalla y tapan al sol.
 float protuberancias(vec2 p, float d) {
   float total = 0.0;
-  // LEJOS DEL LIMBO NO HAY PROTUBERANCIAS (28/9): los arcos viven pegados al
-  // borde (hasta ~R+0.08) y se desvanecen enseguida. Más allá de R+0.18 el
-  // aporte es < 1e-5, imperceptible. Antes el bucle entero —9 arcos— corría en
-  // CADA pixel del cuadro, esquinas transparentes incluidas. Cortar acá saca ese
-  // trabajo de casi toda la pantalla sin tocar el aspecto.
-  if (d > R + 0.18) return total;
-  for (int i = 0; i < 9 + uCero; i++) {
+  // LEJOS DEL LIMBO NO HAY PROTUBERANCIAS (28/9): el bucle entero corria en
+  // CADA pixel del cuadro, esquinas transparentes incluidas. Y adentro del
+  // disco tampoco: ahi las tapa la cara.
+  if (d > R + 0.20 || d < R - 0.015) return total;
+  for (int i = 0; i < 8 + uCero; i++) {
     float fi = float(i);
     float sa = hash1(fi, 3.0);
     float sb = hash1(fi + 20.0, 5.0);
     float sc = hash1(fi + 40.0, 9.0);
 
-    float dur = 6.0 + sb * 9.0;               // cada una dura distinto
-    float ciclo = fract(uTime / dur + sa);
-    float vida = sin(ciclo * PI);             // nace, crece, se apaga
+    float dur = 9.0 + sb * 12.0;              // cada una dura distinto
+    float reloj = uTime / dur + sa;
+    float vida = sin(fract(reloj) * PI);      // nace, crece, se apaga
     if (vida <= 0.01) continue;
-    vida = pow(vida, 0.8);
+    vida = pow(vida, 0.7);
 
-    // el ángulo deriva apenas, como si el plasma rotara con la estrella
-    float ang = sa * 6.2831 + uTime * 0.015 + sc * 0.4;
+    // Cada vez que renace, sale en otro lugar del borde: con el angulo fijo
+    // eran siempre las mismas nueve, y a la tercera vuelta se notaba.
+    float ang = hash1(fi + floor(reloj) * 13.0, 3.0) * 6.2831 + uTime * 0.012;
     vec2 dir = vec2(cos(ang), sin(ang));
+    vec2 tg = vec2(-dir.y, dir.x);
 
-    float alto = (0.020 + sb * 0.055) * vida; // apenas asoma del limbo
-    float ancho = 0.011 + sc * 0.016;
+    // cuanto asoma del borde, y el medio ancho: unas altas y finas, otras bajas y abiertas
+    float asoma = (0.022 + sb * 0.058) * (0.35 + 0.65 * vida);
+    float alto = asoma * 2.0;
+    float medio = asoma * (0.7 + 1.3 * sc);
 
-    // el arco es un anillo cuyo centro está apoyado sobre el limbo
-    vec2 centro = dir * (R + alto * 0.45);
-    float rad = alto * 0.55;
-    float dl = abs(length(p - centro) - rad);
+    // UN ARCO CON DOS PIES, NO UN ANILLO. Antes el centro del anillo iba
+    // AFUERA del limbo y asomaba entero: una rosquita apoyada en el borde. La
+    // elipse ahora tiene el centro ADENTRO del disco y solo asoma su mitad
+    // de arriba: el lazo que sale de la superficie y vuelve a ella.
+    vec2 q = p - dir * (R - asoma);
+    float e = length(vec2(dot(q, dir) / alto, dot(q, tg) / medio));
+    float forma = exp(-pow((e - 1.0) / (0.09 + 0.10 * sc), 2.0)) * smoothstep(R - 0.010, R + 0.006, d);
 
-    // se recorta contra el disco y se desvanece con la altura
-    float fuera = smoothstep(R - 0.012, R + 0.012, d);
-    float forma = exp(-pow(dl / ancho, 2.0)) * fuera;
+    // ESTE ARCO NO APORTA ACA (28/9): el fbm de los hilos solo corre en los
+    // pocos pixeles pegados a un arco vivo.
+    if (forma < 0.002) continue;
 
-    // ESTE ARCO NO APORTA ACA (28/9): si forma es casi cero, el termino entero
-    // --forma * vida * hilo-- es casi cero pase lo que pase hilo. Calcular el
-    // fbm de los hilos (5 octavas) ahi era gastar en un aporte invisible. Con
-    // esto el fbm caro solo corre en los pocos pixeles pegados a un arco vivo.
-    if (forma < 0.001) continue;
-
-    // hilos internos: el plasma no es liso
-    float hilo = 0.7 + 0.45 * fbm(vec3(p * 30.0, uTime * 0.3 + fi * 3.0));
-    total += forma * vida * hilo;
+    // hilos internos: el plasma no es liso. Y se afina hacia arriba: los pies
+    // son lo mas denso del lazo.
+    float hilo = 0.50 + 1.0 * fbm(vec3(p * 34.0, uTime * 0.25 + fi * 3.0));
+    float arriba = clamp((d - R) / asoma, 0.0, 1.0);
+    total += forma * vida * hilo * (1.0 - 0.5 * arriba);
   }
   return total;
 }
@@ -568,61 +569,50 @@ void main() {
   }
 
   // ================= AURORA (modo 4) =================
-  // Gas que corre A LO LARGO DE LOS BRAZOS, no una cortina pegada encima.
-  // Usa la misma ley de espiral con la que se arman las partículas y el
-  // mismo achatado, así que se lee como parte de la galaxia. El quad rota
-  // con ella, de modo que también gira en el plano del disco.
+  // EL GAS DEL DISCO DE LA GALAXIA. p es el PLANO DEL DISCO: el quad va
+  // inclinado y gira con las estrellas (ver escena.ts), asi que aca no hay ni
+  // achatado ni tiempo en la espiral.
+  //
+  // Es la luz de las estrellas que no se resuelven: un disco que se apaga hacia
+  // afuera, mas cargado sobre los dos brazos mayores y cortado por hebras de
+  // polvo. Las estrellas van encima y ponen el detalle; esto pone el cuerpo.
+  // Sin esto la galaxia es una nube de puntos; con esto solo, humo.
   if (uModo > 3.5) {
-    vec2 q = vec2(p.x, p.y / 0.42);   // mismo achatado que las partículas
-    float r = length(q) + 1e-5;
-    float th = atan(q.y, q.x);
-    // fase de la espiral: brazo = th - (r/0.85)*5.0, igual que las partículas
-    float tt = clamp((r - 0.03) / 0.85, 0.0, 1.6);
-    float fase = th - tt * 5.0;
+    float r = length(p) + 1e-5;
+    float disco = exp(-r * 2.4) * (1.0 - smoothstep(0.60, 0.97, r));
+    // Fuera del disco no se paga el ruido: es casi todo el quad.
+    if (disco < 0.003) { gl_FragColor = vec4(0.0); return; }
+    // La misma ley que crearGalaxia: la cresta va en angulo = 2.0 * ln(r).
+    // A lo largo de un brazo la fase no cambia y el radio si: por eso el ruido
+    // se indexa por (fase, radio) y no por la posicion.
+    float fase = atan(p.y, p.x) - 2.0 * log(r);
+    float grande = fbm(vec3(cos(fase) * 1.5, sin(fase) * 1.5, r * 3.2));
+    // HILOS: mucha frecuencia a traves del brazo y poca a lo largo, con algo de
+    // la posicion mezclado para que no queden peinados. Salen
+    // hebras que acompanan la espiral, en vez de manchas.
+    float hilos = fbm(vec3(cos(fase) * 4.0 + p.x * 2.6, sin(fase) * 4.0 + p.y * 2.6, r * 3.4 + grande * 1.8));
+    float torcido = fase + (grande - 0.5) * 1.1;
+    // EL BORDE DEL BRAZO LO ROMPEN LOS HILOS. Un coseno solo da una banda de
+    // borde parejo, y una banda pareja es humo: lo que ya se rechazo una vez.
+    float onda = 0.5 + 0.5 * cos(2.0 * torcido);
+    // cerca del centro no hay brazos: es el bulbo, parejo
+    float brazo = mix(0.75, smoothstep(0.22, 0.98, onda + (hilos - 0.5) * 0.7), smoothstep(0.07, 0.26, r));
+    // POLVO: la curva de nivel de los hilos, afinada. Son las vetas oscuras que
+    // corren por dentro de los brazos de una espiral.
+    float polvo = pow(1.0 - abs(hilos * 2.0 - 1.0), 6.0);
+    float nudo = smoothstep(0.58, 0.80, grande) * brazo;
 
-    // turbulencia muestreada en coordenadas del disco: se enrosca con él
-    vec3 w;
-    float base = turbulento(vec3(cos(fase) * 1.4, sin(fase) * 1.4, r * 2.6 + uTime * 0.05), 2.6, w);
+    float luz = disco * (0.18 + 1.5 * brazo * (0.22 + 1.25 * smoothstep(0.30, 0.70, grande)) + 1.2 * nudo);
+    luz *= (0.60 + 0.8 * hilos) * (1.0 - 0.6 * polvo * smoothstep(0.06, 0.2, r));
 
-    // cuatro brazos: el gas se acumula sobre ellos y ondula a lo largo
-    float onda = cos(fase * 4.0 + w.x * 2.6 + sin(r * 6.0 + uTime * 0.12) * 0.9);
+    // Las cuatro paradas son los cuatro colores de la espiral, no una rampa:
+    // bulbo calido, lila del disco, azul de los brazos, rosa del gas ionizado.
+    float afuera = smoothstep(0.10, 0.55, r);
+    vec3 c = mix(uPaleta0, uPaleta1, smoothstep(0.03, 0.24, r));
+    c = mix(c, uPaleta2, afuera * (0.30 + 0.60 * brazo));
+    c = mix(c, uPaleta3, nudo * afuera * 0.7);
 
-    // BRAZOS OSCUROS CON EL BORDE ENCENDIDO (23/9).
-    //
-    // "Brilla toda pareja y parece una mancha." Y era eso: el brazo era una
-    // joroba suave, mas clara en el centro y apagandose hacia los costados.
-    // Un degrade no tiene forma; cuatro degrades juntos, menos todavia.
-    //
-    // Ahora el CUERPO del brazo queda oscuro y lo que se enciende son sus DOS
-    // FLANCOS. El perfil pasa por el valor del filo una vez de cada lado del
-    // brazo, asi que cada brazo sale dibujado por dos vetas de luz con oscuro
-    // en el medio — que es el norte del motor (cuerpo oscuro, canto luminoso)
-    // llevado a una forma que no es una esfera.
-    float perfil = max(0.0, onda * 0.5 + 0.5);
-    float cuerpo = pow(perfil, 2.6);
-    float filo = exp(-pow((perfil - 0.61) / 0.145, 2.0));
-
-    // estrías siguiendo el brazo, no verticales
-    float estria = 0.22 + 1.10 * fbm(vec3(fase * 2.4, r * 9.0, uTime * 0.07));
-
-    // se apaga en el núcleo (ahí mandan las partículas) y hacia afuera
-    // Y EL GAS NO PASA DONDE NO HAY ESTRELLAS. Llegaba bastante mas lejos que
-    // las particulas, asi que alrededor del cumulo quedaba una espiral de humo
-    // sola: dos objetos en vez de uno.
-    float radial = smoothstep(0.05, 0.22, r) * smoothstep(0.95, 0.35, r);
-
-    // el color corre del violeta interior al verde-azulado de los bordes
-    vec3 cGas = mix(uPaleta2, uPaleta3, clamp(tt * 0.9 + base * 0.35, 0.0, 1.0));
-    // El filo no es el mismo color mas fuerte: va lavado hacia el blanco,
-    // porque un borde encendido es luz y no mas pintura.
-    vec3 cFilo = mix(cGas, vec3(1.0, 0.96, 0.90), 0.40);
-
-    float comun = estria * radial * (0.35 + 0.8 * base);
-    float inten = (cuerpo * 0.18 + filo * 1.10) * comun;
-    col = (cGas * cuerpo * 0.18 + cFilo * filo * 1.10) * comun;
-    alfa = inten * 0.75;
-
-    gl_FragColor = vec4(col * uAtenua, clamp(alfa, 0.0, 1.0) * uAtenua);
+    gl_FragColor = vec4(c * uAtenua, clamp(luz * 0.8, 0.0, 1.0) * uAtenua);
     return;
   }
 
@@ -651,10 +641,24 @@ void main() {
     // Una roca de verdad tampoco tiene la silueta girando como una helice: si
     // voltea, la silueta CAMBIA DE FORMA. Fija es mucho mas honesto, y deja
     // que el unico movimiento sea el giro lento de la superficie.
+    //
+    // TALLADA, NO AMASADA (16/11). El contorno salia de un ruido suave, y un
+    // ruido suave da bultos redondos: una papa. Como el cuerpo se ve casi
+    // todo en sombra, la silueta ES el asteroide, y tiene que decir "piedra"
+    // sola. Ahora es un poligono irregular —nueve caras planas a distancias
+    // distintas, mas largo en una diagonal que en la otra— con las esquinas
+    // apenas gastadas (el minimo suave) y el borde mellado por el ruido fino.
     float ang = atan(p.y, p.x);
-    float g1 = ruido(vec3(cos(ang) * 1.9, sin(ang) * 1.9, uSemilla));
-    float g2 = ruido(vec3(cos(ang) * 5.5, sin(ang) * 5.5, uSemilla + 3.0));
-    rEff = R * (0.80 + 0.20 * g1 + 0.09 * g2);
+    float suma = 0.0;
+    for (int i = 0; i < 9 + uCero; i++) {
+      float fi = float(i);
+      float a = (fi + 0.15 + 0.70 * hash1(fi, 11.0)) * (6.2831853 / 9.0);
+      float lejos = R * (0.74 + 0.22 * hash1(fi + 30.0, 13.0)) * (1.0 + 0.10 * cos(2.0 * (a - 0.6)));
+      float c = cos(ang - a);
+      if (c > 0.08) suma += exp(-42.0 * lejos / c);
+    }
+    float g2 = ruido(vec3(cos(ang) * 7.0, sin(ang) * 7.0, uSemilla + 3.0));
+    rEff = (-log(max(suma, 1e-30)) / 42.0) * (0.975 + 0.05 * g2);
   }
 
   float d = length(p);
@@ -707,6 +711,7 @@ void main() {
   if (dentro > 0.0) {
     vec3 n = vec3(p / rEff, 0.0);
     n.z = sqrt(max(0.0, 1.0 - dot(n.xy, n.xy)));
+    vec3 nLisa = n; // la de antes del relieve: ver la luz de la roca
 
     // Coordenadas cilíndricas (cos/sin del ángulo) para que el ruido
     // no tenga costura en longitud.
@@ -806,7 +811,7 @@ void main() {
       float hLat = alturaRoca(vec3(cos(lon) * 1.6, sin(lon) * 1.6, (lat + e) * 2.2));
       vec3 tanE = vec3(cos(lon), 0.0, -sin(lon));                          // hacia el este
       vec3 tanN = vec3(-sin(lat) * sin(lon), cos(lat), -sin(lat) * cos(lon)); // hacia el norte
-      n = normalize(n - 2.2 * ((hLon - h0) * tanE + (hLat - h0) * tanN));
+      n = normalize(n - 1.4 * ((hLon - h0) * tanE + (hLat - h0) * tanN));
     }
 
     // ---- CRÁTERES ----
@@ -872,73 +877,68 @@ void main() {
       // LA CARA OSCURA Y EL CANTO EN LLAMAS (25/9). Antes era un disco
       // amarillo brillante con OSCURECIMIENTO DE LIMBO —claro en el medio,
       // apagado en el borde— y se veia como un render viejo: una bola de un
-      // color, sin superficie.
-      //
-      // La foto de referencia hace exactamente lo contrario, y es ademas lo que
-      // ya hacen los planetas en descanso: una esfera AMBAR OSCURA con la
-      // granulacion a la vista, y un filo blanco encendido en todo el contorno
-      // del que salen las protuberancias.
+      // color, sin superficie. La foto de referencia hace lo contrario, y es
+      // lo que ya hacen los planetas: una esfera AMBAR OSCURA con la superficie
+      // a la vista y el contorno encendido, del que salen las protuberancias.
       //
       // EL FILO VA EN TODA LA VUELTA y no de un lado. Una estrella no tiene
-      // cara nocturna: se enciende sola, asi que no hay un lado iluminado y
-      // otro en sombra. Ademas es real — el borde del Sol brilla mas que el
-      // centro en H-alfa, que es como esta sacada la foto.
-      float gran = fbm(sc * 5.0 + vec3(uTime * 0.09));
-      float gran2 = fbm(sc * 13.0 - vec3(uTime * 0.15));
-      // EL INDICE ARRANCA CASI EN CERO, Y ADEMAS SE MULTIPLICA MAS ABAJO. Toda
-      // la paleta del Sol es clara —el mas oscuro de sus cuatro colores ya es
-      // un naranja encendido— asi que correr el indice no alcanza: el primer
-      // intento dejo una cara crema, lejos de la foto. Hacen falta las dos.
+      // cara nocturna: se enciende sola. Ademas es real — el borde del Sol
+      // brilla mas que el centro en H-alfa, que es como esta sacada la foto.
       //
-      // Y EL RANGO ES CORTO. Con un rango largo la granulacion llegaba al
-      // crema del final de la paleta y el disco salia beige; el sol de la foto
-      // es ambar, nunca crema. El indice se queda entre los dos naranjas.
-      superficie = paleta(0.02 + 0.26 * gran + 0.10 * gran2);
-
-      // MANCHAS SOLARES: pocas y chicas. En un disco brillante no se veian; en
-      // uno oscuro son lo que dice "esto tiene superficie" en vez de "esto es
-      // un degradado". El primer intento las puso grandes y seguidas y el sol
-      // quedo sucio, con manchones grises: el umbral sube para que sean pocas.
-      float mancha = smoothstep(0.76, 0.88, fbm(sc * 3.4 + vec3(uTime * 0.03, 0.0, 9.0)));
-      superficie *= (1.0 - 0.5 * mancha);
-
-      // La cara, apagada. El termino de n.z ya no ilumina el centro: apenas
-      // levanta lo que mira a la camara, para que la esfera siga siendo esfera.
+      // LA SUPERFICIE ES UNA TEMPERATURA, NO UN COLOR (16/11). La cara era la
+      // paleta multiplicada por 0,3: un naranja oscurecido, y un naranja
+      // oscurecido es MARRON. Por eso se leia como un planeta de barro y no
+      // como una estrella. Ahora cada punto tiene una temperatura y el color
+      // sale de una rampa de brasa: lo frio es rojo profundo —no marron— y lo
+      // caliente sube por el naranja al ambar de la paleta. Oscuro, pero
+      // encendido.
       //
-      // LA GRANULACION TAMBIEN VA EN EL BRILLO y no solo en el color. Sobre una
-      // cara oscura, correr el indice de una paleta corta casi no se nota: los
-      // dos naranjas se parecen. Lo que hace que se lea "hervido" es que unas
-      // celdas esten mas apagadas que otras.
+      // EL RUIDO VA SOBRE LA ESFERA, NO SOBRE EL CILINDRO. Las coordenadas
+      // cilindricas de los planetas se aprietan en los polos, y con una
+      // textura tan marcada como esta ahi salia un remolino de rayas.
+      vec3 es = vec3(cos(lat) * cos(lon), cos(lat) * sin(lon), sin(lat));
+      float lento = fbm(es * 5.2 + vec3(uTime * 0.03, 0.0, 9.0));
+      float hervor = fbm(es * 21.0 - vec3(uTime * 0.15));
+      // LA RED: crestas finas de plasma caliente con celdas mas frias adentro.
+      // El fbm solo daba manchas blandas; las crestas son lo que dice "hierve".
+      // Los otros dos ruidos la tuercen: sin eso se le ve la grilla.
+      float red = ridged(es * 9.5 + vec3(lento * 2.4, hervor * 1.5 + uTime * 0.05, -lento * 1.8 - uTime * 0.04));
+
       // LA GRANULACION FINA NO PUEDE AMONTONARSE EN EL BORDE (item 4, 28/9).
-      // *"Las pulsaciones se dan solo en la circunferencia, no en el centro."*
-      // Es el escorzo de la esfera: hacia el limbo, la textura 3D se comprime y
-      // la granulacion rapida (gran2, la que hierve) queda diminuta y veloz, y
-      // se lee como un parpadeo en el contorno. Se la atenua donde la cara se
-      // aleja de la camara, asi el hervor queda parejo en vez de apretarse en el
-      // filo. El hervor lento (gran) queda igual: ese no parpadea.
+      // Es el escorzo de la esfera: hacia el limbo la textura se comprime y el
+      // hervor rapido se lee como un parpadeo en el contorno. Se lo atenua
+      // donde la cara se aleja de la camara.
       float mirando = smoothstep(0.0, 0.45, n.z);
-      float celdas = 0.55 + 0.85 * gran + 0.25 * gran2 * mirando;
-      vec3 cara = superficie * celdas * (0.16 + 0.26 * pow(n.z, 0.8));
 
-      // EL DISCO DEL SOL SE DESVANECE, NO CORTA (item 2a). *"Hay una linea dura
-      // entre el sol y lo de afuera; necesita un desvanecido de verdad."* La
-      // superficie se apaga a lo largo de ~0.06 HACIA el filo, en vez del corte
-      // de un pixel del mask duro: asi el amarillo no termina en un circulo, se
-      // deshilacha. Solo el sol —un planeta SI tiene limbo nitido y corta.
-      float discoSol = 1.0 - smoothstep(rEff - 0.035, rEff + 0.005, d);
+      // MANCHAS SOLARES: pocas y chicas. Son lo que dice "esto tiene
+      // superficie". Grandes y seguidas dejaban el sol sucio.
+      float mancha = smoothstep(0.74, 0.86, lento);
+
+      float temp = 0.24 + 0.60 * pow(red, 2.0) + 0.34 * (lento - 0.5) + 0.22 * (hervor - 0.5) * mirando;
+      temp *= 1.0 - 0.8 * mancha;
+      // hacia el borde se mira mas plasma de costado: sube
+      temp += 0.5 * pow(1.0 - n.z, 2.6);
+
+      // LO MAS CALIENTE ES AMBAR, NO AMARILLO PALIDO. La app pone siempre un
+      // velo oscuro encima del fondo, y un amarillo claro oscurecido es OLIVA:
+      // el aro verdoso que tenia el Sol. Un ambar oscurecido sigue siendo ambar.
+      vec3 vivo = vec3(1.0, 0.66, 0.16);
+      vec3 cara = mix(vec3(0.28, 0.045, 0.0), vec3(0.88, 0.31, 0.03), smoothstep(0.0, 0.45, temp));
+      cara = mix(cara, vec3(0.96, 0.47, 0.05), smoothstep(0.42, 0.85, temp));
+      cara = mix(cara, vivo, smoothstep(0.85, 1.25, temp));
+      cara *= 0.50 + 0.55 * temp;
+
+      // EL DISCO DEL SOL SE DESVANECE, NO CORTA (item 2a). Un planeta SI tiene
+      // limbo nitido; una estrella no termina en un circulo, se deshilacha.
+      float discoSol = 1.0 - smoothstep(rEff - 0.014, rEff + 0.004, d);
       col = mix(col, cara, discoSol);
       alfa = max(alfa, discoSol);
 
       // EL FILO, COMO UN RESPLANDOR CONTINUO A TRAVES DEL BORDE (item 2a/4). Es
       // funcion de la DISTANCIA AL BORDE, no del mask, asi que cruza rEff sin
-      // escalon: sube hacia el filo y cae a los dos lados. Reemplaza al viejo
-      // canto, que vivia DENTRO del disco y se cortaba con el —esa era la raya—.
-      // CALIDO (naranja), no el crema casi blanco de la paleta que salia gris; y
-      // ajustado y tenue, un limbo encendido y no un aro grueso.
-      float filo = exp(-abs(d - rEff) * 11.0);
-      vec3 calido = vec3(1.0, 0.66, 0.30);
-      col += mix(calido, vec3(1.0, 0.90, 0.70), 0.28) * filo * 1.0;
-      alfa = max(alfa, filo * 0.6);
+      // escalon: sube hacia el filo y cae a los dos lados.
+      float filo = exp(-abs(d - rEff) * 26.0);
+      col += mix(vec3(1.0, 0.46, 0.10), vivo, filo * 0.7) * filo * 1.15;
     } else if (uModo > 1.5 && uModo < 2.5) {
       // ---- AGUJERO NEGRO: el horizonte es negro absoluto ----
       col = mix(col, vec3(0.0), dentro);
@@ -970,6 +970,28 @@ void main() {
         vec3 nocturno = superficie * uNoche;
         nocturno += paleta(0.92) * rim * pow(ladoLuz, 1.4) * 1.9;
         lit = nocturno;
+
+        // LA ROCA: UNA LUZ RASANTE, DESDE ATRAS (16/11). El filo de los
+        // planetas sale de la normal, y la de la roca ya viene torcida por el
+        // relieve: el filo se rompia en manchas naranjas sueltas sobre negro,
+        // y se leia como brasas —lava—, no como piedra. Ahora son dos cosas.
+        // Una luz que viene de atras y de arriba a la izquierda, que solo toca
+        // las caras que miran hacia ella: una medialuna de roca oxido, mate,
+        // con las crestas tirando sombra. Y el filo, que sale de la normal
+        // LISA, asi que recorre el contorno entero sin cortarse.
+        if (uModo > 2.5) {
+          //
+          // Y EL COLOR DE LO ILUMINADO VA ACLARADO (la raiz). Los colores de
+          // la paleta llegan lineales y se muestran tal cual: el oxido salia
+          // rojo oscuro, otra vez lava. Con la raiz vuelve a ser el naranja
+          // oxido de la paleta, y de paso se achica el contraste entre las
+          // vetas, que es lo que hace mate a una piedra.
+          float rasante = smoothstep(-0.12, 0.55, dot(n, normalize(vec3(-0.52, 0.57, -0.58))));
+          vec2 dirL = normalize(nLisa.xy + vec2(1e-5));
+          float canto = pow(1.0 - nLisa.z, 5.0) * pow(max(dot(dirL, L2), 0.0), 1.4);
+          lit = superficie * uNoche + sqrt(max(superficie, vec3(0.0))) * rasante * 1.1
+              + sqrt(paleta(0.92)) * canto * (0.5 + 1.0 * rasante);
+        }
       }
 
       // Neblina: segunda capa rotando a distinta velocidad que la superficie.
@@ -993,26 +1015,29 @@ void main() {
   if (uModo > 0.5 && uModo < 1.5) {
     // ---- corona + protuberancias ----
     //
-    // SUBEN LAS DOS, y no es decoracion: con la cara apagada, el sol dejo de
-    // ser lo mas brillante de la pantalla, y eso importa porque el rango 5 es
-    // "Jupiter se enciende y se vuelve Sol". La luz que perdio el disco la
-    // ponen el halo y las protuberancias, que es de donde sale en la foto.
-    // EL HALO QUE DISUELVE EL BORDE (item 2a). Antes empezaba en R con un palido
-    // paleta(0.92) —distinto del canto calido del disco—, y esa diferencia de
-    // color + el corte del disco dejaban una LINEA DURA entre el sol y el fondo.
-    // Ahora arranca EN EL BORDE mismo (rEff), con el MISMO calor que el limbo, y
-    // cae un poco mas suave: el disco no termina en una raya, se deshilacha.
-    // La COLA de la corona, más allá del filo continuo de arriba: cae más lento
-    // (exponente menor) para que el resplandor se desvanezca en el fondo en vez
-    // de terminar. Del mismo calor que el filo, así no hay costura de color.
-    float halo = exp(-(d - rEff) * 4.5) * fuera;
-    col += vec3(1.0, 0.66, 0.30) * halo * 0.45;
-    alfa = max(alfa, halo * 0.4);
+    // Con la cara apagada, la luz del Sol sale de aca: el rango 5 es "Jupiter
+    // se enciende", y tiene que ser lo mas brillante de la pantalla.
+    //
+    // DOS CAIDAS, que es lo que hace un resplandor de verdad: una corta y
+    // fuerte pegada al borde, y una cola larga y tenue. Con una sola, o no se
+    // ve o es una niebla pareja. La cola muere antes del filo del quad.
+    float dx = max(d - rEff, 0.0);
+    float angC = atan(p.y, p.x);
+    // la corona no es pareja: tiene zonas mas cargadas, que derivan despacio
+    float pluma = 0.62 + 0.76 * ruido(vec3(cos(angC) * 2.2, sin(angC) * 2.2, uTime * 0.04 + 5.0));
+    float halo = (exp(-dx * 15.0) * 0.50 + exp(-dx * 3.6) * 0.17 * pluma) * fuera * smoothstep(1.0, 0.72, d);
+    col += mix(vec3(1.0, 0.40, 0.07), vec3(1.0, 0.62, 0.18), exp(-dx * 9.0)) * halo;
+
+    // ESPICULAS: el borde de una estrella no es una linea, es pasto de plasma.
+    // Un pelo fino y desparejo todo alrededor, que es donde nacen los arcos.
+    float pelo = ruido(vec3(cos(angC) * 46.0, sin(angC) * 46.0, uTime * 0.22));
+    float espicula = exp(-dx * (42.0 + 70.0 * pelo)) * fuera;
+    col += vec3(1.0, 0.54, 0.14) * espicula * 0.75;
 
     float pr = protuberancias(p, d);
-    vec3 cPr = mix(paleta(0.9), vec3(1.0, 0.88, 0.6), 0.45);
-    col += cPr * pr * 1.6;
-    alfa = max(alfa, min(1.0, pr * 1.2));
+    // Del color del borde, no blancas: el plasma de un arco es el mismo de la
+    // superficie. Solo lo mas denso llega al claro de la paleta.
+    col += mix(vec3(1.0, 0.38, 0.07), vec3(1.0, 0.66, 0.16), clamp(pr * 0.75, 0.0, 1.0)) * pr * 1.25;
 
   } else if (uModo > 1.5 && uModo < 2.5) {
     // ---- AGUJERO NEGRO ----
@@ -1025,91 +1050,102 @@ void main() {
     float achata = 0.26;                       // el disco se ve casi de canto
     float rr = length(vec2(p.x, p.y / achata));
     float angD = atan(p.y / achata, p.x);
-    float velD = 1.0 / max(rr, 0.22);
 
-    float banda = smoothstep(R * 1.04, R * 1.18, rr) * (1.0 - smoothstep(R * 1.80, R * 2.30, rr));
+    // EL DISCO ARRANCA PEGADO AL HORIZONTE (16/11). Arrancaba en 1,04 R y a
+    // los costados quedaba una cuna oscura entre el circulo y el gas: un ojo a
+    // cada lado. Y muere ANTES del filo del quad (2,17 R): llegando a 2,30 se
+    // cortaba en seco.
+    float banda = smoothstep(R * 1.00, R * 1.09, rr) * (1.0 - smoothstep(R * 1.65, R * 2.15, rr));
 
-    // EL GRANO SIGUE LA ESPIRAL Y NO EL RADIO (23/9). El ruido estaba indexado
-    // por el radio —rr * 9.0— y el gas salia en ANILLOS CONCENTRICOS: bandas
-    // duras, que es justo lo que no queremos en ningun cuerpo del motor. Al
-    // correr el angulo con el radio, las mismas vetas se estiran en filamentos
-    // que caen hacia adentro, que es como se ve un disco de acrecion.
+    // EL GRANO SIGUE LA ESPIRAL Y NO EL RADIO (23/9). Indexado por el radio el
+    // gas salia en ANILLOS CONCENTRICOS: bandas duras, que es justo lo que no
+    // queremos en ningun cuerpo del motor. Al correr el angulo con el radio,
+    // las vetas se estiran en filamentos que caen hacia adentro.
     //
-    // Y la frecuencia radial baja de 9 a 1,4: es lo que deja que un filamento
-    // se mantenga a lo largo de varias vueltas en vez de cortarse cada poco.
-    float giro = angD - 2.4 * (rr / R) + uTime * velD * 0.5;
-    float franjas = 0.5 + 0.5 * fbm(vec3(cos(giro) * 2.0, sin(giro) * 2.0, rr * 1.4));
-    // una segunda pasada mas fina y mas rapida: el gas de adentro hierve
-    float fino = fbm(vec3(cos(giro * 2.7) * 3.0, sin(giro * 2.7) * 3.0, rr * 4.0));
-    franjas = pow(smoothstep(0.15, 0.9, franjas + 0.18 * fino), 1.5);
+    // Y EL DISCO GIRA ENTERO, A UNA SOLA VELOCIDAD (16/11). Giraba mas rapido
+    // adentro que afuera, que es lo fisico, pero el tiempo no para de crecer:
+    // a los pocos minutos las vetas se enroscaban tanto que volvian a ser
+    // anillos, cada vez mas finos. Antes no se notaba porque el disco estaba
+    // quemado en blanco. Girando rigido, la espiral es la misma siempre.
+    float giro = angD - 2.4 * (rr / R) + uTime * 0.28;
+    float grueso = fbm(vec3(cos(giro) * 2.0, sin(giro) * 2.0, rr * 1.4));
+    // una segunda pasada mas fina y mas rapida: el gas de adentro hierve.
+    // (El multiplo del angulo es ENTERO: con 2,7 habia una costura a la izquierda.)
+    float giroFino = (giro + uTime * 0.17) * 3.0;
+    float fino = fbm(vec3(cos(giroFino) * 3.0, sin(giroFino) * 3.0, rr * 5.0));
+    // CONTRASTE DE VERDAD ENTRE FILAMENTO Y HUECO. El ruido vive entre 0,3 y
+    // 0,7; estirado a medias, todo el disco quedaba arriba y se leia como un
+    // plato blanco. Ahora el umbral lo abre entero.
+    float franjas = smoothstep(0.22, 0.78, grueso + 0.17 * (fino - 0.5));
 
     // doppler: el lado que viene hacia nosotros encandila
-    float doppler = 0.30 + 1.0 * smoothstep(0.6, -0.6, p.x);
+    float doppler = 0.42 + 0.88 * smoothstep(0.7, -0.7, p.x);
 
     // TEMPERATURA: el gas pegado al horizonte esta mucho mas caliente que el
-    // del borde de afuera, y eso se ve como color, no como brillo. Antes el
-    // disco entero era un naranja con ruido y se leia como un plato pintado.
-    float temp = 1.0 - smoothstep(R * 1.05, R * 2.05, rr);
-    //
-    // El borde de afuera va APAGADO y no en el naranja puro: con los colores
-    // de la paleta a full quedaba un rosa de neon, que no es gas frio, es un
-    // cartel. Se lo baja hasta un rescoldo.
-    vec3 frio = mix(uPaleta1 * 0.55, uPaleta2 * 0.40, 0.55);
-    vec3 calor = mix(uPaleta3, vec3(1.0, 0.95, 0.88), 0.55);
-    vec3 gasCol = mix(frio, uPaleta2, smoothstep(0.0, 0.55, temp));
+    // del borde de afuera, y eso se ve como color, no como brillo.
+    float temp = 1.0 - smoothstep(R * 1.02, R * 2.0, rr);
+    // EL BORDE DE AFUERA SE ENFRIA HACIA EL VIOLETA (16/11): es el toque que
+    // encadena este rango con la galaxia del anterior (spec, seccion 7), y
+    // estaba en la paleta pero no llegaba a verse. Apagado, un rescoldo: a
+    // pleno es un cartel de neon.
+    vec3 frio = mix(uPaleta1 * 0.95, uPaleta2 * 0.32, 0.42);
+    // El naranja del disco: el de la paleta sale rojo en pantalla (los colores
+    // llegan lineales y se muestran tal cual), asi que se lo lleva hacia el
+    // ambar hasta que se VE naranja.
+    vec3 naranja = mix(uPaleta2, uPaleta3, 0.42);
+    // Dorado y no crema: debajo del velo de la app, lo palido se vuelve caqui.
+    vec3 calor = vec3(1.0, 0.60, 0.14);
+    vec3 gasCol = mix(frio, naranja, smoothstep(0.06, 0.50, temp));
     gasCol = mix(gasCol, calor, pow(temp, 2.4));
-    gasCol *= doppler * (0.55 + 0.7 * franjas);
-    // Los huecos entre filamentos son mas huecos que antes (0,18 contra 0,35):
-    // si el piso es alto, las vetas se pierden en un resplandor parejo.
-    float dens = banda * (0.18 + 1.15 * franjas);
+    gasCol *= doppler * (0.50 + 0.78 * franjas);
+    // Y EL BRILLO TAMBIEN CAE HACIA AFUERA. Con el brillo parejo de punta a
+    // punta el disco se leia como los anillos de Saturno: un plato. Gas que
+    // cae a un pozo brilla donde esta por caer.
+    float dens = banda * (0.30 + 0.86 * franjas) * (0.50 + 1.15 * pow(temp, 1.3));
 
     // La mitad de abajo del anillo es la que viene hacia la cámara; la de
     // arriba es la que se aleja. El borde suave evita una costura en y=0.
     float cercano = smoothstep(0.03, -0.03, p.y);
 
     // (1) mitad lejana: solo se ve fuera del horizonte
-    col += gasCol * dens * (1.0 - cercano) * fuera * 1.8;
-    alfa = max(alfa, min(1.0, dens * (1.0 - cercano) * fuera * 2.0));
+    col += gasCol * dens * (1.0 - cercano) * fuera * 3.4;
 
     // (2) LENTE GRAVITACIONAL: la luz del disco que pasa DETRÁS se curva y
     // reaparece rodeando al horizonte, formando un arco arriba y otro abajo.
-    // Es lo que cierra el aro naranja alrededor del círculo negro.
-    float dl = abs(d - R * 1.13);
-    float aro = exp(-pow(dl / (R * 0.14), 2.0));
+    //
+    // ES UNA IMAGEN, NO UN RESPLANDOR (16/11). Era una campana ancha centrada
+    // lejos del horizonte: una aureola de eclipse. La imagen de un disco tiene
+    // borde: nace pegada al anillo de fotones, con el filo de adentro nitido,
+    // y se apaga hacia afuera. Es mas gruesa arriba y abajo y se afina hacia
+    // los costados, donde se funde con el disco directo; y el arco de abajo,
+    // que es una imagen mas debil, va mas fino y mas apagado.
     vec2 dirp = normalize(p + vec2(1e-5));
-    // más fuerte arriba y abajo, que es adonde no llega el disco directo
-    float refuerzo = 0.30 + 1.15 * pow(abs(dirp.y), 1.4);
-    float texL = 0.55 + 0.6 * fbm(vec3(cos(angD * 1.5 + uTime * 0.25) * 2.0,
-                                       sin(angD * 1.5 + uTime * 0.25) * 2.0, 4.0));
-    float lente = aro * refuerzo * doppler * texL * fuera;
-    col += mix(uPaleta2, uPaleta3, 0.45) * lente * 1.6;
-    alfa = max(alfa, min(1.0, lente * 1.6));
-
-    // segundo arco, más fino y pegado: la imagen de orden superior
-    float aro2 = exp(-pow((d - R * 1.055) / (R * 0.045), 2.0));
-    col += mix(uPaleta3, vec3(1.0, 0.82, 0.5), 0.4) * aro2 * refuerzo * doppler * 1.1 * fuera;
-    alfa = max(alfa, aro2 * refuerzo * fuera);
+    float vertical = pow(abs(dirp.y), 1.2);
+    float deArriba = smoothstep(-0.12, 0.12, p.y);
+    float anchoL = R * (0.05 + 0.17 * vertical) * mix(0.70, 1.0, deArriba);
+    float dl = max(d - R * 1.03, 0.0);
+    float aro = smoothstep(R * 1.012, R * 1.04, d) * exp(-pow(dl / anchoL, 2.4));
+    // las vetas corren a lo largo del arco: mucha frecuencia en el radio
+    float angL = atan(p.y, p.x) + uTime * 0.10;
+    float texL = 0.15 + 1.5 * fbm(vec3(cos(angL) * 1.6, sin(angL) * 1.6, d * 30.0));
+    float lente = aro * (0.30 + 0.80 * vertical) * mix(0.60, 1.0, deArriba) * (0.55 + 0.45 * doppler) * texL * fuera;
+    col += mix(mix(uPaleta2, naranja, 0.55), calor, exp(-dl / (R * 0.06))) * lente * 3.6;
+    // EL RESPLANDOR. Sin postprocesado no hay bloom, y sin algo que haga de
+    // bloom la luz queda recortada como papel. Dos velos anchos y tenues: uno
+    // naranja pegado a los arcos y al disco, y por fuera uno violeta, el mismo
+    // toque del borde del disco.
+    col += naranja * exp(-pow(dl / (anchoL * 2.0), 1.2)) * (0.30 + 0.55 * vertical) * mix(0.6, 1.0, deArriba) * fuera * 0.32;
+    float rrG = length(vec2(p.x, p.y / 0.50));
+    col += naranja * doppler * exp(-pow((rrG - R * 1.35) / (R * 0.50), 2.0)) * fuera * 0.20;
+    col += uPaleta1 * exp(-pow(dl / (anchoL * 2.4), 1.3)) * (0.25 + 0.5 * vertical) * fuera * 0.22;
 
     // (4) mitad cercana: NO se recorta. Cruza por delante del círculo negro
     // y lo tapa abajo — sin esto el agujero se ve plano.
-    col += gasCol * dens * cercano * 1.9;
-    alfa = max(alfa, min(1.0, dens * cercano * 2.0));
+    col += gasCol * dens * cercano * 3.7;
 
-    // (5) anillo de fotones, pegado al horizonte
-    float foton = exp(-abs(d - R * 1.02) * 95.0);
-    col += vec3(1.0, 0.80, 0.48) * foton * 2.0 * fuera;
-    alfa = max(alfa, foton * 0.85 * fuera);
-
-    // aura de gas suelta, siguiendo la forma achatada del disco
-    vec3 w2;
-    float aura0 = turbulento(
-      vec3(cos(angD + uTime * velD * 0.35) * 1.8,
-           sin(angD + uTime * velD * 0.35) * 1.8,
-           rr * 3.0), 2.2, w2);
-    float caida = exp(-(rr - R) * 1.9) * smoothstep(R * 0.98, R * 1.15, rr);
-    float aura = caida * smoothstep(0.32, 0.88, aura0);
-    col += mix(uPaleta1, uPaleta2, aura0) * aura * 0.7 * max(fuera, cercano);
-    alfa = max(alfa, aura * 0.45);
+    // (5) anillo de fotones, pegado al horizonte: una linea, no una franja
+    float foton = exp(-abs(d - R * 1.012) * 150.0);
+    col += vec3(1.0, 0.70, 0.26) * foton * 2.2 * fuera;
 
   } else if (uModo < 0.5 && dentro < 1.0) {
     // Luz de atmósfera SOLO en el canto iluminado.
@@ -1120,14 +1156,9 @@ void main() {
     col += paleta(0.95) * halo * 0.8;
     alfa = max(alfa, halo * 0.7);
 
-  } else if (uModo > 2.5 && dentro < 1.0) {
-    // la roca va al rojo por el roce, sobre todo del lado de la marcha
-    vec2 marcha = normalize(vec2(0.80, 0.55));
-    float frente = max(dot(normalize(p + vec2(1e-5)), marcha), 0.0);
-    float calor = exp(-(d - rEff) * 26.0) * fuera * pow(frente, 1.5);
-    col += mix(uPaleta3, vec3(1.0, 0.65, 0.3), 0.5) * calor * 1.5;
-    alfa = max(alfa, calor);
   }
+  // (La roca no lleva resplandor al frente: iba del lado OSCURO, y un halo del
+  // lado oscuro se lee como atmosfera, que una piedra no tiene.)
 
   // anillo por delante del planeta
   if (uAnillo > 0.5 && alfaAnillo > 0.0 && zAnillo >= 0.0 && d <= rEff) {
@@ -1140,6 +1171,36 @@ void main() {
   // pasa por delante, que ya se compuso arriba. Ojo: no se puede poner el
   // color en cero acá, porque eso borraría justamente ese gas.
   bool enHorizonte = (uModo > 1.5 && uModo < 2.5 && d < rEff);
+
+  // LA LUZ DEL SOL Y DEL AGUJERO NEGRO (16/11). Dos arreglos, y los dos son de
+  // cuentas, no de gusto.
+  //
+  // 1. SE COMPRIME EN VEZ DE CORTARSE. Las capas se suman, y sumadas pasan de
+  //    1. Recortado canal por canal, el rojo se queda en 1 mientras el verde
+  //    sigue subiendo: el naranja se vuelve amarillo, y un amarillo debajo del
+  //    velo oscuro que la app pone siempre encima es OLIVA. Ademas el recorte
+  //    plancha lo que hay adentro —filamentos, temperatura, doppler— en un
+  //    blanco parejo. Aca se comprime el brillo guardando el tono: hasta 0,7
+  //    no se toca nada; de ahi para arriba la curva se acuesta y nunca pasa
+  //    de 1.
+  //
+  // 2. NO SE MULTIPLICA DOS VECES POR EL ALFA. col ya viene pesado por cuanto
+  //    cubre —cada capa se suma o se mezcla con su propia cobertura—, y la
+  //    mezcla del material lo volvia a multiplicar por alfa. Donde el alfa no
+  //    llegaba a 1 —justo los bordes y los resplandores, que es donde esta la
+  //    luz— el color salia apagado y sucio: el aro oscuro del Sol y el gris
+  //    del disco de acrecion. Se deshace: el alfa cubre por lo menos lo que
+  //    brilla, y el color se divide por el, asi que a la pantalla llega col
+  //    tal cual. (Dentro del horizonte no hace falta: ahi el alfa es 1.)
+  if (uModo > 0.5 && uModo < 2.5) {
+    float pico = max(col.r, max(col.g, col.b));
+    float sobra = max(pico - 0.7, 0.0);
+    col *= (min(pico, 0.7) + sobra / (1.0 + 3.3 * sobra)) / max(pico, 1e-4);
+    if (!enHorizonte) {
+      alfa = clamp(max(alfa, max(col.r, max(col.g, col.b))), 0.0, 1.0);
+      col /= max(alfa, 1e-4);
+    }
+  }
 
   // Grano animado sutil: rompe el bandeado en los degradados oscuros.
   // En la roca va casi apagado: cualquier titileo sobre la piedra la hace

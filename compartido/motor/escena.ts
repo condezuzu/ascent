@@ -112,6 +112,11 @@ function cuantas(base: number): number {
 
 const ESTRELLAS_TOPE = 1400;
 const GALAXIA_BASE = 4200;
+// Cómo se ve el disco de la galaxia: cuánto se lo mira de costado, y hacia
+// dónde apunta su eje largo en la pantalla (en diagonal entra más en un
+// teléfono parado que acostada).
+const GALAXIA_INCLINACION = 1.1;
+const GALAXIA_ORIENTACION = 0.95;
 
 export function crearMaterialCuerpo(
   cfg: ConfigCuerpo,
@@ -190,12 +195,11 @@ const NEBULOSA_CFG: ConfigCuerpo = {
   continentes: 0, puntos: 0, mares: 0, manchas: 0, rayos: 0, lunas: 0, modo: 5,
 };
 
-// Cortinas de aurora para acompañar a la galaxia
+// El gas del disco de la galaxia. Las cuatro paradas no son una rampa: son los
+// cuatro colores de una espiral, los mismos de sus estrellas (`crearGalaxia`):
+// bulbo cálido, lila del disco, azul de los brazos y rosa del gas ionizado.
 const AURORA_CFG: ConfigCuerpo = {
-  // SIN EL TEAL BRILLANTE (variante C): el #8fe3d0 era lo que pintaba las
-  // bandas suaves de humo. Con violetas oscuros el aura queda como un bulbo
-  // tenue en el centro, y los brazos pasan a ser estrellas, no niebla.
-  paleta: ['#0d0722', '#1a0f38', '#2a1a5c', '#3a2a6c'],
+  paleta: ['#ffe0b8', '#9a6fe6', '#6f86ff', '#ff5fb0'],
   bandas: 0, contraste: 0, turbulencia: 1.0, tormenta: 0, tormentaPos: [0, 0],
   anillo: false, anilloVertical: false, crateres: 0, casquetes: 0,
   continentes: 0, puntos: 0, mares: 0, manchas: 0, rayos: 0, lunas: 0, modo: 4,
@@ -260,65 +264,117 @@ function crearEstrellas(cantidad: number, rango: number, planeta: string | null 
   return new THREE.Points(geo, materialPuntos(true));
 }
 
-// Galaxia espiral en partículas (rango 7): densa en el núcleo, con brazos
-// que se abren y variedad de color entre el centro caliente y los bordes.
-function crearGalaxia(rango: number): THREE.Points {
-  // VARIANTE B: MENOS puntos que la A. Con 4200 los brazos se empastaban en
-  // bandas suaves (humo); con ~2500 quedan estrellas DISCRETAS y separadas.
-  const n = cuantas(2500);
+// CUÁNTO SE ENROSCAN LOS BRAZOS. Espiral logarítmica: el ángulo de la cresta es
+// `GALAXIA_VUELTA * ln(r)`. El gas (modo 4 de `shaders.ts`) usa la misma ley con
+// el mismo número: si se toca acá, se toca allá, o las estrellas y el gas
+// dibujan dos espirales distintas.
+const GALAXIA_VUELTA = 2.0;
+
+/**
+ * La galaxia (rango 6), en el PLANO DE SU DISCO: x e y son el disco, z es el
+ * espesor. Inclinarla es cosa de quien la monta, no de acá.
+ *
+ * TRES POBLACIONES, que es lo que separa una galaxia de una nube de puntos:
+ * un bulbo esférico y cálido —al inclinar el disco sobresale por arriba y por
+ * abajo, y de ahí sale el volumen—, un disco viejo y tenue entre los brazos,
+ * y los brazos, con sus cúmulos.
+ */
+function crearGalaxia(): THREE.Points {
+  const n = cuantas(GALAXIA_BASE);
   const pos = new Float32Array(n * 3);
   const col = new Float32Array(n * 3);
   const tam = new Float32Array(n);
   const bri = new Float32Array(n);
-  // COLOR REPARTIDO, NO UN SOLO VIOLETA (variante A). Una espiral real tiene
-  // poblaciones distintas: azules jóvenes en los brazos, un bulbo cálido, y el
-  // rosa del gas ionizado en las regiones de formación. Acá lo leemos como
-  // rosa + azul repartidos, que es lo pedido, con el núcleo cálido (no blanco).
-  const cNucleo = new THREE.Color('#ffcf9e'); // bulbo ámbar cálido, no blanco puro
-  const cAzul = new THREE.Color('#5c8cff');   // azul de brazo
-  const cRosa = new THREE.Color('#ff5fb0');   // rosa de brazo
-  const cLila = new THREE.Color('#b98cf5');   // lila de transición
-  for (let i = 0; i < n; i++) {
-    // LAS ESTRELLAS POBLAN LOS BRAZOS, no se amontonan en el centro (variante
-    // A). Exponente 1,1 —casi lineal— para que la mediana caiga bien afuera y
-    // los brazos tengan estrellas propias en vez de humo.
-    const t = Math.pow(Math.random(), 1.1);
-    // DOS BRAZOS MANDAN Y DOS SON TENUES: la asimetría es lo que saca el look
-    // de "cuatro brazos de compás". El brazo 0 y el 2 llevan el doble de peso.
-    const brazo = [0, 0, 1, 2, 2, 3][Math.floor(Math.random() * 6)];
-    const r = 0.05 + t * 0.9;
-    const anchoArm = 0.10 + t * 0.62;
-    const off = (Math.random() - 0.5);       // -0.5..0.5 dentro del brazo
-    const disp = off * anchoArm;
-    // ESPIRAL MÁS ABIERTA: 3,4 en vez de 5,0 → menos remolino apretado.
-    const ang = brazo * (Math.PI / 2) + t * 3.4 + disp;
-    const grosor = (Math.random() - 0.5) * (0.09 - t * 0.05);
-    pos[i * 3] = Math.cos(ang) * r + (Math.random() - 0.5) * 0.03;
-    pos[i * 3 + 1] = (Math.sin(ang) * r) * 0.40 + grosor * 0.4;
-    pos[i * 3 + 2] = (Math.random() - 0.5) * 0.05;
+  const cNucleo = new THREE.Color('#ffd2a0');
+  const cAzul = new THREE.Color('#7ea4ff');
+  const cRosa = new THREE.Color('#ff5fb0');
+  const cLila = new THREE.Color('#b98cf5');
+  const blanco = new THREE.Color('#ffffff');
+  // La cresta de un brazo a la altura `t` (0 centro, 1 borde).
+  const radioDe = (t: number) => 0.07 + t * 0.88;
+  const anguloDe = (brazo: number, r: number) => brazo * (Math.PI / 2) + GALAXIA_VUELTA * Math.log(r);
+  // CÚMULOS: nudos de estrellas jóvenes sobre los dos brazos mayores. Un brazo
+  // parejo se lee como una manguera; con nudos, como un brazo.
+  const nudos = Array.from({ length: 26 }, () => {
+    const r = radioDe(0.18 + Math.random() * 0.72);
+    const a = anguloDe(Math.random() < 0.5 ? 0 : 2, r) + (Math.random() - 0.5) * 0.12;
+    return { r, a, rosa: Math.random() < 0.4 };
+  });
+  // Campana entre -1 y 1: la mayoría cerca de la cresta, pocas lejos.
+  const campana = () => (Math.random() + Math.random() + Math.random() - 1.5) / 1.5;
 
-    // Color: núcleo cálido en el centro; hacia afuera, cada estrella cae en
-    // azul o en rosa según un tinte por-estrella, con lila de por medio. Así
-    // el azul y el rosa quedan REPARTIDOS por todo el disco, no en anillos.
-    const tinte = Math.random();
-    const cBrazo = tinte < 0.5 ? cAzul.clone().lerp(cLila, tinte * 2) : cLila.clone().lerp(cRosa, (tinte - 0.5) * 2);
-    let c: THREE.Color;
-    if (t < 0.14) c = cNucleo.clone();
-    else if (t < 0.34) c = cNucleo.clone().lerp(cBrazo, (t - 0.14) / 0.2);
-    else c = cBrazo;
+  for (let i = 0; i < n; i++) {
+    let x: number, y: number, z: number, c: THREE.Color;
+    let t = 0;
+    const dado = Math.random();
+    tam[i] = 1.2 + Math.pow(Math.random(), 2.5) * 1.7;
+    bri[i] = 0.5 + Math.pow(Math.random(), 1.6) * 0.9;
+    if (dado < 0.17) {
+      // el bulbo: un esferoide, apenas achatado
+      const d = Math.pow(Math.random(), 1.7) * 0.17;
+      const u = Math.random() * 2 - 1;
+      const a = Math.random() * Math.PI * 2;
+      const s = Math.sqrt(1 - u * u);
+      x = Math.cos(a) * s * d;
+      y = Math.sin(a) * s * d;
+      z = u * d * 0.8;
+      c = cNucleo.clone().lerp(blanco, Math.random() * 0.35);
+      bri[i] *= 1.25 - d * 3.0;
+    } else if (dado < 0.33) {
+      // el disco viejo: parejo en ángulo, tenue, lo que hay entre brazo y brazo
+      t = Math.pow(Math.random(), 0.8);
+      const r = radioDe(t);
+      const a = Math.random() * Math.PI * 2;
+      x = Math.cos(a) * r;
+      y = Math.sin(a) * r;
+      z = (Math.random() - 0.5) * 0.04;
+      c = cNucleo.clone().lerp(cLila, 0.25 + Math.random() * 0.6);
+      bri[i] *= 0.55;
+    } else if (dado < 0.45) {
+      // un cúmulo: estirado a lo largo del brazo, no una mancha redonda
+      const k = nudos[Math.floor(Math.random() * nudos.length)];
+      const da = (campana() * 0.07) / k.r;
+      const r = k.r * (1 + da / GALAXIA_VUELTA) + campana() * 0.016;
+      x = Math.cos(k.a + da) * r;
+      y = Math.sin(k.a + da) * r;
+      z = (Math.random() - 0.5) * 0.02;
+      t = Math.min(1, r);
+      c = (k.rosa ? cRosa : cAzul).clone().lerp(blanco, 0.2 + Math.random() * 0.5);
+      tam[i] = 1.3 + Math.pow(Math.random(), 2.0) * 2.0;
+      bri[i] = 0.75 + Math.random() * 0.7;
+    } else {
+      // los brazos: dos mayores (0 y 2) y dos tenues. La asimetría es lo que
+      // saca el look de "cuatro brazos de compás".
+      t = Math.pow(Math.random(), 0.85);
+      const r = radioDe(t);
+      const mayor = Math.random() < 0.74;
+      const brazo = (mayor ? 0 : 1) + (Math.random() < 0.5 ? 0 : 2);
+      const g = campana();
+      const a = anguloDe(brazo, r) + g * (0.2 + t * 0.3);
+      x = Math.cos(a) * r;
+      y = Math.sin(a) * r;
+      z = (Math.random() - 0.5) * (0.035 - t * 0.02);
+      const tinte = Math.random();
+      c = tinte < 0.62 ? cAzul.clone().lerp(blanco, Math.random() * 0.5) : tinte < 0.88 ? cLila.clone() : cRosa.clone().lerp(cLila, Math.random() * 0.6);
+      // cerca del centro los brazos nacen del bulbo: todavía son cálidos
+      if (t < 0.25) c.lerp(cNucleo, 1 - t / 0.25);
+      if (!mayor) bri[i] *= 0.6;
+      // unas pocas gigantes: lo que el ojo cuenta como "estrellas"
+      if (Math.random() < 0.05) {
+        tam[i] = 2.6 + Math.random() * 1.8;
+        bri[i] = 1.1 + Math.random() * 0.5;
+      }
+      // CARRIL DE POLVO sobre el borde interno del brazo. Con mezcla aditiva
+      // un carril es ausencia de estrellas.
+      if (g > 0.22 && g < 0.55) bri[i] *= 0.2;
+    }
+    pos[i * 3] = x;
+    pos[i * 3 + 1] = y;
+    pos[i * 3 + 2] = z;
     col[i * 3] = c.r;
     col[i * 3 + 1] = c.g;
     col[i * 3 + 2] = c.b;
-    // MÁS GRANDES Y MÁS BRILLANTES (variante B): estrellas que se leen como
-    // estrellas, no como un velo. Y el brillo NO cae tanto hacia afuera, así
-    // los brazos brillan igual que el centro en vez de apagarse en humo.
-    const grande = Math.random() < 0.08;
-    tam[i] = grande ? 3.6 + Math.random() * 2.4 : 1.4 + Math.pow(Math.random(), 2.0) * 2.0;
-    bri[i] = (0.6 + Math.pow(Math.random(), 2.2) * 1.5) * (1.1 - t * 0.28);
-    // CARRIL DE POLVO: una veta oscura sobre el borde interno de cada brazo.
-    // Con blending aditivo, un carril = ausencia de estrellas: se apagan las
-    // que caen en una franja fina del lado interno (off en ~[0.06, 0.24]).
-    if (off > 0.06 && off < 0.24) bri[i] *= 0.06;
+    bri[i] *= 1.1 - t * 0.45;
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -441,6 +497,18 @@ function materialPresagio(rango: number, planeta?: string | null): THREE.ShaderM
       // encargo.
       uFuerza: { value: 0.5 },
     },
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+}
+
+/** Una luz sin borde, de frente a la cámara. Mismo fragmento que el presagio. */
+function materialResplandor(color: string, fuerza: number): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    vertexShader: VERTEX,
+    fragmentShader: FRAGMENT_PRESAGIO,
+    uniforms: { uTime: { value: 0 }, uColor: { value: colorU(color) }, uFuerza: { value: fuerza } },
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
@@ -777,21 +845,40 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     grupo.scale.setScalar(0.95 * (op.horizonte?.nube ?? 1));
   } else if (op.rango === 6) {
     // Galaxia (era el 7; el "Sistema" se sacó en la migración 54).
+    //
+    // EL DISCO VA INCLINADO DE VERDAD, EN 3D. Antes era una elipse dibujada
+    // plana que giraba entera en la pantalla, como una hélice: el eje de la
+    // inclinación daba vueltas, y eso no es una galaxia girando, es una
+    // calcomanía. Ahora el plano del disco queda fijo y lo que gira es lo que
+    // hay adentro (ver el bucle: `rotation.z` de las estrellas y del gas).
+    const plano = new THREE.Group();
+    plano.rotation.set(GALAXIA_INCLINACION, 0, GALAXIA_ORIENTACION, 'ZXY');
+    grupo.add(plano);
+
     const amat = crearMaterialCuerpo(AURORA_CFG, !!op.apagado, 0.004);
     materiales.push(amat);
     const aurora = new THREE.Mesh(QUAD, amat);
-    // EL HUMO SE ACHICA AL NÚCLEO (variante A). Antes cubría todo el disco
-    // (1,05) y esas bandas suaves eran lo que se leía como humo en vez de
-    // brazos. Ahora es una nebulosidad central; los brazos son estrellas.
-    aurora.scale.setScalar(0.42);
-    aurora.position.z = -0.05;
+    aurora.position.z = -0.005;
     amat.blending = THREE.AdditiveBlending;
-    grupo.add(aurora);
+    plano.add(aurora);
     auroraMesh = aurora;
 
-    galaxia = crearGalaxia(op.rango);
+    galaxia = crearGalaxia();
     materiales.push(galaxia.material as THREE.ShaderMaterial);
-    grupo.add(galaxia);
+    plano.add(galaxia);
+
+    // EL RESPLANDOR DEL BULBO: de frente a la cámara, no en el plano del disco.
+    // Un bulbo es una esfera, y una esfera inclinada sigue siendo redonda. Dos
+    // capas —un corazón chico y un halo ancho— hacen de resplandor sin
+    // postprocesado. Usa el fragmento del presagio: una caída sin borde.
+    for (const [color, escala, fuerza] of [['#ffe9cf', 0.12, 0.85], ['#e2a9c9', 0.42, 0.4]] as const) {
+      const rmat = materialResplandor(color, fuerza);
+      materiales.push(rmat);
+      const resplandor = new THREE.Mesh(QUAD, rmat);
+      resplandor.scale.setScalar(escala);
+      resplandor.position.z = 0.02;
+      grupo.add(resplandor);
+    }
     grupo.scale.setScalar(1.5 * (op.horizonte?.nube ?? 1));
   } else if (cfg) {
     // LOS CUERPOS CONVIVEN CON EL CIELO, NO LO REEMPLAZAN.
