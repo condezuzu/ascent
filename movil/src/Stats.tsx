@@ -75,6 +75,7 @@ type Datos = {
   // el peso corporal con el mismo nombre se confunde —se confundió un test—.
   pesajes: PesoAnotado[];
   vidas: Vidas | null;
+  usadas: string[];
   /** Los días faltados desde el alta (28/10); null sin la migración 97. */
   faltados: number | null;
   sexo: string | null;
@@ -167,6 +168,8 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
       supabase.from('weights').select('fecha, valor').eq('user_id', uid).order('fecha'),
       supabase.rpc('mis_impulsos'),
     ]);
+    // Los días que cubrió una vida, para el mes de Stats (12/11). Las devueltas no cubren nada.
+    const { data: vu } = await supabase.from('vidas_usadas').select('fecha').eq('user_id', uid).eq('devuelta', false);
     // Aparte, y solo con la 97: antes la tabla no existe y pedirla es un 404 en cada visita.
     const { data: sem, error: eSem } = disponible('diasFaltados', await versionDelEsquema(supabase))
       ? await supabase.from('rutina_semanas').select('desde, entrena').eq('user_id', uid)
@@ -203,6 +206,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
               falta: vid.data.falta_para_ganar === null ? null : Number(vid.data.falta_para_ganar),
             }
           : null,
+      usadas: (vu ?? []).map((v) => v.fecha as string),
       sexo: (perfil.sexo as string | null) ?? null,
       faltados:
         eSem || !sem || !alta
@@ -374,7 +378,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
 
       {pestana === 'general' && datos.vidas && (
         <Entra orden={3}>
-          <LineaDeVidas vidas={datos.vidas} racha={racha} />
+          <LineaDeVidas vidas={datos.vidas} logs={datos.logs} usadas={datos.usadas} />
         </Entra>
       )}
 

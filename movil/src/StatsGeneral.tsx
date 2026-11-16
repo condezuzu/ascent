@@ -34,7 +34,7 @@ import { Fantasma, Seccion, R } from './roles';
 import Aparece from './Aparece';
 import { LLEGA, MS, sinMovimiento } from './movimiento';
 import Relleno from './Relleno';
-import VidasExplicadas from './VidasExplicadas';
+import VidasDelMes from './VidasDelMes';
 import Candado from './Candado';
 import PesoSinDatos from './PesoSinDatos';
 
@@ -62,7 +62,7 @@ import PesoSinDatos from './PesoSinDatos';
 export type Vidas = { quedan: number; total: number; tope?: number; vuelve: string | null; falta: number | null };
 export type PesoAnotado = { fecha: string; valor: number };
 
-export function LineaDeVidas({ vidas, racha }: { vidas: Vidas; racha: number }) {
+export function LineaDeVidas({ vidas, logs, usadas: cubiertos }: { vidas: Vidas; logs: Log[]; usadas: string[] }) {
   useTema();
   // Con la 79 vuelven todas juntas; antes, de a una (y el texto dice cada cosa).
   const juntas = disponible('vidasDeUna', useVersionDelEsquema());
@@ -74,16 +74,16 @@ export function LineaDeVidas({ vidas, racha }: { vidas: Vidas; racha: number }) 
     vidas.vuelve ? (juntas ? T.impulso.vuelvenJuntas(fechaLinda(vidas.vuelve), usadas) : T.impulso.vuelve(fechaLinda(vidas.vuelve))) : '',
     vidas.falta !== null && vidas.falta > 0 ? T.impulso.seGanaEn(vidas.falta) : '',
   ].filter(Boolean).join(' ');
-  // Lo que falta para la próxima, en días: ganarla, o que vuelvan.
-  const dias = vidas.falta !== null && vidas.falta > 0
-    ? vidas.falta
-    : vidas.vuelve
-      ? Math.max(0, Math.round((deISO(vidas.vuelve).getTime() - deISO(hoyISO()).getTime()) / 86400000))
-      : null;
   return (
     <View style={estilos.vidas}>
       <Text style={estilos.et}>{T.impulso.titulo}</Text>
-      <VidasExplicadas vidas={vidas} racha={racha} dias={dias} explicacion={explicacion} />
+      <VidasDelMes
+        vidas={vidas}
+        fui={new Set(logs.filter((l) => !l.es_descanso).map((l) => l.fecha))}
+        descansos={new Set(logs.filter((l) => l.es_descanso).map((l) => l.fecha))}
+        usadas={new Set(cubiertos)}
+        explicacion={explicacion}
+      />
     </View>
   );
 }

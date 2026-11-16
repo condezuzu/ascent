@@ -23,7 +23,7 @@
  *  ese ejercicio, y eso ya lo resuelve `como_arranca` en la base.
  */
 
-import { repsDe } from './bloques.ts';
+import { pesoValido, repsDe, rirDe } from './bloques.ts';
 
 /** Una sesión pasada, reducida a lo que la rutina necesita. */
 export type SesionRutina = {
@@ -299,9 +299,18 @@ export function diaDeLaSesion(bloques: SesionVista['bloques']): { descanso: fals
 }
 
 /** Una sesión pasada con lo que se anotó en cada bloque: series, pesos y modo de carga. */
-export type SesionConPesos = { fecha: string; bloques: { ejercicio?: string | null; series?: number | null; pesos?: (number | null)[] | null; carga?: string | null; reps?: (number | null)[] | null }[] };
+export type SesionConPesos = { fecha: string; bloques: { ejercicio?: string | null; series?: number | null; pesos?: (number | null)[] | null; carga?: string | null; reps?: (number | null)[] | null; rir?: (number | null)[] | null }[] };
 
-export type UltimaVez = { fecha: string; series: number; pesos: (number | null)[]; carga?: string; reps?: (number | null)[] };
+export type UltimaVez = {
+  fecha: string;
+  series: number;
+  pesos: (number | null)[];
+  /** Los pesos alineados por serie, como `reps`: un bloque sin pesos ocupa sus lugares con null. */
+  pesosPorSerie?: (number | null)[];
+  carga?: string;
+  reps?: (number | null)[];
+  rir?: (number | null)[];
+};
 
 /**
  * LA ÚLTIMA VEZ DE UN EJERCICIO (19/10, bug del gimnasio): la sesión más reciente antes de
@@ -317,9 +326,14 @@ export function ultimaVezDe(sesiones: SesionConPesos[], ejercicio: string, hoyIS
   const carga = suyos.find((b) => b.carga)?.carga ?? undefined;
   // Alineadas por serie, no como los pesos: un bloque sin repeticiones ocupa sus lugares con null.
   const reps = suyos.flatMap((b) => repsDe(b.reps, Number(b.series) > 0 ? Math.round(Number(b.series)) : 0));
+  // El RIR, igual (migración 102).
+  const rir = suyos.flatMap((b) => rirDe(b.rir, Number(b.series) > 0 ? Math.round(Number(b.series)) : 0));
+  const pesosPorSerie = suyos.flatMap((b) => Array.from({ length: Number(b.series) > 0 ? Math.round(Number(b.series)) : 0 }, (_, i) => pesoValido(b.pesos?.[i])));
   return {
     fecha: s.fecha, series, pesos: suyos.flatMap((b) => b.pesos ?? []), ...(carga ? { carga } : {}),
     ...(reps.some((r) => r !== null) ? { reps } : {}),
+    ...(rir.some((r) => r !== null) ? { rir } : {}),
+    ...(pesosPorSerie.some((p) => p !== null) ? { pesosPorSerie } : {}),
   };
 }
 
@@ -328,8 +342,19 @@ export function ultimaVezDe(sesiones: SesionConPesos[], ejercicio: string, hoyIS
  * esa vez hubo menos series, las de la última que tuvo. Sin repeticiones por serie, las de
  * la marca de esa sesión (`repsDeLaSesion`), que es lo único que había antes.
  */
-export function pistaDeReps(u: UltimaVez | null | undefined, serie: number, marca?: MarcaConReps | null): number | null {
+export function pistaDeReps(u: UltimaVez | null | undefined, serie: number, marca?: MarcaConReps | null, peso?: number | null): number | null {
   const lista = u?.reps ?? [];
+  // CON EL PESO DE AHORA (16/11, bug del gimnasio): la segunda serie había sido de 12 con menos peso, y con el
+  // peso de la primera la pista decía 12. Si la última vez se anotaron pesos, la pista sale de una serie con
+  // este mismo peso —la misma serie si coincide, si no la primera que lo tenga—; si no hubo ninguna, no hay.
+  const pesos = u?.pesosPorSerie ?? [];
+  if (typeof peso === 'number' && peso > 0 && pesos.some((p) => p !== null)) {
+    const igual = (p: number | null | undefined) => typeof p === 'number' && Math.abs(p - peso) < 0.01;
+    if (igual(pesos[serie]) && typeof lista[serie] === 'number') return lista[serie];
+    const otra = pesos.findIndex((p, i) => igual(p) && typeof lista[i] === 'number');
+    if (otra >= 0) return lista[otra];
+    return marca && marca.reps > 0 && igual(marca.peso) ? marca.reps : null;
+  }
   const misma = lista[serie];
   if (typeof misma === 'number') return misma;
   const ultima = [...lista].reverse().find((r) => typeof r === 'number');
