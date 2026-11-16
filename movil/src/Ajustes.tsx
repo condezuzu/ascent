@@ -11,6 +11,7 @@ import { T } from '@nucleo/textos';
 import { guardarSonido, leerSonido } from '@compartido/descanso';
 import { guardarMostrarUltimaVez, leerMostrarUltimaVez } from '@compartido/mostrarUltimaVez';
 import { guardarRegistrarReps, leerRegistrarReps } from '@compartido/registrarReps';
+import { guardarRegistrarRir, leerRegistrarRir } from '@compartido/registrarRir';
 import { disponible } from '@nucleo/esquema';
 import Segmentado from './Segmentado';
 import { fijarPreferenciaIdioma, idiomaElegido, leerPreferenciaIdioma, type Idioma } from '@compartido/idioma';
@@ -89,6 +90,7 @@ export default function Ajustes({
   const [sonido, setSonido] = useState(false);
   const [ultimaVez, setUltimaVez] = useState(false);
   const [reps, setReps] = useState(false);
+  const [rir, setRir] = useState(false);
   // LO QUE NO SE USA TODOS LOS DÍAS, plegado (item estructura). Lo frecuente
   // —gimnasio, salud, descanso, peso, avisos, quién sos— queda arriba y a la
   // vista; el resto entra acá adentro para que Ajustes no sea una lista larga y
@@ -101,6 +103,7 @@ export default function Ajustes({
     leerSonido().then(setSonido);
     leerMostrarUltimaVez().then(setUltimaVez);
     leerRegistrarReps().then(setReps);
+    leerRegistrarRir().then(setRir);
     void leerPreferenciaIdioma().then((p) => setIdioma(idiomaElegido(p)));
   }, []);
 
@@ -194,6 +197,23 @@ export default function Ajustes({
               }}
             />
           </View>
+          {/* EL RIR (12/11): apagado de entrada, y solo con la 102, que lo deja guardar. */}
+          {disponible('rirPorSerie', version) && (
+            <View style={estilos.filaOpcion}>
+              <View style={estilos.textoOpcion}>
+                <Text style={estilos.opcion}>{T.ajustes.registrarRir}</Text>
+              </View>
+              <Interruptor
+                value={rir}
+                accessibilityLabel={T.ajustes.registrarRir}
+                accessibilityHint={T.ajustes.registrarRirNota}
+                onValueChange={(nuevo) => {
+                  setRir(nuevo);
+                  void guardarRegistrarRir(nuevo);
+                }}
+              />
+            </View>
+          )}
         </>
       )}
 

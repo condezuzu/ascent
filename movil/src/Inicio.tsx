@@ -944,6 +944,7 @@ export default function Inicio({
             repsUltimaVez={sesion.estado.bloques.ejercicio ? sesion.repsDeLaUltimaVezDe(sesion.estado.bloques.ejercicio) : null}
             pistaDeReps={sesion.estado.bloques.ejercicio ? sesion.pistaDeRepsDe(sesion.estado.bloques.ejercicio) : null}
             alElegirReps={sesion.elegirReps}
+            alElegirRir={sesion.elegirRir}
             alElegirDistancia={sesion.elegirDistancia}
             subirPesoDe={sesion.subirPesoDe}
             alSumar={sesion.serieHecha}

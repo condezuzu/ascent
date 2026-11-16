@@ -2371,6 +2371,32 @@ $$;
 
 revoke execute on function public.reps_limpias(jsonb, int) from public, anon, authenticated;
 
+-- EL RIR DE CADA SERIE (migración 102): las repeticiones que quedaban en reserva, de 0 a 4 (el 4 es
+-- «4 o más»). Como `reps_limpias`: lo demás es `null`, y una lista de puros `null` no se guarda.
+create or replace function public.rir_limpias(p jsonb, n int)
+returns jsonb language sql immutable set search_path = public as $$
+  select case
+    when p is null or jsonb_typeof(p) <> 'array' or n <= 0 then null
+    else (
+      select case when bool_or(v is not null) then jsonb_agg(v order by o) else null end
+        from (
+          select o,
+                 case
+                   when jsonb_typeof(x) = 'number'
+                    and (x #>> '{}')::numeric = trunc((x #>> '{}')::numeric)
+                    and (x #>> '{}')::numeric between 0 and 4
+                   then to_jsonb((x #>> '{}')::int)
+                   else null
+                 end as v
+            from jsonb_array_elements(p) with ordinality as t(x, o)
+           where o <= n
+        ) q
+    )
+  end;
+$$;
+
+revoke execute on function public.rir_limpias(jsonb, int) from public, anon, authenticated;
+
 create or replace function public.fijar_bloques(p_sesion uuid, p_bloques jsonb)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
@@ -2396,6 +2422,8 @@ begin
            || case when r is null then '{}'::jsonb else jsonb_build_object('reps', r) end
            -- LA DISTANCIA (migración 95): en kilómetros, solo de un ejercicio que se mide en tiempo.
            || case when km is null then '{}'::jsonb else jsonb_build_object('distancia', km) end
+           -- EL RIR (migración 102): como las repeticiones, de un ejercicio que se cuenta en series.
+           || case when rr is null then '{}'::jsonb else jsonb_build_object('rir', rr) end
            order by i), '[]'::jsonb)
     into limpio
   from (
@@ -2423,7 +2451,10 @@ begin
       case when (select x.mide from ejercicios x where x.id = f.e) = 'tiempo' and jsonb_typeof(f.distancia) = 'number'
                 and (f.distancia #>> '{}')::numeric > 0
            then least(round((f.distancia #>> '{}')::numeric, 2), 500)
-      end as km
+      end as km,
+      case when (select x.mide from ejercicios x where x.id = f.e) = 'tiempo' then null
+           else rir_limpias(f.rir, f.s)
+      end as rr
     from (
       select
         b.valor->>'ejercicio' as e,
@@ -2433,6 +2464,7 @@ begin
         b.valor->'minutos' as minutos,
         b.valor->'reps' as reps,
         b.valor->'distancia' as distancia,
+        b.valor->'rir' as rir,
         b.orden as i
       from jsonb_array_elements(p_bloques) with ordinality as b(valor, orden)
       where b.valor->>'ejercicio' in (select id from ejercicios)
@@ -4960,7 +4992,7 @@ create trigger rutinas_anotar_semana
   for each row execute function public.anotar_semana_de_rutina();
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 101; $$;
+returns int language sql immutable as $$ select 102; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

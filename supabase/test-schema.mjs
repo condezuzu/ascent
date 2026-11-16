@@ -5969,8 +5969,11 @@ console.log('\n81. Lo que depende de una migracion pregunta si esta');
 
   // Donde nace cada funcion.
   const nacio = new Map();
-  for (const n of leerDir(SUPA).filter((x) => /^migracion-\d+/.test(x)).sort()) {
-    const num = Number(/^migracion-(\d+)/.exec(n)[1]);
+  // Por número y no por nombre: por nombre la 102 va antes que la 11, y una función que la 102 redefine
+  // parecía nacer ahí (12/11).
+  const numDe = (n) => Number(/^migracion-(\d+)/.exec(n)[1]);
+  for (const n of leerDir(SUPA).filter((x) => /^migracion-\d+/.test(x)).sort((a, b) => numDe(a) - numDe(b))) {
+    const num = numDe(n);
     for (const m of leerArch(join(SUPA, n), 'utf8').matchAll(/function public\.([a-z_0-9]+)\(/g)) {
       if (!nacio.has(m[1])) nacio.set(m[1], num);
     }
@@ -18534,7 +18537,8 @@ console.log('\n232. Los globitos: flotan, un renglón, y "ya puedes subir el pes
     /numberOfLines=\{2\}/.test(globito),
     // Los de primera vez, desde el 15/10, son el globo de cómic con su cola (ver la 249).
     /return <GloboComic texto=\{children\} alCerrar=\{cerrar\}/.test(de232('movil', 'src', 'GloboPrimeraVez.tsx')),
-    /<Globito\n          testID="globito-subir"/.test(de232('movil', 'src', 'Bloque.tsx')),
+    // El de subir, desde el 12/11, es su propio globo flotante arriba del peso (galería 21), también sin ocupar lugar.
+    /ancla: \{ height: 0, zIndex: 20, elevation: 20 \}/.test(de232('movil', 'src', 'Bloque.tsx')) && /testID="globito-subir"/.test(de232('movil', 'src', 'Bloque.tsx')),
   ], [true, true, true, true, true]);
   const { TEXTOS_ES: ES232 } = await import('../nucleo/textos.ts');
   const { EN: EN232 } = await import('../nucleo/textos-en.ts');
@@ -19742,7 +19746,7 @@ console.log('\n267. La última vez de un ejercicio: series, pesos y el modo de c
   chequear('la sesión más reciente antes de hoy, con las tandas de ese ejercicio juntas; sin historia, nada', [
     u(historial, 'curl_biceps', '2026-10-19'),
     u(historial, 'sentadilla', '2026-10-19'),
-  ], [{ fecha: '2026-10-15', series: 3, pesos: [12, 12, 14], carga: 'una' }, null]);
+  ], [{ fecha: '2026-10-15', series: 3, pesos: [12, 12, 14], carga: 'una', pesosPorSerie: [12, 12, 14] }, null]);
   const blo = deBug('movil', 'src', 'Bloque.tsx');
   chequear('el bloque la muestra al elegir el ejercicio', /T\.sesion\.ultimaVez\(/.test(blo), true);
 }
@@ -20657,10 +20661,10 @@ console.log('\n303. En Estadísticas las vidas también son estrellas (21/10)');
 {
   // La prueba de verdad es la de test:real (probar-estrellas), que las cuenta en pantalla.
   const sinCom303 = (t) => t.replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
-  // Desde la propuesta A (31/10) las dibuja VidasExplicadas.
-  const sg = sinCom303(deBug('movil', 'src', 'VidasExplicadas.tsx'));
+  // Desde el 12/11 (galería 22) las dibuja VidasDelMes, arriba del mes.
+  const sg = sinCom303(deBug('movil', 'src', 'VidasDelMes.tsx'));
   chequear('la misma estrella que Inicio, llena la que queda y en contorno la usada, y ni un punto', [
-    /modos = modosDeLasVidas\(vidas\)/.test(sg) && /<EstrellaQueTitila indice=\{i\} modo=\{modo\}/.test(sg),
+    /modosDeLasVidas\(vidas\)\.map\(\(modo, i\) =>/.test(sg) && /<EstrellaQueTitila key=\{i\} indice=\{i\} modo=\{modo\}/.test(sg),
     /estilos\.vidaViva|vida: \{ width: 9/.test(sg + sinCom303(deBug('movil', 'src', 'StatsGeneral.tsx'))),
   ], [true, false]);
 }
@@ -21023,7 +21027,8 @@ console.log('\n317. Las microanimaciones: lo que entra crece, los botones se hun
   const usos = (archivo) => (deBug('movil', 'src', archivo).match(/<Aparece[ >]/g) ?? []).length;
   const toques = (archivo) => (deBug('movil', 'src', archivo).match(/<Tocable[\s>]/g) ?? []).length;
   chequear('se usa donde algo llega tarde o se abre: Inicio, el bloque, el descanso, el grupo, la rutina', [
-    usos('Inicio.tsx') >= 8, usos('Bloque.tsx') >= 5, usos('Descanso.tsx') >= 2, usos('Juntos.tsx') >= 1, usos('EnVivoDeInicio.tsx') >= 1, usos('TiraDelGrupo.tsx') >= 1, usos('FilaRutina.tsx') >= 1, usos('MiRutina.tsx') >= 3,
+    // El bloque, 3 desde el 12/11: la última vez y la sugerencia de subir ahora flotan y no se abren empujando.
+    usos('Inicio.tsx') >= 8, usos('Bloque.tsx') >= 3, usos('Descanso.tsx') >= 2, usos('Juntos.tsx') >= 1, usos('EnVivoDeInicio.tsx') >= 1, usos('TiraDelGrupo.tsx') >= 1, usos('FilaRutina.tsx') >= 1, usos('MiRutina.tsx') >= 3,
   ], [true, true, true, true, true, true, true, true]);
   chequear('y los botones principales se hunden al tocarlos', [toques('Inicio.tsx') >= 4, toques('Bloque.tsx') >= 5, toques('Descanso.tsx') >= 3], [true, true, true]);
 }
@@ -21585,16 +21590,16 @@ console.log('\n328. Menos texto, más visual: lo que se dejó de leer, VoiceOver
   chequear('ninguna de las explicaciones que se fueron volvió a la pantalla', QUE328.flatMap(([k]) => escrita328(k)), []);
   chequear('y cada una sigue en su pantalla', QUE328.filter(([k, a]) => !de328(a).includes(k)).map(([k]) => k), []);
   chequear('como etiqueta de lo que se toca, no como código muerto', [
-    /accessibilityLabel=\{explicacion\}/.test(de328('VidasExplicadas.tsx')),
+    /accessibilityLabel=\{explicacion\}/.test(de328('VidasDelMes.tsx')),
     /accessibilityLabel=\{dots \?\? explicacion\}/.test(de328('TresMarcas.tsx')),
     /accessibilityHint=\{esFantasma \? /.test(de328('Bloque.tsx')),
     /accessibilityHint=\{T\.rutina\.arrastrarAyuda\}/.test(de328('FilasArrastrables.tsx')),
     /accessibilityHint/.test(de328('Interruptor.tsx')),
   ], [true, true, true, true, true]);
   // Lo que se demuestra se ve y no pasa: ni una vida gastada, ni una foto subida, ni un amigo inventado.
-  const DEMOS328 = ['VidasExplicadas.tsx', 'AlbumVacio.tsx', 'SocialVacio.tsx', 'GimnasioExplicado.tsx', 'AjusteQueSeMuestra.tsx', 'PesoSinDatos.tsx'];
+  const DEMOS328 = ['AlbumVacio.tsx', 'SocialVacio.tsx', 'GimnasioExplicado.tsx', 'AjusteQueSeMuestra.tsx', 'PesoSinDatos.tsx'];
   chequear('una demostración no toca datos', DEMOS328.filter((a) => /supabase|almacenamiento\.guardar|\.rpc\(/.test(de328(a))), []);
-  chequear('y con «reducir movimiento» no se mueve', ['VidasExplicadas.tsx', 'AlbumVacio.tsx', 'SocialVacio.tsx', 'GimnasioExplicado.tsx', 'FilasArrastrables.tsx'].filter((a) => !/sinMovimiento\(\)/.test(de328(a))), []);
+  chequear('y con «reducir movimiento» no se mueve', ['AlbumVacio.tsx', 'SocialVacio.tsx', 'GimnasioExplicado.tsx', 'FilasArrastrables.tsx'].filter((a) => !/sinMovimiento\(\)/.test(de328(a))), []);
   // El doble de Salud de la sonda no puede llegar a la app publicada.
   chequear('el doble de Salud, solo en desarrollo', [/saludDeSonda = __DEV__ \? /.test(de328('plataforma/index.ts')), /salud: saludDeSonda \?\? saludNativa/.test(de328('plataforma/index.ts'))], [true, true]);
   const PA328 = await import('../nucleo/pasos.ts');
@@ -21824,29 +21829,18 @@ console.log('\n330. La vuelta grande: cielo, horizonte, cifras, barra, rutina, m
   // ---- LA BARRA ----
   const AR330 = await import('../nucleo/arcoDeLaBarra.ts');
   const barra330 = app330('Pestanas.tsx');
-  // El desenfoque recortado por un círculo de 1750 pt reiniciaba el teléfono (3/11). Volvió el 5/11: una pieza de
-  // donde arranca el arco para abajo y columnas solo en la franja curva (en franjas de 2 pt casi no desenfocaba y se
-  // veía un rectángulo; con columnas hasta el fondo, sobre un cielo claro se veían franjas verticales).
+  // UNA SOLA PIEZA, SIN DESENFOQUE (12/11, a pedido: «que el rectángulo sea parte del arco»). El desenfoque
+  // recortado por un círculo reiniciaba el teléfono (3/11), y en piezas dejaba un corte a la altura de las puntas
+  // del arco (5/11 al 12/11). Ahora es un solo camino con la forma del arco, del fondo del rango.
   const arco330 = app330('ArcoDeLaBarra.tsx');
-  chequear('sin caja ni línea recta: lo de abajo del arco desenfoca parejo, de una pieza bajo la franja curva, sin el círculo ni un degradé', [
+  chequear('sin caja ni línea recta: lo de abajo del arco es una sola pieza con su forma, sin desenfoque ni recorte', [
     /borderTopWidth/.test(barra330.slice(barra330.indexOf('barra: {'), barra330.indexOf('barra: {') + 120)),
-    /<BlurView /.test(arco330),
+    /BlurView/.test(arco330),
     /borderRadius: radio|overflow: 'hidden'/.test(arco330),
-    /columnasDelArco\(ancho\)\.map/.test(arco330),
-    /style=\{\{ position: 'absolute', left: 0, width: ancho, top: 0, height: ALTO_DEL_FONDO \}\}/.test(arco330),
-    /height: ALTO_DEL_FONDO - c\.top/.test(arco330),
-    /barra-abajo|stopOpacity|LinearGradient/.test(arco330),
-    /<Path d=\{caminoDelArco\(ancho\)\} fill="none"/.test(arco330),
-  ], [false, true, false, true, true, false, false, true]);
-  // Las columnas, contra el arco: van de borde a borde sin huecos ni encimarse, y el tope de cada una se aparta
-  // del arco medio paso como mucho (1,5 pt de paso), así no queda nada sin desenfocar ni asoma por arriba.
-  const columnas330 = AR330.columnasDelArco(390);
-  const enOrden330 = [...columnas330].sort((a, b) => a.left - b.left);
-  const pegadas330 = enOrden330.every((c, i) => Math.abs(c.left - (i ? enOrden330[i - 1].left + enOrden330[i - 1].ancho : 0)) < 1e-6) && Math.abs(enOrden330.at(-1).left + enOrden330.at(-1).ancho - 390) < 1e-6;
-  const arcoEn330 = (x) => AR330.alturaDelArco(x, 390) - AR330.SUBE_EL_ARCO;
-  const aparta330 = Math.max(...columnas330.flatMap((c) => [c.left, c.left + c.ancho].map((x) => Math.abs(arcoEn330(x) - c.top))));
-  const medio330 = columnas330.find((c) => c.left < 195 && c.left + c.ancho > 195);
-  chequear('las columnas cubren de borde a borde, se apartan del arco 0,75 pt como mucho, y la del medio es la más ancha', [pegadas330, aparta330 <= 0.75 + 1e-9, medio330.ancho === Math.max(...columnas330.map((c) => c.ancho))], [true, true, true]);
+    arco330.includes('<Path testID="fondo-del-arco" d={`${caminoDelArco(ancho)} L${ancho} ${ALTO_DEL_FONDO + 1} L0 ${ALTO_DEL_FONDO + 1} Z`} fill={C.fondo}'),
+    (arco330.match(/<Path /g) ?? []).length,
+    arco330.includes('<Path d={caminoDelArco(ancho)} fill="none"'),
+  ], [false, false, false, true, 2, true]);
   chequear('el nombre va debajo del icono, donde no pisa el arco', barra330.indexOf("testID={'nombre-' + p}") > barra330.indexOf("testID={'luz-' + p}"), true);
   chequear('los iconos siguen siendo los mismos', /<IconoDePestana cual=\{p\} color=\{C\.apagado\} \/>/.test(barra330), true);
   chequear('el arco: arriba en el medio, y en los costados baja hasta el borde', [AR330.alturaDelArco(195, 390), AR330.alturaDelArco(0, 390), AR330.alturaDelArco(390, 390)], [0, AR330.SUBE_EL_ARCO, AR330.SUBE_EL_ARCO]);
@@ -22003,6 +21997,76 @@ console.log('\n332. «Crear rutina nueva» guarda el día como se entrenó: orde
     /pestana === 'entrenamiento' \? undefined : eventos\.escuchar\(RUTINA_CAMBIO, \(\) => void precargarRutina\(supabase\)\)/.test(st332),
   ], [true, 4, 0, true]);
   chequear('y está en test:real', /probar-rutina-nueva\.mjs/.test(deBug('supabase', 'pruebas-reales.mjs')), true);
+}
+console.log('\n334. Stats → Vidas: el mes en un cuadrado, sin la racha ni el número (12/11, galería 22)');
+{
+  const MV = await import('../nucleo/mesDeVidas.ts');
+  // Noviembre de 2026 arranca en domingo: seis huecos antes del 1, de lunes a sábado.
+  const celdas = MV.mesDeVidas('2026-11-12', new Set(['2026-11-01', '2026-11-10', '2026-11-12']), new Set(['2026-11-08']), new Set(['2026-11-09']));
+  const de = (d) => celdas.find((c) => c?.dia === d)?.que;
+  chequear('lunes primero: el domingo 1 va en la séptima columna, y el mes entero está', [celdas.findIndex((c) => c?.dia === 1), celdas.filter(Boolean).length], [6, 30]);
+  chequear('fuiste, descanso, vida, no fuiste, hoy y lo que viene', [de(1), de(8), de(9), de(11), de(10), de(12), de(13)], ['fui', 'descanso', 'vida', 'no', 'fui', 'fui', 'futuro']);
+  chequear('hoy sin registrar se marca aparte, no como una falta', MV.mesDeVidas('2026-11-12', new Set(), new Set(), new Set()).find((c) => c?.dia === 12)?.que, 'hoy');
+  chequear('las vidas del mes: solo las de este mes y hasta hoy, en orden', MV.vidasDelMes('2026-11-12', ['2026-11-09', '2026-10-30', '2026-11-02']), ['2026-11-02', '2026-11-09']);
+  const sg334 = sinComentarios(deBug('movil', 'src', 'StatsGeneral.tsx'));
+  chequear('Stats dibuja el mes y no la racha repetida ni los días que faltan', [/<VidasDelMes/.test(sg334), /VidasExplicadas/.test(sg334), /vidas-racha|vidas-faltan/.test(sinComentarios(deBug('movil', 'src', 'VidasDelMes.tsx')))], [true, false, false]);
+  chequear('y pide los días cubiertos sin las devueltas', /from\('vidas_usadas'\)\.select\('fecha'\)\.eq\('user_id', uid\)\.eq\('devuelta', false\)/.test(deBug('movil', 'src', 'Stats.tsx')), true);
+}
+console.log('\n335. El RIR de cada serie, la última vez al tocar la fecha y el globo de subir (12/11, galería 21, migración 102)');
+{
+  const B = await import('../nucleo/bloques.ts');
+  const R = await import('../nucleo/rutina.ts');
+  const D = await import('../nucleo/dosPorDos.ts');
+  chequear('el RIR va de 0 a 4 (el 4 es «4 o más»), entero', [0, 4, 5, 2.5, '3', -1, null].map(B.rirValido), [0, 4, null, null, 3, null, null]);
+  // El + anota el RIR elegido en la serie, como las repeticiones, y el botón vuelve a «RIR».
+  let b = B.cambiarPeso(B.bloquesVacios('press_banca', 3), 40);
+  b = B.sumar(B.cambiarRir(b, 3));
+  b = B.sumar(b);
+  b = B.sumar(B.cambiarRir(b, 1));
+  chequear('cada serie con su RIR, una sin anotar en null, y el elegido se va con el +', [b.rir, b.rirAhora], [[3, null, 1], undefined]);
+  chequear('tocar el mismo otra vez lo saca', B.cambiarRir(B.cambiarRir(b, 2), 2).rirAhora, undefined);
+  chequear('restar una serie se lleva su RIR', B.restar(b).rir, [3, null]);
+  chequear('viaja a la base con el bloque, y sin llave si nadie lo anotó', [B.paraGuardar(b)[0].rir, 'rir' in B.paraGuardar(B.sumar(B.bloquesVacios('press_banca', 3)))[0]], [[3, null, 1], false]);
+  // La última vez lo trae alineado por serie, como las repeticiones.
+  const ses = [{ fecha: '2026-11-08', bloques: [{ ejercicio: 'press_banca', series: 3, pesos: [40, 40, 40], reps: [10, 10, 9], rir: [3, 2, 2], carga: 'total' }] }];
+  chequear('la última vez trae el RIR de cada serie', R.ultimaVezDe(ses, 'press_banca', '2026-11-12')?.rir, [3, 2, 2]);
+  // Subir con el RIR: todas al objetivo y a ninguna le quedaron menos de 2.
+  chequear('todas a 10 con RIR 2 o más: puedes subir, desde el peso de esas series', D.subirPorRir(ses.map((s) => ({ ...s, bloques: [{ ...s.bloques[0], reps: [10, 10, 10] }] })), 'press_banca', 10, 'pecho', '2026-11-12')?.peso, 40);
+  chequear('una serie que no llegó al objetivo: no avisa', D.subirPorRir(ses, 'press_banca', 10, 'pecho', '2026-11-12'), null);
+  chequear('una serie con RIR 1: no avisa', D.subirPorRir([{ ...ses[0], bloques: [{ ...ses[0].bloques[0], reps: [10, 10, 10], rir: [3, 1, 2] }] }], 'press_banca', 10, 'pecho', '2026-11-12'), null);
+  chequear('sin RIR anotado o sin objetivo: no avisa', [D.subirPorRir([{ ...ses[0], bloques: [{ ...ses[0].bloques[0], rir: undefined }] }], 'press_banca', 9, 'pecho', '2026-11-12'), D.subirPorRir(ses, 'press_banca', null, 'pecho', '2026-11-12')], [null, null]);
+
+  // Lo de la pantalla lo prueba probar-rir, entrenando; acá, que el cableado no se pierda.
+  const bl = sinComentarios(deBug('movil', 'src', 'Bloque.tsx'));
+  chequear('el botón RIR y su globo, la última vez con la fecha, y el de subir: flotan sin empujar nada', [
+    /const conRir = registrarRir && !!alElegirRir && disponible\('rirPorSerie', version\)/.test(bl),
+    /testID="boton-rir"/.test(bl) && /testID="rir-abierto"/.test(bl) && /T\.sesion\.rirTitulo/.test(bl),
+    /testID="ultima-vez"[\s\S]{0,400}fechaCorta\(ultimaVez\.fecha\)/.test(bl) && /testID="ultima-vez-abierta"/.test(bl),
+    /setTimeout\(\(\) => setSubirVisible\(false\), 4000\)/.test(bl),
+    (bl.match(/<View style=\{estilos\.ancla\}>/g) ?? []).length,
+    /<Globito/.test(bl),
+  ], [true, true, true, true, 3, false]);
+  chequear('el ajuste, apagado de entrada y solo con la 102; y la sesión elige con el núcleo', [
+    /disponible\('rirPorSerie', version\) && \(/.test(deBug('movil', 'src', 'Ajustes.tsx')),
+    /=== 'si'/.test(deBug('compartido', 'registrarRir.ts')),
+    /const b = cambiarRir\(bloquesRef\.current, n\);/.test(deBug('compartido', 'useSesion.ts')),
+    /dosPorDos\(historialConPesosRef[\s\S]{0,120}\?\?\s*subirPorRir\(/.test(deBug('compartido', 'useSesion.ts')),
+  ], [true, true, true, true]);
+  chequear('y está en test:real', /probar-rir\.mjs/.test(deBug('supabase', 'pruebas-reales.mjs')), true);
+}
+console.log('\n336. La pista de repeticiones sale de una serie con el mismo peso (16/11, bug del gimnasio)');
+{
+  const R = await import('../nucleo/rutina.ts');
+  // Lo que pasó: la segunda serie fue de 12 con menos peso; hoy, con el peso de la primera, la pista decía 12.
+  const u = R.ultimaVezDe([{ fecha: '2026-11-12', bloques: [{ ejercicio: 'press_banca', series: 3, pesos: [40, 35, 40], reps: [10, 12, 9], carga: 'total' }] }], 'press_banca', '2026-11-16');
+  chequear('los pesos de la última vez, alineados por serie', u.pesosPorSerie, [40, 35, 40]);
+  chequear('con 40, la segunda serie: las de una serie con 40, no las 12 que fueron con 35', R.pistaDeReps(u, 1, null, 40), 10);
+  chequear('si la misma serie fue con ese peso, esa', R.pistaDeReps(u, 2, null, 40), 9);
+  chequear('con 35, las de la de 35', R.pistaDeReps(u, 0, null, 35), 12);
+  chequear('con un peso que la última vez no hubo: sin pista', R.pistaDeReps(u, 0, null, 50), null);
+  chequear('sin peso cargado, como antes: la de esa misma serie', R.pistaDeReps(u, 1), 12);
+  chequear('la marca de esa sesión solo si es de ese peso', [R.pistaDeReps(u, 0, { ejercicio: 'press_banca', peso: 50, reps: 3, fecha: '2026-11-12' }, 50), R.pistaDeReps(u, 0, { ejercicio: 'press_banca', peso: 45, reps: 3, fecha: '2026-11-12' }, 50)], [3, null]);
+  chequear('la sesión le pasa el peso de ahora', /pistaDeReps\(u, serie, repsDeLaSesion\([^)]*\), b\.ejercicio === id \? b\.peso : null\)/.test(deBug('compartido', 'useSesion.ts')), true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

@@ -138,27 +138,13 @@ try {
   // ---- A · LAS VIDAS ----
   console.log('A · Las vidas');
   await texto(TX.nav.stats).click({ timeout: 30000 });
-  await page.getByTestId('vidas-explicadas').first().waitFor({ timeout: 30000 });
+  // Desde el 12/11 (galería 22) ya no es una demostración: las vidas que quedan, y el mes en un cuadrado.
+  await page.getByTestId('vidas-del-mes').first().waitFor({ timeout: 30000 });
   await page.waitForTimeout(1200);
   chequear('la nota ya no se lee', [await seLee(TX.impulso.nota), await page.getByText(TX.impulso.notaJuntas).filter({ visible: true }).count()], [0, 0]);
-  const centro = (n) => { const c = n.getBoundingClientRect(); return [c.left + c.width / 2, c.top + c.height / 2]; };
-  const [aroX, aroY] = await page.getByTestId('vidas-llama').first().evaluate(centro);
-  const [diaX, diaY] = await page.getByTestId('vidas-dia-que-falto').first().evaluate(centro);
-  chequear('el aro que llama está centrado en el día que faltó', Math.abs(aroX - diaX) <= 1 && Math.abs(aroY - diaY) <= 1, true);
-  chequear('VoiceOver la sigue teniendo', /30 días/.test(await etiquetaDe('vidas-explicadas')), true);
-  const rachaAntes = await page.getByTestId('vidas-racha').first().innerText();
+  chequear('VoiceOver la sigue teniendo', /30 días/.test(await etiquetaDe('vidas-stats')), true);
+  chequear('sin la racha repetida ni los días que faltan, y con el mes', [await page.getByTestId('vidas-racha').count(), await page.getByTestId('vidas-faltan').count(), await page.getByTestId('mes-de-vidas').count()], [0, 0, 1]);
   await foto('a-vidas');
-  await page.getByTestId('vidas-explicadas').first().click();
-  await page.getByTestId('vidas-vuela').first().waitFor({ timeout: 2000 });
-  chequear('al tocar, la estrella vuela', await page.getByTestId('vidas-vuela').count(), 1);
-  await page.waitForTimeout(1100);
-  chequear('y queda en el día que faltó', await page.getByTestId('vidas-dia-que-falto').first().locator('svg').count(), 1);
-  chequear('la racha no se mueve', await page.getByTestId('vidas-racha').first().innerText(), rachaAntes);
-  await foto('a-vidas-cubierto');
-  const contando = Number(await page.getByTestId('vidas-contando').first().innerText().catch(() => '0'));
-  chequear('un aro la trae de vuelta, contando', contando > 0 && contando <= 30, true);
-  await page.waitForTimeout(4600);
-  chequear('y todo vuelve a como estaba: es una demostración', [await page.getByTestId('vidas-dia-que-falto').first().locator('svg').count(), await page.getByTestId('vidas-vuela').count()], [0, 0]);
 
   // ---- F · EL PESO SIN DATOS ----
   console.log('F · El peso, antes de tener datos');

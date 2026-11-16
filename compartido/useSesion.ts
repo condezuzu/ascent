@@ -11,7 +11,7 @@ import { eventos } from '@compartido/eventos';
 import { cantidadesDeHoy, ejerciciosDeHoy, metaDeRutina } from '@nucleo/rutinas';
 import { cargarMisRutinas, rutinaActivaDelTelefono } from '@compartido/rutinas';
 import { objetivosDeRepeticiones } from '@nucleo/rutinas';
-import { dosPorDos } from '@nucleo/dosPorDos';
+import { dosPorDos, subirPorRir } from '@nucleo/dosPorDos';
 import { DIA_CAMBIO } from '@compartido/gimnasio';
 import {
   desfasajeDelReloj,
@@ -37,6 +37,7 @@ import {
   cambiarDistancia,
   cambiarPeso,
   cambiarReps,
+  cambiarRir,
   corregirPeso,
   mudarEjercicio,
   cambiarMeta,
@@ -1570,6 +1571,15 @@ export function useSesion(
     await actualizarSesionCache({ bloques: b }, yo);
   }
 
+  /** EL RIR DE LA PRÓXIMA SERIE (12/11): como las repeticiones, viaja con la serie que lo anota. */
+  async function elegirRir(n: number) {
+    const b = cambiarRir(bloquesRef.current, n);
+    if (b === bloquesRef.current) return;
+    bloquesRef.current = b;
+    setBloques(b);
+    await actualizarSesionCache({ bloques: b }, yo);
+  }
+
   /**
    * LOS MINUTOS DEL CARDIO (14/10). Con la vuelta ya contada se suben en el acto:
    * corregir "eran 25, no 20" tiene que llegar a la base.
@@ -1761,16 +1771,20 @@ export function useSesion(
       return u ? repsDeLaSesion(marcasConRepsRef.current, id, u.fecha) : null;
     },
     /** El aviso de subir el peso, con la regla 2 por 2 (ver `nucleo/dosPorDos.ts`); `null` si no corresponde. */
-    subirPesoDe: (id: string, grupo: string | null) => dosPorDos(historialConPesosRef.current, id, objetivosRef.current[id], grupo, hoyISO()),
+    // La 2 por 2, o el RIR de la última vez (12/11).
+    subirPesoDe: (id: string, grupo: string | null) =>
+      dosPorDos(historialConPesosRef.current, id, objetivosRef.current[id], grupo, hoyISO()) ??
+      subirPorRir(historialConPesosRef.current, id, objetivosRef.current[id], grupo, hoyISO()),
     /** La pista del cuadradito de repeticiones para la serie que viene de ese ejercicio: ver `pistaDeReps`. */
     pistaDeRepsDe: (id: string) => {
       const u = ultimaVezDe(historialConPesosRef.current, id, hoyISO());
       // Contando las de sus bloques ya cerrados: la última vez también están juntas.
       const b = bloquesRef.current;
       const serie = b.cerrados.filter((x) => x.ejercicio === id).reduce((t, x) => t + x.series, 0) + (b.ejercicio === id ? b.hechas : 0);
-      return u ? pistaDeReps(u, serie, repsDeLaSesion(marcasConRepsRef.current, id, u.fecha)) : null;
+      return u ? pistaDeReps(u, serie, repsDeLaSesion(marcasConRepsRef.current, id, u.fecha), b.ejercicio === id ? b.peso : null) : null;
     },
     elegirReps,
+    elegirRir,
     tocarBloque,
     elegirEjercicio,
     mudarSeries,

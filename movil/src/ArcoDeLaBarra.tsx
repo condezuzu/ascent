@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
-import { BlurView } from 'expo-blur';
 import Svg, { Path } from 'react-native-svg';
-import { alturaDelArco, caminoDelArco, columnasDelArco, SUBE_EL_ARCO } from '@nucleo/arcoDeLaBarra';
+import { alturaDelArco, caminoDelArco, SUBE_EL_ARCO } from '@nucleo/arcoDeLaBarra';
 import { C, conTema, luz } from './colores';
 import { useTema } from './useTema';
 
@@ -15,12 +14,11 @@ const MUESTRAS_POR_PESTANA = 6;
  * No hay caja ni línea recta: lo de abajo del arco va borroso, y un punto corre por el arco hasta la
  * pestaña en la que se está, atado a la misma tira que mueve las pantallas, así acompaña al dedo.
  *
- * EL DESENFOQUE VA EN COLUMNAS (5/11). Hasta el 3/11 era un `UIVisualEffectView` recortado por un círculo
- * de unos 1750 pt, cuyo borde era el arco, y el teléfono se reiniciaba al deslizar: se caía el compositor de
- * iOS. Sin él no volvió a pasar. Después fue una franja oscura, y se notaba como caja. Ahora vuelve sin
- * recorte: de donde arranca el arco para abajo, una sola pieza; y arriba, la franja curva, en columnas
- * (`columnasDelArco`). Cada columna desenfoca solo lo suyo: bajando hasta el fondo, sobre un cielo claro se
- * veían franjas verticales de colores, también detrás de los iconos.
+ * UNA SOLA PIEZA, SIN DESENFOQUE (12/11, a pedido: «que el rectángulo sea parte del arco»). Desenfocado no
+ * hay forma de que sea continuo: recortado por un círculo de unos 1750 pt reiniciaba el teléfono (3/11, se
+ * caía el compositor de iOS), y en piezas —una bajo los iconos y columnas en la franja curva, 5/11— cada una
+ * desenfoca lo suyo y quedaba un corte a la altura de las puntas del arco. Ahora es un solo camino de SVG con
+ * la forma del arco, del fondo del rango y casi opaco.
  */
 export default function ArcoDeLaBarra({ correr, ancho, cantidad }: { correr: Animated.Value; ancho: number; cantidad: number }) {
   useTema();
@@ -44,14 +42,8 @@ export default function ArcoDeLaBarra({ correr, ancho, cantidad }: { correr: Ani
 
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill} testID="arco-de-la-barra">
-      <BlurView tint="dark" intensity={40} style={{ position: 'absolute', left: 0, width: ancho, top: 0, height: ALTO_DEL_FONDO }} />
-      {/* Medio punto de más de ancho y de alto: sin eso, entre dos piezas asomaba una línea sin desenfocar. */}
-      {columnasDelArco(ancho).map((c) => (
-        <BlurView key={c.left} tint="dark" intensity={40} style={{ position: 'absolute', left: c.left, width: c.ancho + 0.5, top: c.top, height: 0.5 - c.top }} />
-      ))}
       <Svg width={ancho} height={ALTO_DEL_FONDO + 1} style={estilos.linea}>
-        {/* Un oscuro parejo y muy leve, con la forma exacta del arco: tapa los escalones de las columnas. */}
-        <Path d={`${caminoDelArco(ancho)} L${ancho} ${ALTO_DEL_FONDO + 1} L0 ${ALTO_DEL_FONDO + 1} Z`} fill={C.negro} fillOpacity={0.12} />
+        <Path testID="fondo-del-arco" d={`${caminoDelArco(ancho)} L${ancho} ${ALTO_DEL_FONDO + 1} L0 ${ALTO_DEL_FONDO + 1} Z`} fill={C.fondo} fillOpacity={0.92} />
         <Path d={caminoDelArco(ancho)} fill="none" stroke={C.claro} strokeOpacity={0.34} strokeWidth={1} />
       </Svg>
       <Animated.View testID="punto-del-arco" style={[estilos.punto, { transform: [{ translateX: x }, { translateY: y }] }]} />

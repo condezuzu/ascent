@@ -88,6 +88,8 @@ export const REQUIERE = {
   diasFaltados: 97,
   /** Invitar a un amigo a tu grupo y ver el grupo de un amigo, desde su burbuja en Inicio. */
   invitarAlGrupo: 98,
+  /** El RIR de cada serie (`rir` en los bloques), con «Registrar RIR» prendido. */
+  rirPorSerie: 102,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

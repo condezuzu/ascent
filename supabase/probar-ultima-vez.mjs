@@ -53,7 +53,8 @@ const nav = await chromium.launch();
 const page = await (await nav.newContext({ viewport: { width: 390, height: 900 }, locale: 'es-UY', timezoneId: 'America/Montevideo' })).newPage();
 const texto = (t) => page.getByText(t, { exact: true }).last();
 const lineas = async () => {
-  const leer = (id) => page.getByTestId(id).first().innerText({ timeout: 3000 }).catch(() => null);
+  // Desde el 12/11 se ve un botón con la fecha (galería 21); el renglón entero es su etiqueta, la que lee VoiceOver.
+  const leer = (id) => page.getByTestId(id).first().getAttribute('aria-label', { timeout: 3000 }).catch(() => null);
   return [await leer('ultima-vez'), await leer('reps-ultima-vez')].filter(Boolean);
 };
 await page.route(
@@ -111,7 +112,7 @@ try {
   await llave();
   await entrar();
   // Hasta 10 s a que se complete sola, sin tocar nada.
-  await page.getByTestId('ultima-vez').filter({ hasText: 'repeticiones' }).first().waitFor({ timeout: 10000 }).catch(() => {});
+  await page.locator('[data-testid="ultima-vez"][aria-label*="repeticiones"]').first().waitFor({ timeout: 10000 }).catch(() => {});
   const dice = await lineas();
   await page.screenshot({ path: join(SALIDA, 'prendido.png') });
   chequear('prendido: al entrar a entrenar sale la última vez del ejercicio propuesto', dice.length > 0 && /^La última vez, \d+ de \S+: /.test(dice[0]), true);
