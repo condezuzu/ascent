@@ -12,6 +12,7 @@ import { T } from '@nucleo/textos';
 import { leerAnotarPeso } from '@compartido/anotarPeso';
 import { leerMostrarUltimaVez, MOSTRAR_ULTIMA_VEZ_CAMBIO } from '@compartido/mostrarUltimaVez';
 import { leerRegistrarReps, REGISTRAR_REPS_CAMBIO } from '@compartido/registrarReps';
+import { leerRegistrarRir, REGISTRAR_RIR_CAMBIO } from '@compartido/registrarRir';
 import type { MarcaConReps } from '@nucleo/rutina';
 import { ponerNombres } from '@compartido/enCurso';
 import { useVersionDelEsquema } from '@compartido/esquema';
@@ -36,14 +37,14 @@ const SUBIR_VISTOS = new Set<string>();
 // Con lo que arranca una vuelta de cardio si no se tocaron los minutos.
 const MINUTOS_DE_ARRANQUE = 20;
 import EtiquetaDeCarga from './EtiquetaDeCarga';
-import Globito from './Globito';
 import { esPropio, nombreVisible } from '@nucleo/propios';
 import { C, conAlfa, DESHABILITADO, HALO, conTema, luz } from './colores';
 import { useTema } from './useTema';
 import { leerRecordados, marcarSubida } from '@compartido/pesosRecordados';
 import { claveDeSubida, loQueSePuedeSubir, type Subida } from '@nucleo/subir';
 import { pasoDelCampo } from '@nucleo/campoPeso';
-import { fechaLinda, hoyISO } from '@nucleo/fechas';
+import { fechaCorta, fechaLinda, hoyISO } from '@nucleo/fechas';
+import { RIR_MAXIMO } from '@nucleo/bloques';
 import { cronoLindo } from '@nucleo/sesiones';
 import { cierraElBloque, cuentaLaSerie, horaDelToque, TOQUE_REPETIDO_MS } from './toques';
 import { Text, TextInput } from './Texto';
@@ -82,6 +83,24 @@ function detalleDeLaUltimaVez(u: { series: number; pesos: (number | null)[]; car
   return t;
 }
 
+/** El RIR como se lee: el 4 es «4 o más». */
+function etiquetaRir(n: number) {
+  return n >= RIR_MAXIMO ? T.sesion.rirCuatroOMas : String(n);
+}
+
+/** Cada serie de la última vez en un renglón: «40 kg × 10 · RIR 2», con lo que haya anotado. */
+function seriesDeLaUltimaVez(u: { series: number; pesos: (number | null)[]; pesosPorSerie?: (number | null)[]; reps?: (number | null)[]; rir?: (number | null)[] }, unidad: Unidad) {
+  return Array.from({ length: u.series }, (_, i) => {
+    const p = (u.pesosPorSerie ?? u.pesos)[i];
+    const r = u.reps?.[i];
+    const rir = u.rir?.[i];
+    const peso = typeof p === 'number' && p > 0 ? `${pesoCorto(p, unidad)} ${unidad}` : '';
+    const reps = typeof r === 'number' ? `× ${r}` : '';
+    const base = [peso, reps].filter(Boolean).join(' ') || '—';
+    return typeof rir === 'number' ? `${base} · ${T.sesion.rirElegido(etiquetaRir(rir))}` : base;
+  });
+}
+
 export default function Bloque({
   estado,
   total,
@@ -94,6 +113,7 @@ export default function Bloque({
   repsUltimaVez,
   pistaDeReps,
   alElegirReps,
+  alElegirRir,
   alElegirDistancia,
   subirPesoDe,
   alSumar,
@@ -132,6 +152,8 @@ export default function Bloque({
   pistaDeReps?: number | null;
   /** Las repeticiones de la próxima serie, a cada tecla. Sin esto no hay cuadradito. */
   alElegirReps?: (n: number | null) => void;
+  /** El RIR de la serie que viene (12/11). Sin esto, el botón no aparece. */
+  alElegirRir?: (n: number) => void;
   /** Los kilómetros de la vuelta de cardio, a cada tecla (21/10). */
   alElegirDistancia?: (km: number | null) => void;
   /** El aviso de subir el peso con la regla 2 por 2, para ese ejercicio y su grupo (21/10). */
@@ -180,6 +202,20 @@ export default function Bloque({
   const anotarPeso = prefierePeso && disponible('pesoPorSerie', version);
   // Sin la migración 94 la base las tiraría: el cuadradito no aparece.
   const conReps = registrarReps && !!alElegirReps && disponible('repsPorSerie', version);
+  // EL RIR (12/11): un botón al lado de las metas, apagado de entrada, y solo con la 102.
+  const [registrarRir, setRegistrarRir] = useState(false);
+  useEffect(() => {
+    void leerRegistrarRir().then(setRegistrarRir);
+    return eventos.escuchar(REGISTRAR_RIR_CAMBIO, (si) => setRegistrarRir(si === true));
+  }, []);
+  const conRir = registrarRir && !!alElegirRir && disponible('rirPorSerie', version);
+  const [rirAbierto, setRirAbierto] = useState(false);
+  const [ultimaAbierta, setUltimaAbierta] = useState(false);
+  // Otro ejercicio cierra lo que estaba abierto.
+  useEffect(() => {
+    setRirAbierto(false);
+    setUltimaAbierta(false);
+  }, [estado.ejercicio]);
   // Sin la migración 95 la base la tiraría: el campo no aparece.
   const conDistancia = disponible('distanciaYObjetivo', version);
   const conCarga = anotarPeso && disponible('cargaDelPeso', version);
@@ -290,13 +326,25 @@ export default function Bloque({
   }, [estado.ejercicio, cargaVista]);
   const dia = diaDeSesion ?? hoyISO();
   // Al volver a ese ejercicio, antes de la primera serie, y si el peso de hoy no subió ya.
-  const [, repintarGlobito] = useState(0);
   // YA PUEDES SUBIR, CON LA REGLA 2 POR 2 (21/10): antes era "el mismo peso entero dos veces",
   // que no sabía de repeticiones. Ver `nucleo/dosPorDos.ts`.
   const subirPeso = estado.ejercicio && subirPesoDe ? subirPesoDe(estado.ejercicio, actual?.grupo ?? null) : null;
   const globitoSubir =
     !!subirPeso && estado.hechas === 0 && !!estado.ejercicio && (estado.peso ?? 0) <= subirPeso.peso && !SUBIR_VISTOS.has(`${estado.ejercicio}:${dia}`);
   const rangoSubir = subirPeso ? rangoParaMostrar(subirPeso, unidad) : null;
+  // Se muestra una vez por ejercicio y día, y se va solo a los cuatro segundos.
+  const [subirVisible, setSubirVisible] = useState(false);
+  useEffect(() => {
+    if (!globitoSubir || !estado.ejercicio) return;
+    SUBIR_VISTOS.add(`${estado.ejercicio}:${dia}`);
+    setSubirVisible(true);
+  }, [globitoSubir, estado.ejercicio, dia]);
+  // Aparte: marcarlo como visto vuelve a correr el de arriba, y su limpieza cancelaba la salida.
+  useEffect(() => {
+    if (!subirVisible) return;
+    const t = setTimeout(() => setSubirVisible(false), 4000);
+    return () => clearTimeout(t);
+  }, [subirVisible]);
   const marcada = !!oferta && !!marca && marca.dia === dia && marca.peso === oferta.peso && marca.carga === cargaVista;
   function ponerMarca(s: Subida | null) {
     if (!estado.ejercicio) return;
@@ -354,29 +402,33 @@ export default function Bloque({
             </Svg>
           )}
         </Tocable>
+        {/* LA ÚLTIMA VEZ (12/11, galería 21): un botón con la fecha; lo de antes se ve solo al tocarlo.
+            Solo con «Mostrar la última vez» prendido en Ajustes. VoiceOver dice el renglón entero. */}
+        {verUltimaVez && !!estado.ejercicio && !!ultimaVez && ultimaVez.series > 0 && (
+          <Tocable
+            testID="ultima-vez"
+            style={estilos.chip}
+            onPress={() => setUltimaAbierta((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={T.sesion.ultimaVez(fechaLinda(ultimaVez.fecha), detalleDeLaUltimaVez(ultimaVez, unidad, repsUltimaVez))}
+            accessibilityState={{ expanded: ultimaAbierta }}
+          >
+            <Text style={estilos.chipTexto}>↺ {fechaCorta(ultimaVez.fecha)}</Text>
+          </Tocable>
+        )}
       </View>
-      {/* LA ÚLTIMA VEZ (19/10, bug del gimnasio): series, pesos y el modo (un lado por vez,
-          por mancuerna…); la máquina ya la dice el nombre. Desde el 20/10, solo con «Mostrar
-          la última vez» prendido en Ajustes: sale al entrar a entrenar y al elegir otro. */}
-      {verUltimaVez && !!estado.ejercicio && !!ultimaVez && ultimaVez.series > 0 && (
-        <Aparece>
-          <Text style={estilos.sugeridoNota} testID="ultima-vez">
-            {T.sesion.ultimaVez(fechaLinda(ultimaVez.fecha), detalleDeLaUltimaVez(ultimaVez, unidad, repsUltimaVez))}
-          </Text>
-        </Aparece>
-      )}
-      {globitoSubir && (
-        <Aparece>
-        <Globito
-          testID="globito-subir"
-          texto={rangoSubir && subirPeso ? T.sesion.yaPuedesSubirRango(enUnidad(rangoSubir[0]), enUnidad(rangoSubir[1]), subirPeso.porcentaje[0], subirPeso.porcentaje[1]) : T.sesion.yaPuedesSubir}
-          alCerrar={() => {
-            SUBIR_VISTOS.add(`${estado.ejercicio}:${dia}`);
-            repintarGlobito((n) => n + 1);
-          }}
-        />
-        </Aparece>
-      )}
+      {/* Flota: no empuja nada de lo que hay abajo. */}
+      <View style={estilos.ancla}>
+        {ultimaAbierta && verUltimaVez && !!ultimaVez && (
+          <Tocable testID="ultima-vez-abierta" style={[estilos.globo, estilos.globoUltima]} onPress={() => setUltimaAbierta(false)}>
+            <Text style={estilos.globoTitulo}>{fechaLinda(ultimaVez.fecha)}</Text>
+            {seriesDeLaUltimaVez(ultimaVez, unidad).map((l, i) => (
+              <Text key={i} style={estilos.globoSerie}>{l}</Text>
+            ))}
+          </Tocable>
+        )}
+      </View>
+
 
       {corriendoCardio && (
         <View testID="cronometro-cardio" style={estilos.cardio}>
@@ -453,8 +505,46 @@ export default function Bloque({
         >
           <Text style={[estilos.metaTexto, metaEscrita !== null && estilos.metaTextoPrendido]}>+</Text>
         </Tocable>
+        {conRir && (
+          <Tocable
+            testID="boton-rir"
+            style={[estilos.chip, estilos.chipRir, estado.rirAhora !== undefined && estilos.chipPrendido]}
+            onPress={() => setRirAbierto((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={T.sesion.rirTitulo}
+            accessibilityState={{ expanded: rirAbierto }}
+          >
+            <Text style={[estilos.chipTexto, estado.rirAhora !== undefined && estilos.chipTextoPrendido]}>
+              {estado.rirAhora !== undefined ? T.sesion.rirElegido(etiquetaRir(estado.rirAhora)) : T.sesion.rirBoton}
+            </Text>
+          </Tocable>
+        )}
       </View>
       )}
+      {/* «Rep. en Reserva»: flota debajo de las metas y no empuja nada. */}
+      <View style={estilos.ancla}>
+        {rirAbierto && conRir && alElegirRir && (
+          <View testID="rir-abierto" style={[estilos.globo, estilos.globoRir]}>
+            <Text style={estilos.globoTitulo}>{T.sesion.rirTitulo}</Text>
+            <View style={estilos.rirFila}>
+              {Array.from({ length: RIR_MAXIMO + 1 }, (_, n) => (
+                <Tocable
+                  key={n}
+                  testID={`rir-${n}`}
+                  style={[estilos.rirOpcion, estado.rirAhora === n && estilos.rirOpcionPrendida]}
+                  onPress={() => {
+                    alElegirRir(n);
+                    setRirAbierto(false);
+                  }}
+                  accessibilityState={{ selected: estado.rirAhora === n }}
+                >
+                  <Text style={[estilos.rirOpcionTexto, estado.rirAhora === n && estilos.rirOpcionTextoPrendido]}>{etiquetaRir(n)}</Text>
+                </Tocable>
+              ))}
+            </View>
+          </View>
+        )}
+      </View>
       {!esTiempo && metaEscrita !== null && (
         <Aparece testID="meta-a-mano-fila">
         <View style={estilos.metaAMano}>
@@ -482,6 +572,23 @@ export default function Bloque({
         </Aparece>
       )}
 
+      {/* PUEDES SUBIR (12/11, galería 21): un globo liviano arriba del peso, cuatro segundos, que no mueve
+          nada. Tocarlo pone el peso. Avisa con la regla 2 por 2 o con el RIR (ver `nucleo/dosPorDos.ts`). */}
+      <View style={estilos.ancla}>
+        {subirVisible && subirPeso && rangoSubir && (
+          <Tocable
+            testID="globito-subir"
+            style={[estilos.globo, estilos.globoSubir]}
+            onPress={() => {
+              alElegirPeso(rangoSubir[0]);
+              setSubirVisible(false);
+            }}
+            accessibilityRole="button"
+          >
+            <Text style={estilos.globoSubirTexto}>↑ {T.sesion.puedesSubirA(pesoCorto(rangoSubir[0], unidad), unidad)}</Text>
+          </Tocable>
+        )}
+      </View>
       {(anotarPeso || conReps) && admitePeso && (
         <View style={[estilos.peso, esFantasma && estilos.fantasmaPeso]}>
           {/* PESO CORPORAL (6.2): el peso es tu cuerpo, no hay número que anotar.
@@ -876,4 +983,23 @@ const estilos = conTema(() => StyleSheet.create({
   subirTexto: { color: C.sub, fontSize: 14 },
   subirTextoPrendido: { color: C.tinta },
   subidaNota: { color: C.sub, fontSize: 13, marginTop: 8 },
+  // EL RIR, LA ÚLTIMA VEZ Y LA SUGERENCIA (12/11): píldoras y globos que flotan sin empujar nada.
+  chip: { alignSelf: 'center', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.linea, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 8 },
+  chipRir: { marginLeft: 'auto' },
+  chipPrendido: { borderColor: C.claro },
+  chipTexto: { color: C.sub, fontSize: 12, fontFamily: L.dato },
+  chipTextoPrendido: { color: C.tinta },
+  ancla: { height: 0, zIndex: 20, elevation: 20 },
+  globo: { position: 'absolute', backgroundColor: C.globo, borderWidth: 1, borderColor: C.bordeGlobo, borderRadius: 2, padding: 12 },
+  globoUltima: { top: 6, right: 0, minWidth: 180, gap: 4 },
+  globoRir: { top: 6, left: 0, right: 0, gap: 8 },
+  globoSubir: { bottom: 6, left: 0, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
+  globoTitulo: { color: C.sub, fontSize: 12, textAlign: 'center' },
+  globoSerie: { color: C.tinta, fontSize: 14, fontFamily: L.dato },
+  globoSubirTexto: { color: C.tinta, fontSize: 13 },
+  rirFila: { flexDirection: 'row', gap: 6 },
+  rirOpcion: { flex: 1, borderWidth: 1, borderColor: C.linea, borderRadius: 999, paddingVertical: 8, alignItems: 'center' },
+  rirOpcionPrendida: { backgroundColor: C.claro, borderColor: C.claro },
+  rirOpcionTexto: { color: C.tinta, fontSize: 15, fontFamily: L.dato },
+  rirOpcionTextoPrendido: { color: C.negro },
 }));

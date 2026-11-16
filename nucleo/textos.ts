@@ -76,6 +76,13 @@ const ES = {
     // En Stats, al lado de los puntos. En minúscula y chico: es un dato de
     // contexto, no un título.
     titulo: 'Vidas',
+    // EL MES DE LAS VIDAS (12/11, galería 22): qué días cubrió una vida este mes, y la leyenda del cuadro.
+    usasteUna: (dia: string) => `Usaste una el ${dia}.`,
+    usasteVarias: (n: number, dias: string) => `Usaste ${n}: el ${dias}.`,
+    mesFuiste: 'fuiste',
+    mesDescanso: 'descanso',
+    mesVida: 'vida',
+    mesNo: 'no fuiste',
     // Cuántas hay y cuándo se gana la tercera ya lo dicen los puntos y la
     // línea de al lado: la nota solo dice para qué sirven.
     nota: 'Si faltas un día se usa una y la racha sigue. Cada una vuelve a los 30 días.',
@@ -671,6 +678,9 @@ const ES = {
     // Al lado del peso, una por serie (21/10). Apagado de fábrica.
     registrarReps: 'Registrar repeticiones',
     registrarRepsNota: 'Al entrenar, al lado del peso: cuántas hiciste en cada serie.',
+    // EL RIR (12/11, galería 21): un botón al entrenar, apagado de entrada.
+    registrarRir: 'Registrar RIR',
+    registrarRirNota: 'Al entrenar, un botón RIR: cuántas repeticiones te quedaban en reserva.',
     // Las secciones de Ajustes (21/10).
     seccionEntrenamiento: 'Entrenamiento',
     seccionPerfil: 'Perfil',
@@ -1241,6 +1251,13 @@ const ES = {
     yaPuedesSubir: 'Ya puedes subir el peso',
     // Con la regla 2 por 2 (21/10): el rango sugerido, ya con la unidad.
     yaPuedesSubirRango: (desde: string, hasta: string, a: number, b: number) => `Ya puedes subir el peso: de ${desde} a ${hasta} (${a} a ${b} %).`,
+    // EL RIR, LA ÚLTIMA VEZ Y LA SUGERENCIA (12/11, galería 21, elegidas por el dueño).
+    rirBoton: 'RIR',
+    rirElegido: (n: string) => `RIR ${n}`,
+    rirTitulo: 'Rep. en Reserva',
+    rirCuatroOMas: '4+',
+    puedesSubirA: (peso: string, unidad: string) => `Puedes subir a ${peso} ${unidad}`,
+    verUltimaVez: 'Ver la última vez',
     minutosDeCardio: 'Minutos',
     // EL CRONÓMETRO DEL CARDIO (15/10): arranca al elegirlo; "Listo" anota lo que corrió.
     cardioArrancar: 'Arrancar',

@@ -1,4 +1,4 @@
-import { pesoValido, repsDe } from './bloques.ts';
+import { pesoValido, repsDe, rirDe } from './bloques.ts';
 import type { SesionConPesos } from './rutina.ts';
 
 /**
@@ -61,4 +61,41 @@ export function rangoParaMostrar(s: SubirPeso, unidad: 'kg' | 'lb'): [number, nu
   if (unidad === 'lb') return [Math.ceil(s.desde * LB) / LB, Math.max(Math.ceil(s.desde * LB), Math.floor(s.hasta * LB)) / LB];
   const desde = Math.ceil(s.desde * 2) / 2;
   return [desde, Math.max(desde, Math.floor(s.hasta * 2) / 2)];
+}
+
+/**
+ * CUÁNDO SUBIR, CON EL RIR (12/11, a pedido). Si en la última sesión de ese ejercicio TODAS las series
+ * llegaron a las repeticiones objetivo de la rutina y a ninguna le quedaron menos de 2 en reserva, el peso
+ * ya queda liviano. Sin objetivo, o con alguna serie sin repeticiones o sin RIR anotados, no avisa: como la
+ * 2 por 2, adivinar es lo que daba falsos positivos. El aumento, el mismo que la 2 por 2.
+ */
+export const RIR_PARA_SUBIR = 2;
+
+export function subirPorRir(
+  sesiones: SesionConPesos[],
+  ejercicio: string,
+  objetivo: number | null | undefined,
+  grupo: string | null | undefined,
+  hoyISO: string
+): SubirPeso | null {
+  if (!objetivo || objetivo < 1) return null;
+  const ultima = sesiones
+    .filter((s) => s.fecha < hoyISO && s.bloques.some((b) => b?.ejercicio === ejercicio))
+    .sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0))
+    .at(-1);
+  if (!ultima) return null;
+  const series = ultima.bloques
+    .filter((b) => b?.ejercicio === ejercicio)
+    .flatMap((b) => {
+      const n = Number(b.series) > 0 ? Math.round(Number(b.series)) : 0;
+      const reps = repsDe(b.reps, n);
+      const rir = rirDe(b.rir, n);
+      return Array.from({ length: n }, (_, i) => ({ reps: reps[i], rir: rir[i], peso: pesoValido(b.pesos?.[i]) }));
+    });
+  if (series.length === 0) return null;
+  if (series.some((x) => x.reps === null || x.rir === null || x.reps < objetivo || x.rir < RIR_PARA_SUBIR)) return null;
+  const peso = Math.max(...series.map((x) => x.peso ?? 0));
+  if (!peso) return null;
+  const porcentaje = porcentajesDeSubida(grupo);
+  return { peso, desde: pesoValido(peso * (1 + porcentaje[0] / 100))!, hasta: pesoValido(peso * (1 + porcentaje[1] / 100))!, porcentaje };
 }
