@@ -166,6 +166,7 @@ export function crearMaterialCuerpo(
       uSemilla: { value: 0.37 },
       uApagado: { value: apagado ? 1 : 0 },
       uPixel: { value: pixel },
+      uHorizonte: { value: 0 },
     },
   });
 }
@@ -906,6 +907,7 @@ export function montarEscena(l: Lienzo, op: OpcionesFondo): Montaje {
     // uniforme para comparar. Ver `nucleo/noche.ts`.
     const nocheDe = (c: ConfigCuerpo) => nivelDeNocheDeCuerpo(c.paleta, op.noche);
     const mat = crearMaterialCuerpo(cfg, !!op.apagado, pixel, !!op.reposo, 1, op.estilo, nocheDe(cfg));
+    if (op.horizonte) mat.uniforms.uHorizonte.value = 1;
     materiales.push(mat);
     const cuerpo = new THREE.Mesh(QUAD, mat);
     cuerpo.scale.setScalar(escala);

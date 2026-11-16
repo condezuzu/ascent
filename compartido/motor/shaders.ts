@@ -210,6 +210,7 @@ uniform float uAtenua;      // 1 normal; menos = fantasma de la mejor racha
 uniform float uSemilla;
 uniform float uApagado;     // 1 = fondo apagado (pérdida de racha)
 uniform float uPixel;       // tamaño de un píxel en unidades del quad
+uniform float uHorizonte;   // 1 = el cuerpo hace de horizonte (la app del teléfono)
 
 const float R = 0.46; // radio del cuerpo; deja lugar al anillo (2.02*R)
 const float PI = 3.14159265;
@@ -986,7 +987,15 @@ void main() {
           // rojo oscuro, otra vez lava. Con la raiz vuelve a ser el naranja
           // oxido de la paleta, y de paso se achica el contraste entre las
           // vetas, que es lo que hace mate a una piedra.
-          float rasante = smoothstep(-0.12, 0.55, dot(n, normalize(vec3(-0.52, 0.57, -0.58))));
+          //
+          // DE HORIZONTE, LA LUZ VIENE MAS DE ATRAS. En el telefono la roca no
+          // va entera: es un horizonte que cruza la pantalla, y su lado de noche
+          // es el velo sobre el que se lee (nucleo/horizonte.ts). La medialuna,
+          // que entera es un tercio del cuerpo, ahi era un tercio de la
+          // pantalla encendido debajo del texto. Con la luz casi a contraluz
+          // queda pegada al borde, como el filo de la luna y los planetas.
+          vec3 luzRoca = normalize(mix(vec3(-0.52, 0.57, -0.58), vec3(-0.30, 0.33, -0.90), uHorizonte));
+          float rasante = smoothstep(-0.12, 0.55, dot(n, luzRoca));
           vec2 dirL = normalize(nLisa.xy + vec2(1e-5));
           float canto = pow(1.0 - nLisa.z, 5.0) * pow(max(dot(dirL, L2), 0.0), 1.4);
           lit = superficie * uNoche + sqrt(max(superficie, vec3(0.0))) * rasante * 1.1
