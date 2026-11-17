@@ -85,17 +85,9 @@ try {
     await page.waitForTimeout(1200);
   }
 
-  // La marca: se contesta, y con la meta en ×2 aparece el botón mientras el cuadro sigue.
+  // La pregunta a la vista y, con la meta en ×2, el botón debajo. Se mide antes de contestar:
+  // desde el cajón (16/11) la marca nueva se va del bloque apenas se contesta, no a los 4,5 s.
   await cuadro.waitFor({ timeout: 20000 });
-  await texto('5').click();
-  const enGuardada = (t) => page.getByText(t, { exact: true });
-  await enGuardada(T.marcaSugerida.guardada)
-    .or(enGuardada(T.marcaSugerida.guardadaEsNueva))
-    .or(enGuardada(T.marcaSugerida.fallo))
-    .first()
-    .waitFor({ timeout: 10000 });
-  // EL ×2 CON LA MARCA YA GUARDADA (20/10): tocado mientras el cuadro cambiaba, la mitad de las
-  // veces no tomaba y la meta seguía en ×5. Si no aparece el botón, se vuelve a tocar.
   for (let i = 0; i < 3 && !(await toque.isVisible().catch(() => false)); i++) {
     await texto('×2').click({ timeout: 30000 });
     await toque.waitFor({ state: 'visible', timeout: 4000 }).catch(() => {});
@@ -106,13 +98,22 @@ try {
   const antes = await arriba();
   await page.screenshot({ path: join(SALIDA, '1-con-el-cuadro.png') });
 
-  await cuadro.waitFor({ state: 'detached', timeout: 12000 });
+  await texto('5').click();
+  const enGuardada = (t) => page.getByText(t, { exact: true });
+  await page.getByTestId('cajon-de-marca')
+    .or(enGuardada(T.marcaSugerida.guardada))
+    .or(enGuardada(T.marcaSugerida.fallo))
+    .first()
+    .waitFor({ timeout: 10000 });
+  // Se va a la vista, pero queda invisible en su lugar (marca-reserva) hasta la próxima serie.
+  const reserva = page.getByTestId('marca-reserva');
+  await reserva.waitFor({ timeout: 12000 }).catch(() => {});
   await page.waitForTimeout(600);
-  const sinCuadro = !(await cuadro.isVisible().catch(() => false));
+  const sinCuadro = (await reserva.count()) > 0 || !(await cuadro.isVisible().catch(() => false));
   const despues = await arriba();
   await page.screenshot({ path: join(SALIDA, '2-sin-el-cuadro.png') });
 
-  chequear('el cuadro estaba a la vista con el botón, y después se fue solo', [conCuadro, sinCuadro], [true, true]);
+  chequear('el cuadro estaba a la vista con el botón, y después se fue', [conCuadro, sinCuadro], [true, true]);
   chequear(
     'el botón queda donde estaba: en pantalla ' + antes.pantalla + ' → ' + despues.pantalla + ' px, en el contenido ' + antes.contenido + ' → ' + despues.contenido + ' px',
     despues,

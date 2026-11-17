@@ -73,9 +73,11 @@ try {
   await page.locator('input[type=password]').first().fill(clave);
   await texto('Entrar').click({ timeout: 60000 });
   await entrar();
+  // Se lee antes de la foto: el globo dura 4 s y la foto se comía el final.
+  const visto = await globito();
   await page.screenshot({ path: join(SALIDA, 'avisa.png') });
   // Desde el 12/11 es un globo liviano arriba del peso, cuatro segundos, con el primer peso del rango (galería 21).
-  chequear('dos sesiones con 10 en la última serie y objetivo 8: avisa, desde el 2 %', await globito(), '↑ ' + TX.sesion.puedesSubirA('61,5', 'kg'));
+  chequear('dos sesiones con 10 en la última serie y objetivo 8: avisa, desde el 2 %', visto, '↑ ' + TX.sesion.puedesSubirA('61,5', 'kg'));
 
   // La última sesión terminó con 9: no llega a 8 + 2. Se vuelve a entrar con el historial nuevo.
   await texto(TX.sesion.terminar).click({ timeout: 30000 });

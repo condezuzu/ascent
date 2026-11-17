@@ -30,7 +30,7 @@ export default function SugerenciasDeMarca({ bloques, unidad }: { bloques: unkno
                 : s.esNueva
                   ? T.marcaSugerida.guardadaEsNueva
                   : T.marcaSugerida.guardada}</Text>
-          ) : (
+          ) : s.reps === undefined ? (
             <>
               <Text style={estilos.cuantas}>{T.marcaSugerida.cuantas}</Text>
               <View style={estilos.reps}>
@@ -44,7 +44,7 @@ export default function SugerenciasDeMarca({ bloques, unidad }: { bloques: unkno
                 </Tocable>
               </View>
             </>
-          )}
+          ) : null}
         </View>
       ))}
     </View>

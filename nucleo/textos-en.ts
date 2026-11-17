@@ -662,6 +662,9 @@ export const EN: Textos = {
     nuevoRango: 'New rank',
     rangoDia: (dias: number) => `Day ${dias}`,
     rangoSeguir: 'Tap to continue',
+    compartirRango: 'Share',
+    mensajeRango: (rango: string, dias?: number) =>
+      dias && dias > 0 ? `I reached ${rango} on Ascent · ${dias}-day streak` : `I reached ${rango} on Ascent`,
     queEstasHaciendo: "What you're doing",
     sinEjercicio: 'Anything',
     cuantasVasAHacer: "How many you'll do",
@@ -821,6 +824,8 @@ export const EN: Textos = {
     guardada: 'Saved as a record.',
     guardadaEsNueva: "Saved. It's your new record.",
     fallo: "It wasn't saved. You can log it from Strength.",
+    cajonTitulo: 'New record',
+    cajonDots: (puntos: string) => `+${puntos} DOTS points`,
   },
   marca: {
     titulo: 'Log a record',
