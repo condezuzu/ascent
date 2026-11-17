@@ -101,7 +101,7 @@ export default function ResumenSesion({
                   </p>
                 ) : s.estado === 'fallo' ? (
                   <p className="hecho">{T.marcaSugerida.fallo}</p>
-                ) : (
+                ) : s.reps === undefined ? (
                   <>
                     <span className="cuantas">{T.marcaSugerida.cuantas}</span>
                     <div className="reps">
@@ -115,7 +115,7 @@ export default function ResumenSesion({
                       </button>
                     </div>
                   </>
-                )}
+                ) : null}
               </div>
             ))}
           </div>

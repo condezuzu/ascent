@@ -32,6 +32,8 @@ import { CLAVE_VIDA_HELADA, CLAVE_VIDA_VISTA, diasDeLaTira, frioDelDia, hastaDon
 import { CLAVE_META_PASOS, META_PASOS_POR_OMISION, leerMeta } from '@nucleo/pasos';
 import SugerenciasDeMarca from './SugerenciasDeMarca';
 import MarcaEnElMomento from './MarcaEnElMomento';
+import CajonDeMarca from './CajonDeMarca';
+import { useMarcaEnElMomento } from '@compartido/marcaSugerida';
 import { cuentaAtras, restante } from '@compartido/descanso';
 import FondoEspacial from './FondoEspacial';
 import { mostrando } from './loVisible';
@@ -441,6 +443,8 @@ export default function Inicio({
     // rango: es el camino mas comun de los tres en un gimnasio.
     if (r) setSubida(subidaDeRango(rachaVista.current, r.racha));
   }, { repintarCadaSegundo: false });
+  // La marca de la serie: la pregunta va en el bloque y la marca nueva, en el cajón sobre la racha.
+  const marca = useMarcaEnElMomento(sesion.estado.bloques, sesion.estado.inicio);
   // Un bloque con cronómetro o con minutos solo puede ser cardio.
   const esCardioEnCurso = sesion.estado.bloques.cardioDesde !== undefined || sesion.estado.bloques.minutos !== undefined;
   // LA SESIÓN SE CERRÓ POR FUERA (sola, la salida, otro aparato) con algo abierto: era de
@@ -813,11 +817,14 @@ export default function Inicio({
           nube de polvo antes de la estrella, y por eso el fondo del rango 1 va
           a fondo (caos, color, movimiento; ver `FondoEspacial`/shaders). */}
       <Entra orden={1}>
-        <RachaConRotulo
-          racha={perfil.racha_actual}
-          compacto={sesion.estado.corriendo}
-          derecha={sesion.estado.corriendo && impulsos ? <VidasDeInicio impulsos={impulsos} /> : undefined}
-        />
+        <View>
+          <RachaConRotulo
+            racha={perfil.racha_actual}
+            compacto={sesion.estado.corriendo}
+            derecha={sesion.estado.corriendo && impulsos ? <VidasDeInicio impulsos={impulsos} /> : undefined}
+          />
+          {sesion.estado.corriendo && <CajonDeMarca marca={marca.actual} alCerrar={marca.descartar} />}
+        </View>
       </Entra>
 
       {/* LOS PASOS DE HOY (5.2). Debajo del número, arriba de la semana, y en
@@ -975,8 +982,8 @@ export default function Inicio({
             debajoDelMas={
               // "¿Lo guardo como marca?", en el momento de la serie.
               <MarcaEnElMomento
+                marca={marca}
                 bloques={sesion.estado.bloques}
-                inicio={sesion.estado.inicio}
                 unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}
                 principal={C.principal}
                 alAparecer={traerALaVista}

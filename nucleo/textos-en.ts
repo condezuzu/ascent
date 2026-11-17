@@ -822,6 +822,8 @@ export const EN: Textos = {
     guardada: 'Saved as a record.',
     guardadaEsNueva: "Saved. It's your new record.",
     fallo: "It wasn't saved. You can log it from Strength.",
+    cajonTitulo: 'New record',
+    cajonDots: (puntos: string) => `+${puntos} DOTS points`,
   },
   marca: {
     titulo: 'Log a record',

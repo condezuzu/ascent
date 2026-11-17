@@ -1441,6 +1441,9 @@ const ES = {
     // Cuando el número que eligió la persona SÍ superó la marca anterior.
     guardadaEsNueva: 'Guardada. Es tu marca nueva.',
     fallo: 'No se guardó. La puedes cargar desde Fuerza.',
+    // El cajón que tapa la racha (16/11, dictado por el dueño): «Marca nueva · Press banca · +X puntos DOTS».
+    cajonTitulo: 'Marca nueva',
+    cajonDots: (puntos: string) => `+${puntos} puntos DOTS`,
   },
 
   // La hoja que anota una marca de fuerza.

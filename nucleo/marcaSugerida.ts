@@ -37,6 +37,14 @@
  *   anota un peso sería una encuesta al final de cada sesión.
  * - **Tres como mucho**, los del DOTS primero.
  *
+ * CON LAS REPETICIONES ANOTADAS NO SE PREGUNTA (6/11, a pedido: "las reps ya
+ * están agregadas cuando registras las series. No tiene sentido"). Con
+ * «Registrar repeticiones» el número ya lo escribió la persona en la serie: la
+ * cuenta es exacta, y si supera la marca se guarda y se avisa —que se avise es
+ * lo que mantiene la regla de arriba: nada entra sin que la persona se entere—.
+ * Si no la supera, no hay nada que decir. Más de diez no es una marca de fuerza:
+ * ni se guarda ni se pregunta. La serie sin repeticiones se pregunta como siempre.
+ *
  * NO IMPORTA NADA salvo reglas y lecturas puras: se prueba con node pelado.
  */
 
@@ -50,10 +58,12 @@ export type EjercicioParaMarca = { carga?: string | null; cuenta_dots?: boolean 
 
 export type Sugerencia = {
   ejercicio: string;
-  /** El peso más alto de la sesión en ese ejercicio, en kilos. */
+  /** El peso de la serie que se propone, en kilos: el más alto de la sesión si se pregunta. */
   peso: number;
   /** El 1RM de la mejor marca que había; `null` si no había ninguna. */
   antes: number | null;
+  /** Las repeticiones anotadas de esa serie. Con llave ya ES marca nueva y no se pregunta; sin llave, se pregunta. */
+  reps?: number;
 };
 
 /** Los límites de la tabla de marcas (`prs.peso between 1 and 600`). */
@@ -79,35 +89,50 @@ export function marcasParaProponer({
     mejorPorEjercicio.set(m.ejercicio, Math.max(mejorPorEjercicio.get(m.ejercicio) ?? 0, rm));
   }
 
-  // El más pesado de la sesión por ejercicio, solo en bloques "en total". El
-  // modo sale del bloque; si el bloque no lo trae (sin la 38), del catálogo.
+  // Por ejercicio, solo en bloques "en total": la serie con repeticiones
+  // anotadas de mejor 1RM, y el peso más alto de las que no las tienen. El modo
+  // sale del bloque; si el bloque no lo trae (sin la 38), del catálogo.
+  const anotada = new Map<string, { peso: number; reps: number; rm: number }>();
   const pesado = new Map<string, number>();
   for (const b of leerBloques(bloques)) {
     const del = catalogo.get(b.ejercicio);
     if (!del) continue;
     const crudo = (Array.isArray(bloques) ? bloques[b.orden - 1] : null) as { carga?: unknown } | null;
     if (cargaVigente(crudo?.carga, del.carga) !== 'total') continue;
-    for (const p of b.pesos) {
-      if (p === null || p < PESO_MIN || p > PESO_MAX) continue;
-      pesado.set(b.ejercicio, Math.max(pesado.get(b.ejercicio) ?? 0, p));
-    }
+    b.pesos.forEach((p, i) => {
+      if (p === null || p < PESO_MIN || p > PESO_MAX) return;
+      const reps = b.reps[i];
+      if (reps === null) {
+        pesado.set(b.ejercicio, Math.max(pesado.get(b.ejercicio) ?? 0, p));
+        return;
+      }
+      if (reps > REPS_TOPE) return;
+      const rm = unRmDeSerie(p, reps);
+      if (rm > (anotada.get(b.ejercicio)?.rm ?? -Infinity)) anotada.set(b.ejercicio, { peso: p, reps, rm });
+    });
   }
 
   const sugerencias: (Sugerencia & { dots: boolean })[] = [];
-  for (const [ejercicio, peso] of pesado) {
+  for (const ejercicio of new Set([...anotada.keys(), ...pesado.keys()])) {
     const dots = !!catalogo.get(ejercicio)?.cuenta_dots;
     const antes = mejorPorEjercicio.get(ejercicio) ?? null;
-    // Sin marca previa se sigue preguntando solo por los tres del DOTS: si no,
-    // la primera vez que anotas un peso en cada uno de los cien ejercicios
-    // termina siendo una encuesta. Con marca previa, alcanza con que PUEDA
-    // superarla.
-    if (antes === null ? !dots : !podriaSuperar(peso, antes)) continue;
-    sugerencias.push({ ejercicio, peso, antes, dots });
+    // Sin marca previa, solo los tres del DOTS: si no, la primera vez que anotas
+    // un peso en cada uno de los cien ejercicios termina siendo una encuesta (o,
+    // con las repeticiones anotadas, un aviso de marca nueva por ejercicio).
+    if (antes === null && !dots) continue;
+    const a = anotada.get(ejercicio);
+    if (a && superaLaMarca(a.peso, a.reps, antes)) {
+      sugerencias.push({ ejercicio, peso: a.peso, antes, reps: a.reps, dots });
+      continue;
+    }
+    // Sin repeticiones, alcanza con que PUEDA superarla.
+    const peso = pesado.get(ejercicio);
+    if (peso !== undefined && podriaSuperar(peso, antes)) sugerencias.push({ ejercicio, peso, antes, dots });
   }
   return sugerencias
     .sort((a, b) => (a.dots !== b.dots ? (a.dots ? -1 : 1) : b.peso - a.peso))
     .slice(0, MAXIMO_DE_SUGERENCIAS)
-    .map(({ ejercicio, peso, antes }) => ({ ejercicio, peso, antes }));
+    .map(({ ejercicio, peso, antes, reps }) => (reps === undefined ? { ejercicio, peso, antes } : { ejercicio, peso, antes, reps }));
 }
 
 /** Las repeticiones que se ofrecen. Hasta diez: la tabla acepta hasta veinte, pero una "marca" de más de diez ya no es fuerza. */
@@ -164,6 +189,7 @@ export function filaDeMarca(s: Sugerencia, reps: number, fecha: string) {
 export function marcaDeSerie({
   ejercicio,
   peso,
+  reps,
   carga,
   marcas,
   catalogo,
@@ -171,12 +197,21 @@ export function marcaDeSerie({
   ejercicio: string | null;
   /** El peso de la serie que se acaba de confirmar, en kilos. */
   peso: number | null | undefined;
+  /** Las repeticiones de esa serie, si se anotaron. */
+  reps?: number | null;
   /** El modo del bloque, si lo trae; si no, el del catálogo. */
   carga?: string;
   marcas: MarcaGuardada[];
   catalogo: Map<string, EjercicioParaMarca>;
 }): Sugerencia | null {
   if (!ejercicio || peso === null || peso === undefined) return null;
-  const bloque = { ejercicio, series: 1, pesos: [peso], ...(carga ? { carga } : {}) };
+  const bloque = { ejercicio, series: 1, pesos: [peso], ...(reps ? { reps: [reps] } : {}), ...(carga ? { carga } : {}) };
   return marcasParaProponer({ bloques: [bloque], marcas, catalogo })[0] ?? null;
+}
+
+/** Cuánto subió el DOTS con una marca nueva: nada si no se puede calcular o si no subió (un curl no lo mueve). */
+export function dotsQueSubio(antes: number | null, despues: number | null): number | null {
+  if (despues === null) return null;
+  const subio = despues - (antes ?? 0);
+  return subio > 0.05 ? subio : null;
 }
