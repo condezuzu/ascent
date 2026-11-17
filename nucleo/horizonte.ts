@@ -71,8 +71,11 @@ export function alturaDe(esquina: string | undefined, enReposo: boolean | undefi
  * 5/11: un poco más en las otras pantallas. Con el cuerpo moviéndose, lo tenue de Stats quedaba entre 4,2 y
  * 5:1 según dónde lo agarrara la foto («0 de 27» con el Sol, el «—» del rango 3): el piso no puede depender
  * de la suerte.
+ *
+ * 16/11: la galaxia nueva (bulbo y gas, de la sesión de diseño) llega a la franja de los textos como el Sol,
+ * y lleva sus velos: «›» de Inicio daba 3,89:1 y «0 de 27» de Stats 4,32:1.
  */
 export function velosDe(rango: number, altura: Altura, conTextoAbajo = false) {
-  if (altura === 'baja') return { velo: 0.4, lectura: rango === 5 ? 1 : rango === 1 ? 0.82 : 0.68 };
-  return { velo: rango === 5 ? 0.16 : rango === 7 ? 0.2 : 0.1, lectura: conTextoAbajo ? 1 : rango === 5 ? 0.42 : 0 };
+  if (altura === 'baja') return { velo: 0.4, lectura: rango === 5 || rango === 6 ? 1 : rango === 1 ? 0.82 : 0.68 };
+  return { velo: rango === 5 || rango === 6 ? 0.16 : rango === 7 ? 0.2 : 0.1, lectura: conTextoAbajo ? 1 : rango === 5 || rango === 6 ? 0.42 : 0 };
 }

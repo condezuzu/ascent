@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Modal, Pressable, Share, StyleSheet, View } from 'react-native';
+import { Asset } from 'expo-asset';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { RANGOS } from '@nucleo/rangos';
 import { T } from '@nucleo/textos';
@@ -12,6 +13,27 @@ import { Text, TextoAnimado } from './Texto';
 import { L } from './fuentes';
 import { R } from './roles';
 import { LLEGA, LLENA } from './movimiento';
+import Tocable from './Tocable';
+
+// Una tarjeta hecha por rango (marketing/compartir): dibujarla en el teléfono pediría un build.
+const TARJETAS = [
+  require('../assets/compartir/rango-1.jpg'),
+  require('../assets/compartir/rango-2.jpg'),
+  require('../assets/compartir/rango-3.jpg'),
+  require('../assets/compartir/rango-4.jpg'),
+  require('../assets/compartir/rango-5.jpg'),
+  require('../assets/compartir/rango-6.jpg'),
+  require('../assets/compartir/rango-7.jpg'),
+];
+
+async function compartirRango(rango: number, nombre: string, racha?: number) {
+  const tarjeta = TARJETAS[rango - 1];
+  const message = T.sesion.mensajeRango(nombre, racha);
+  if (!tarjeta) return Share.share({ message });
+  const asset = Asset.fromModule(tarjeta);
+  await asset.downloadAsync();
+  return Share.share({ url: asset.localUri ?? asset.uri, message });
+}
 
 /**
  * SUBISTE DE RANGO. El premio de la app, que en el teléfono no existía.
@@ -223,6 +245,16 @@ export default function SubidaRango({
               {typeof racha === 'number' && racha > 0 && (
                 <TextoAnimado style={[estilos.dia, aparece(dia)]}>{T.sesion.rangoDia(racha)}</TextoAnimado>
               )}
+              <Animated.View style={aparece(seguir)}>
+                <Tocable
+                  testID="compartir-rango"
+                  style={estilos.compartir}
+                  accessibilityRole="button"
+                  onPress={() => void compartirRango(rangoDespues, nombre, racha).catch(() => undefined)}
+                >
+                  <Text style={estilos.compartirTexto}>{T.sesion.compartirRango}</Text>
+                </Tocable>
+              </Animated.View>
               <TextoAnimado style={[estilos.seguir, aparece(seguir)]}>{T.sesion.rangoSeguir}</TextoAnimado>
             </View>
           )}
@@ -246,5 +278,15 @@ const estilos = conTema(() => StyleSheet.create({
   rotulo: { ...R.etiqueta, marginBottom: 10  },
   nombre: { color: C.tinta, fontSize: 32, fontWeight: '300', letterSpacing: -0.4 },
   dia: { color: C.apagado, fontSize: 13, marginTop: 4, fontFamily: L.dato },
-  seguir: { color: C.apagado, fontSize: 12, marginTop: 26 },
+  compartir: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: C.lineaFuerte,
+    borderRadius: 999,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    marginTop: 26,
+  },
+  compartirTexto: { color: C.sub, fontSize: 13 },
+  seguir: { color: C.apagado, fontSize: 12, marginTop: 16 },
 }));
