@@ -1167,6 +1167,10 @@ const ES = {
     // 23/9, web el 24/9). El texto se borró y no se comentó: uno sin
     // usar es un texto que alguien vuelve a poner dentro de seis meses.
     rangoSeguir: 'Toca para seguir',
+    // Compartir la subida (galería 23, 16/11): la tarjeta del rango lleva solo el nombre; los días van acá.
+    compartirRango: 'Compartir',
+    mensajeRango: (rango: string, dias?: number) =>
+      dias && dias > 0 ? `Llegué a ${rango} en Ascent · ${dias} días de racha` : `Llegué a ${rango} en Ascent`,
 
     // EL RESUMEN DEL FINAL. Terminar un entrenamiento era el momento más
     // vacío de la app: la hoja se cerraba y no pasaba nada. Es el instante de

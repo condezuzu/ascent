@@ -22068,6 +22068,21 @@ console.log('\n336. La pista de repeticiones sale de una serie con el mismo peso
   chequear('la marca de esa sesión solo si es de ese peso', [R.pistaDeReps(u, 0, { ejercicio: 'press_banca', peso: 50, reps: 3, fecha: '2026-11-12' }, 50), R.pistaDeReps(u, 0, { ejercicio: 'press_banca', peso: 45, reps: 3, fecha: '2026-11-12' }, 50)], [3, null]);
   chequear('la sesión le pasa el peso de ahora', /pistaDeReps\(u, serie, repsDeLaSesion\([^)]*\), b\.ejercicio === id \? b\.peso : null\)/.test(deBug('compartido', 'useSesion.ts')), true);
 }
+console.log('\n337. Compartir la subida de rango (16/11, galería 23) y los velos de la galaxia nueva');
+{
+  const { existsSync } = await import('node:fs');
+  const { T: Tx } = await import('../nucleo/textos.ts');
+  const { velosDe } = await import('../nucleo/horizonte.ts');
+  chequear('el mensaje lleva el rango y los días', Tx.sesion.mensajeRango('Galaxia', 76), 'Llegué a Galaxia en Ascent · 76 días de racha');
+  chequear('sin días, solo el rango', Tx.sesion.mensajeRango('Luna', 0), 'Llegué a Luna en Ascent');
+  const subida = deBug('movil/src', 'SubidaRango.tsx');
+  chequear('una tarjeta por rango, en orden, y existen',
+    [1, 2, 3, 4, 5, 6, 7].map((n) => subida.includes(`require('../assets/compartir/rango-${n}.jpg')`) && existsSync(new URL(`../movil/assets/compartir/rango-${n}.jpg`, import.meta.url))),
+    [true, true, true, true, true, true, true]);
+  chequear('comparte la imagen y el mensaje juntos', /Share\.share\(\{ url: asset\.localUri \?\? asset\.uri, message \}\)/.test(subida), true);
+  // «›» de Inicio daba 3,89:1 y «0 de 27» de Stats 4,32:1 con los velos de antes.
+  chequear('la galaxia lleva los velos del Sol', [velosDe(6, 'alta'), velosDe(6, 'baja')], [velosDe(5, 'alta'), velosDe(5, 'baja')]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
