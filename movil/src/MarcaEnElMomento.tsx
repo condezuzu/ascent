@@ -4,7 +4,7 @@ import { pesoCorto, type Unidad } from '@nucleo/peso';
 import { REPETICIONES_PARA_MARCA } from '@nucleo/marcaSugerida';
 import type { EstadoBloques } from '@nucleo/bloques';
 import { T } from '@nucleo/textos';
-import { useMarcaEnElMomento } from '@compartido/marcaSugerida';
+import type { useMarcaEnElMomento } from '@compartido/marcaSugerida';
 import { C, conTema } from './colores';
 import { useTema } from './useTema';
 import { Text } from './Texto';
@@ -18,14 +18,15 @@ import Tocable from './Tocable';
  * el `+` sigue andando mientras está a la vista.
  */
 export default function MarcaEnElMomento({
+  marca,
   bloques,
-  inicio,
   unidad,
   principal,
   alAparecer,
 }: {
+  /** El hook vive en Inicio: lo comparte con el cajón de la marca nueva (`CajonDeMarca`). */
+  marca: ReturnType<typeof useMarcaEnElMomento>;
   bloques: EstadoBloques;
-  inicio: string | null;
   unidad: Unidad;
   /** El `--pal-principal` de la web: la raya de la izquierda. */
   principal: string;
@@ -37,7 +38,9 @@ export default function MarcaEnElMomento({
   alAparecer?: (vista: View) => void;
 }) {
   useTema();
-  const { actual: s, guardar, descartar } = useMarcaEnElMomento(bloques, inicio);
+  const { actual, guardar, descartar } = marca;
+  // La marca nueva ya guardada la cuenta el cajón de arriba, no este recuadro.
+  const s = actual && !(actual.estado === 'guardada' && actual.esNueva) ? actual : null;
   const vista = useRef<View>(null);
   // SU LUGAR QUEDA AL IRSE SOLA (18/10). Guardada, se va a los 4,5 s, y lo de abajo —«La
   // próxima, más»— subía 96 px bajo el dedo. Se reserva su alto hasta la próxima serie,
@@ -71,7 +74,7 @@ export default function MarcaEnElMomento({
               ? T.marcaSugerida.guardadaEsNueva
               : T.marcaSugerida.guardada}
         </Text>
-      ) : (
+      ) : s.reps === undefined ? (
         <>
           <Text style={estilos.cuantas}>{T.marcaSugerida.cuantas}</Text>
           <View style={estilos.reps}>
@@ -85,7 +88,7 @@ export default function MarcaEnElMomento({
             </Tocable>
           </View>
         </>
-      )}
+      ) : null}
     </View>
   );
 }

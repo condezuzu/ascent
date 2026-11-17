@@ -17230,7 +17230,8 @@ console.log('\n211. Señal mala: la respuesta que se pierde no duplica, y lo que
     /if \(!ok\) deshacerPreguntada\(actual\.ejercicio, antesDePreguntar\.current\);/.test(ms211),
     /if \(!actual \|\| guardando\.current\) return;\s*guardando\.current = true;/.test(ms211),
     /if \(enVuelo\.current\.has\(s\.ejercicio\)\) return;\s*enVuelo\.current\.add\(s\.ejercicio\);/.test(ms211),
-    /\.filter\(\(s\) => !yaSePregunto\(s\.ejercicio, s\.peso\)\)/.test(ms211),
+    // Desde el 6/11 lo que trae repeticiones no pasa por este filtro (ver la 333).
+    /\.filter\(\(s\) => s\.reps !== undefined \|\| !yaSePregunto\(s\.ejercicio, s\.peso\)\)/.test(ms211),
   ], [true, true, true, true]);
 
   // ---- LA FOTO DEL DÍA: reintentar sube LA MISMA, no otra ----
@@ -21820,6 +21821,67 @@ console.log('\n332. «Crear rutina nueva» guarda el día como se entrenó: orde
   ], [true, 4, 0, true]);
   chequear('y está en test:real', /probar-rutina-nueva\.mjs/.test(deBug('supabase', 'pruebas-reales.mjs')), true);
 }
+console.log('\n333. Con las repeticiones anotadas, la marca no pregunta a cuántas: ya se sabe (6/11, a pedido)');
+{
+  const M = await import('../nucleo/marcaSugerida.ts');
+  const catalogo = new Map([
+    ['press_banca', { carga: 'total', cuenta_dots: true }],
+    ['sentadilla', { carga: 'total', cuenta_dots: true }],
+    ['peso_muerto', { carga: 'total', cuenta_dots: true }],
+    ['press_mancuernas', { carga: 'par', cuenta_dots: false }],
+    ['remo_barra', { carga: 'total', cuenta_dots: false }],
+  ]);
+  // Banca: 1RM 100. Sentadilla: 120 × 5 = 140 (Epley, como `un_rm`).
+  const marcas = [
+    { ejercicio: 'press_banca', peso: 100, reps: 1, es_real: true },
+    { ejercicio: 'sentadilla', peso: 120, reps: 5, es_real: false },
+  ];
+  const propone = (bloques) => M.marcasParaProponer({ bloques, marcas, catalogo });
+  const banca = (pesos, reps) => [{ ejercicio: 'press_banca', series: pesos.length, pesos, reps, carga: 'total' }];
+
+  chequear('supera: es marca nueva con sus repeticiones, la de mejor 1RM (100 × 5 = 116,7)',
+    propone(banca([95, 100], [3, 5])), [{ ejercicio: 'press_banca', peso: 100, antes: 100, reps: 5 }]);
+  // Lo que pasaba: con 100 × 1 anotado preguntaba igual, porque con diez repeticiones PODRÍA.
+  chequear('no supera: no hay nada que decir (antes preguntaba a cuántas)', propone(banca([100], [1])), []);
+  chequear('la de más 1RM, no la más pesada: 120 × 6 (144) le gana a 130 × 2 (138,7) y a la marca de 140',
+    propone([{ ejercicio: 'sentadilla', series: 2, pesos: [130, 120], reps: [2, 6], carga: 'total' }]),
+    [{ ejercicio: 'sentadilla', peso: 120, antes: 140, reps: 6 }]);
+  chequear('siete y nueve también, aunque no estén entre los botones', propone(banca([95], [7]))[0]?.reps, 7);
+  chequear('la serie sin repeticiones se sigue preguntando', propone(banca([100, 102], [1, null])),
+    [{ ejercicio: 'press_banca', peso: 102, antes: 100 }]);
+  chequear('más de diez no es una marca de fuerza: ni se guarda ni se pregunta', propone(banca([90], [12])), []);
+  chequear('sin marca previa, del DOTS: marca nueva',
+    propone([{ ejercicio: 'peso_muerto', series: 1, pesos: [150], reps: [3], carga: 'total' }]),
+    [{ ejercicio: 'peso_muerto', peso: 150, antes: null, reps: 3 }]);
+  chequear('sin marca previa y fuera del DOTS, nada (si no, un aviso por ejercicio)',
+    propone([{ ejercicio: 'remo_barra', series: 1, pesos: [90], reps: [5], carga: 'total' }]), []);
+  chequear('por mancuerna, nada', propone([{ ejercicio: 'press_mancuernas', series: 1, pesos: [40], reps: [8], carga: 'par' }]), []);
+  chequear('sin repeticiones en ninguna serie, lo de siempre', propone(banca([95, 102, 100])), [{ ejercicio: 'press_banca', peso: 102, antes: 100 }]);
+
+  const deSerie = (peso, reps) => M.marcaDeSerie({ ejercicio: 'press_banca', peso, reps, carga: 'total', marcas, catalogo });
+  chequear('en el momento: supera, y no se pregunta', deSerie(100, 5), { ejercicio: 'press_banca', peso: 100, antes: 100, reps: 5 });
+  chequear('en el momento: empata, nada', deSerie(100, 1), null);
+  chequear('en el momento, sin repeticiones: se pregunta como siempre', deSerie(102, null), { ejercicio: 'press_banca', peso: 102, antes: 100 });
+  chequear('y es la misma cuenta que al terminar', deSerie(100, 5), propone(banca([100], [5]))[0]);
+  chequear('lo que va a la tabla lleva las repeticiones anotadas (y entra en su check de 1 a 20)',
+    M.filaDeMarca(deSerie(95, 7), 7, '2026-11-06'), { ejercicio: 'press_banca', peso: 95, reps: 7, es_real: false, fecha: '2026-11-06' });
+
+  // Lo de la red y la pantalla lo prueba probar-marca-sin-preguntar, entrenando; acá, que el cableado no se pierda.
+  const cm = sinComentarios(deBug('compartido', 'marcaSugerida.ts'));
+  chequear('el momento lee las repeticiones de la serie, se las pasa a la regla y guarda solo', [
+    /const reps = repsValidas\(bloques\.reps\?\.\[bloques\.hechas - 1\]\)/.test(cm),
+    /marcaDeSerie\(\{ ejercicio, peso, reps,/.test(cm),
+    /if \(reps === null && yaSePregunto\(ejercicio, peso\)\) return;/.test(cm),
+    /if \(s\.reps !== undefined\) \{\s*void guardarSola\(/.test(cm),
+    // Antes de esperar a la red: un doble toque en el + la compara contra esta.
+    /datos\.current\?\.marcas\.push\(fila\);\s*setActual\(s\);\s*const ok = await guardarSugerencia/.test(cm),
+  ], [true, true, true, true, true]);
+  chequear('al terminar, con repeticiones no se filtra por lo preguntado y se guarda sola', [
+    /\.filter\(\(s\) => s\.reps !== undefined \|\| !yaSePregunto\(s\.ejercicio, s\.peso\)\)/.test(cm),
+    /for \(const x of s\) if \(x\.reps !== undefined\) void guardar\(x, x\.reps\);/.test(cm),
+  ], [true, true]);
+  chequear('y está en test:real', /probar-marca-sin-preguntar\.mjs/.test(deBug('supabase', 'pruebas-reales.mjs')), true);
+}
 console.log('\n334. Stats → Vidas: el mes en un cuadrado, sin la racha ni el número (12/11, galería 22)');
 {
   const MV = await import('../nucleo/mesDeVidas.ts');
@@ -21890,6 +21952,7 @@ console.log('\n336. La pista de repeticiones sale de una serie con el mismo peso
   chequear('la marca de esa sesión solo si es de ese peso', [R.pistaDeReps(u, 0, { ejercicio: 'press_banca', peso: 50, reps: 3, fecha: '2026-11-12' }, 50), R.pistaDeReps(u, 0, { ejercicio: 'press_banca', peso: 45, reps: 3, fecha: '2026-11-12' }, 50)], [3, null]);
   chequear('la sesión le pasa el peso de ahora', /pistaDeReps\(u, serie, repsDeLaSesion\([^)]*\), b\.ejercicio === id \? b\.peso : null\)/.test(deBug('compartido', 'useSesion.ts')), true);
 }
+
 console.log('\n337. Compartir la subida de rango (16/11, galería 23) y los velos de la galaxia nueva');
 {
   const { existsSync } = await import('node:fs');
@@ -21904,6 +21967,20 @@ console.log('\n337. Compartir la subida de rango (16/11, galería 23) y los velo
   chequear('comparte la imagen y el mensaje juntos', /Share\.share\(\{ url: asset\.localUri \?\? asset\.uri, message \}\)/.test(subida), true);
   // «›» de Inicio daba 3,89:1 y «0 de 27» de Stats 4,32:1 con los velos de antes.
   chequear('la galaxia lleva los velos del Sol', [velosDe(6, 'alta'), velosDe(6, 'baja')], [velosDe(5, 'alta'), velosDe(5, 'baja')]);
+}
+
+console.log('\n338. La marca nueva como cajón sobre la racha, con los DOTS que subió (16/11)');
+{
+  const M = await import('../nucleo/marcaSugerida.ts');
+  chequear('cuánto subió el DOTS', [M.dotsQueSubio(250, 261.5), M.dotsQueSubio(250, 250), M.dotsQueSubio(250, null), M.dotsQueSubio(null, 266.7)], [11.5, null, null, 266.7]);
+  const cajon = deBug('movil/src', 'CajonDeMarca.tsx');
+  chequear('se va a los 5 s', /export const CAJON_MS = 5000;/.test(cajon), true);
+  chequear('solo la marca nueva ya guardada', /visible = !!marca && marca\.estado === 'guardada' && !!marca\.esNueva/.test(cajon), true);
+  chequear('se cierra deslizando a la izquierda', /g\.dx < -40/.test(cajon), true);
+  chequear('la barrita del rango, a la derecha', /borderRightColor: C\.principal/.test(cajon), true);
+  chequear('va sobre la racha, entrenando', /<RachaConRotulo[\s\S]{0,300}<CajonDeMarca marca=\{marca\.actual\}/.test(deBug('movil/src', 'Inicio.tsx')), true);
+  chequear('el recuadro del bloque no la repite', /actual && !\(actual\.estado === 'guardada' && actual\.esNueva\)/.test(deBug('movil/src', 'MarcaEnElMomento.tsx')), true);
+  chequear('el hook espera al cajón para soltarla', /setTimeout\(\(\) => setActual\(null\), 5600\)/.test(deBug('compartido', 'marcaSugerida.ts')), true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

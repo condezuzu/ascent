@@ -46,7 +46,7 @@ export default function MarcaEnElMomento({
           <p className="hecho">{s.esNueva ? T.marcaSugerida.guardadaEsNueva : T.marcaSugerida.guardada}</p>
         ) : s.estado === 'fallo' ? (
           <p className="hecho">{T.marcaSugerida.fallo}</p>
-        ) : (
+        ) : s.reps === undefined ? (
           <>
             <span className="cuantas">{T.marcaSugerida.cuantas}</span>
             <div className="reps">
@@ -60,7 +60,7 @@ export default function MarcaEnElMomento({
               </button>
             </div>
           </>
-        )}
+        ) : null}
       </div>
     </div>
   );

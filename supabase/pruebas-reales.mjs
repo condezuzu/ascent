@@ -99,7 +99,9 @@
 //      escala, cada anotación sobre la línea, leer tocando y arrastrando (1/11), en la nativa.
 //  44. probar-rutina-nueva — «Crear rutina nueva» al terminar guarda el día como se entrenó (orden,
 //      series, sin lo que no se hizo, con un propio creado en el medio), y Entrenamiento ya la tiene (6/11).
-//  45. probar-rir — el botón RIR y «Rep. en Reserva», la última vez al tocar la fecha, el globo de subir
+//  45. probar-marca-sin-preguntar — con las repeticiones anotadas, la serie que supera la marca se
+//      guarda con ellas sin preguntar a cuántas; la que no, nada; sin repeticiones, pregunta (6/11).
+//  46. probar-rir — el botón RIR y «Rep. en Reserva», la última vez al tocar la fecha, el globo de subir
 //      que se va a los 4 s sin mover nada, Stats → Vidas con el mes y la barra de una pieza (12/11).
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
@@ -165,6 +167,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'las gráficas de línea', archivo: 'probar-progreso.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la vuelta grande', archivo: 'probar-vuelta-grande.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: '«Crear rutina nueva» guarda lo que se entrenó', archivo: 'probar-rutina-nueva.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'la marca, sin preguntar a cuántas', archivo: 'probar-marca-sin-preguntar.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el RIR, la última vez y el globo de subir', archivo: 'probar-rir.mjs', args: [], navegador: true }]),
 ];
 

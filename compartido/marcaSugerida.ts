@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { anotarPreguntada, deshacerPreguntada, guardarMarcaUnaVez, preguntadasDe, yaSePregunto } from '@compartido/guardarMarca';
 import { crearCliente, type Cliente } from '@cliente';
 import { hoyISO } from '@nucleo/fechas';
+import { repsValidas } from '@nucleo/bloques';
 import { miId } from '@compartido/quienSoy';
 import {
+  dotsQueSubio,
   filaDeMarca,
   superaLaMarca,
   marcaDeSerie,
@@ -39,8 +41,10 @@ export async function buscarSugerencias(
   const porId = aCatalogo(catalogo);
   return marcasParaProponer({ bloques, marcas: marcas as MarcaGuardada[], catalogo: porId })
     // Lo que ya se preguntó durante la sesión no se vuelve a preguntar al
-    // terminar: ver `useMarcaEnElMomento`.
-    .filter((s) => !yaSePregunto(s.ejercicio, s.peso))
+    // terminar: ver `useMarcaEnElMomento`. Con las repeticiones anotadas no se
+    // pregunta nada: si se guardó en el momento ya está en `prs` y no se supera
+    // a sí misma; si no se pudo, es esta la que la guarda.
+    .filter((s) => s.reps !== undefined || !yaSePregunto(s.ejercicio, s.peso))
     .map((s) => ({ ...s, nombre: porId.get(s.ejercicio)?.nombre ?? s.ejercicio }));
 }
 
@@ -73,43 +77,56 @@ export function useSugerenciasDeMarca(bloques: unknown) {
     (Sugerencia & { nombre: string; estado: EstadoDeSugerencia; esNueva?: boolean })[]
   >([]);
 
-  useEffect(() => {
-    let vivo = true;
-    buscarSugerencias(supabase, bloques).then((s) => {
-      if (vivo) setLista(s.map((x) => ({ ...x, estado: 'preguntando' as const })));
-    });
-    return () => {
-      vivo = false;
-    };
-  }, [supabase, bloques]);
-
   const enVuelo = useRef(new Set<string>());
   const poner = (ejercicio: string, estado: EstadoDeSugerencia, esNueva?: boolean) =>
     setLista((l) => l.map((x) => (x.ejercicio === ejercicio ? { ...x, estado, esNueva } : x)));
 
+  async function guardar(s: Sugerencia, reps: number) {
+    // Dos toques seguidos en la misma sugerencia no guardan dos veces.
+    if (enVuelo.current.has(s.ejercicio)) return;
+    enVuelo.current.add(s.ejercicio);
+    poner(s.ejercicio, 'guardando');
+    // Se guarda IGUAL aunque no supere: la base se queda con la mejor
+    // (`mejores_marcas` ordena por 1RM), así que una marca peor no ensucia
+    // el DOTS, y es un dato cierto de lo que la persona levantó. Lo único
+    // que cambia es lo que se le dice después.
+    const nueva = superaLaMarca(s.peso, reps, s.antes);
+    const ok = await guardarSugerencia(supabase, s, reps).catch(() => false);
+    enVuelo.current.delete(s.ejercicio);
+    poner(s.ejercicio, ok ? 'guardada' : 'fallo', ok && nueva);
+  }
+
+  useEffect(() => {
+    let vivo = true;
+    buscarSugerencias(supabase, bloques).then((s) => {
+      if (!vivo) return;
+      setLista(s.map((x) => ({ ...x, estado: x.reps === undefined ? ('preguntando' as const) : ('guardando' as const) })));
+      // Con las repeticiones anotadas ya es marca nueva: se guarda sola y se avisa.
+      for (const x of s) if (x.reps !== undefined) void guardar(x, x.reps);
+    });
+    return () => {
+      vivo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `guardar` cambia en cada render; lo que dispara es la lista de bloques.
+  }, [supabase, bloques]);
+
   return {
     lista,
-    async guardar(s: Sugerencia, reps: number) {
-      // Dos toques seguidos en la misma sugerencia no guardan dos veces.
-      if (enVuelo.current.has(s.ejercicio)) return;
-      enVuelo.current.add(s.ejercicio);
-      poner(s.ejercicio, 'guardando');
-      // Se guarda IGUAL aunque no supere: la base se queda con la mejor
-      // (`mejores_marcas` ordena por 1RM), así que una marca peor no ensucia
-      // el DOTS, y es un dato cierto de lo que la persona levantó. Lo único
-      // que cambia es lo que se le dice después.
-      const nueva = superaLaMarca(s.peso, reps, s.antes);
-      const ok = await guardarSugerencia(supabase, s, reps).catch(() => false);
-      enVuelo.current.delete(s.ejercicio);
-      poner(s.ejercicio, ok ? 'guardada' : 'fallo', ok && nueva);
-    },
+    guardar,
     descartar(s: Sugerencia) {
       setLista((l) => l.filter((x) => x.ejercicio !== s.ejercicio));
     },
   };
 }
 
-export type MarcaEnElMomento = Sugerencia & { nombre: string; estado: EstadoDeSugerencia; esNueva?: boolean };
+export type MarcaEnElMomento = Sugerencia & { nombre: string; estado: EstadoDeSugerencia; esNueva?: boolean; dotsSubio?: number | null };
+
+/** El DOTS de ahora, el mismo número de Fuerza. `null` sin los tres levantamientos o sin peso corporal. */
+async function dotsAhora(supabase: Cliente): Promise<number | null> {
+  const { data, error } = await supabase.rpc('mi_fuerza');
+  const d = (data as { dots?: unknown } | null)?.dots;
+  return !error && typeof d === 'number' ? d : null;
+}
 
 /**
  * "¿LO GUARDO COMO MARCA?", AL CONFIRMAR LA SERIE (18/9). La regla es
@@ -126,12 +143,12 @@ export type MarcaEnElMomento = Sugerencia & { nombre: string; estado: EstadoDeSu
  * ya había una mejor.
  */
 export function useMarcaEnElMomento(
-  bloques: { ejercicio: string | null; hechas: number; pesos?: (number | null)[]; carga?: string },
+  bloques: { ejercicio: string | null; hechas: number; pesos?: (number | null)[]; reps?: (number | null)[]; carga?: string },
   inicio: string | null
 ) {
   const [supabase] = useState(() => crearCliente());
   const [actual, setActual] = useState<MarcaEnElMomento | null>(null);
-  const datos = useRef<{ marcas: MarcaGuardada[]; catalogo: ReturnType<typeof aCatalogo> } | null>(null);
+  const datos = useRef<{ marcas: MarcaGuardada[]; catalogo: ReturnType<typeof aCatalogo>; dots: number | null } | null>(null);
   const antes = useRef({ ejercicio: bloques.ejercicio, hechas: bloques.hechas });
 
   preguntadasDe(inicio);
@@ -147,37 +164,72 @@ export function useMarcaEnElMomento(
     // ejercicio o cargar la sesión no es "acabo de hacer esto".
     if (!inicio || bloques.ejercicio !== previo.ejercicio || bloques.hechas !== previo.hechas + 1) return;
     const peso = bloques.pesos?.[bloques.hechas - 1];
+    const reps = repsValidas(bloques.reps?.[bloques.hechas - 1]);
     const ejercicio = bloques.ejercicio;
     if (!ejercicio || peso === null || peso === undefined) return;
-    if (yaSePregunto(ejercicio, peso)) return;
+    // Por peso alcanza solo para lo que se pregunta: con las repeticiones, 100 × 6 supera a 100 × 5.
+    if (reps === null && yaSePregunto(ejercicio, peso)) return;
     let vivo = true;
     (async () => {
       if (!datos.current) {
         const uid = await miId(supabase);
         if (!uid) return;
         // CON `user_id`: la tabla de marcas deja leer las de los amigos.
-        const [{ data: marcas, error: e1 }, { data: catalogo, error: e2 }] = await Promise.all([
+        const [{ data: marcas, error: e1 }, { data: catalogo, error: e2 }, dots] = await Promise.all([
           supabase.from('prs').select('ejercicio, peso, reps, es_real').eq('user_id', uid),
           supabase.from('ejercicios').select('*'),
+          dotsAhora(supabase).catch(() => null),
         ]);
         if (e1 || e2 || !marcas || !catalogo) return;
-        datos.current = { marcas: marcas as MarcaGuardada[], catalogo: aCatalogo(catalogo) };
+        datos.current = { marcas: marcas as MarcaGuardada[], catalogo: aCatalogo(catalogo), dots };
       }
       const d = datos.current;
-      const s = marcaDeSerie({ ejercicio, peso, carga: bloques.carga, marcas: d.marcas, catalogo: d.catalogo });
+      const s = marcaDeSerie({ ejercicio, peso, reps, carga: bloques.carga, marcas: d.marcas, catalogo: d.catalogo });
       if (!vivo || !s) return;
+      const nombre = d.catalogo.get(ejercicio)?.nombre ?? ejercicio;
+      if (s.reps !== undefined) {
+        void guardarSola({ ...s, nombre, estado: 'guardando', esNueva: true }, s.reps);
+        return;
+      }
       antesDePreguntar.current = anotarPreguntada(ejercicio, s.peso);
-      setActual({ ...s, nombre: d.catalogo.get(ejercicio)?.nombre ?? ejercicio, estado: 'preguntando' });
+      setActual({ ...s, nombre, estado: 'preguntando' });
     })();
     return () => {
       vivo = false;
     };
-  }, [supabase, inicio, bloques.ejercicio, bloques.hechas, bloques.pesos, bloques.carga]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `guardarSola` cambia en cada render; lo que dispara es la serie nueva.
+  }, [supabase, inicio, bloques.ejercicio, bloques.hechas, bloques.pesos, bloques.reps, bloques.carga]);
+
+  // YA ES MARCA NUEVA (6/11): con las repeticiones anotadas no hay nada que
+  // preguntar. No se anota como preguntada —eso es por peso, y acá manda la
+  // cuenta—: lo que evita guardarla dos veces es sumarla a la memoria ANTES de
+  // esperar a la red, así un doble toque en el + ya la compara contra esta.
+  async function guardarSola(s: MarcaEnElMomento, reps: number) {
+    const fila = { ejercicio: s.ejercicio, peso: s.peso, reps, es_real: reps === 1 };
+    datos.current?.marcas.push(fila);
+    setActual(s);
+    const ok = await guardarSugerencia(supabase, s, reps).catch(() => false);
+    // No se guardó: sale de la memoria, y el resumen del final la vuelve a guardar.
+    if (!ok && datos.current) datos.current.marcas = datos.current.marcas.filter((m) => m !== fila);
+    const dotsSubio = ok ? await subioElDots() : null;
+    setActual((a) =>
+      a && a.ejercicio === s.ejercicio && a.peso === s.peso && a.reps === reps ? { ...a, estado: ok ? 'guardada' : 'fallo', esNueva: ok, dotsSubio } : a
+    );
+  }
+
+  async function subioElDots() {
+    const d = datos.current;
+    if (!d) return null;
+    const despues = await dotsAhora(supabase).catch(() => null);
+    const subio = dotsQueSubio(d.dots, despues);
+    if (despues !== null) d.dots = despues;
+    return subio;
+  }
 
   // Guardada, se va sola a los pocos segundos: ya dijo lo que tenía que decir.
   useEffect(() => {
     if (actual?.estado !== 'guardada' && actual?.estado !== 'fallo') return;
-    const t = setTimeout(() => setActual(null), 4500);
+    const t = setTimeout(() => setActual(null), 5600);
     return () => clearTimeout(t);
   }, [actual?.estado]);
 
@@ -195,7 +247,8 @@ export function useMarcaEnElMomento(
       }
       // No se guardó: se da por NO preguntada, y el resumen del final la vuelve a ofrecer.
       if (!ok) deshacerPreguntada(actual.ejercicio, antesDePreguntar.current);
-      setActual({ ...actual, estado: ok ? 'guardada' : 'fallo', esNueva: ok && nueva });
+      const dotsSubio = ok && nueva ? await subioElDots() : null;
+      setActual({ ...actual, estado: ok ? 'guardada' : 'fallo', esNueva: ok && nueva, dotsSubio });
     },
     descartar() {
       setActual(null);
