@@ -12,8 +12,14 @@ export const EN: Textos = {
   idioma: 'en',
   moss: {
     nombre: 'Moss',
-    pronto: 'Soon',
     volver: 'Back to Ascent',
+    vinculaTitulo: 'Link Ascent with Moss',
+    vinculaPie: 'Linking is giving permission: each app keeps its own account, and you can unlink whenever you want.',
+    vincularConMoss: 'Link with Moss',
+    seAbreMoss: 'Moss opens: link from there with your Ascent email.',
+    vinculada: 'Linked with Moss',
+    desvincular: 'Unlink',
+    sigueVinculada: "It's still linked with Moss. Try again.",
   },
   impulso: {
     faltasteUno: (dia: string) => `You missed ${dia}. One life was used.`,
