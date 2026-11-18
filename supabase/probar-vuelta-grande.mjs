@@ -181,7 +181,7 @@ try {
   const entrada = page.getByTestId('entrada-a-moss').first();
   const caja = await entrada.boundingBox();
   const selector = await page.getByText(TX.stats.pestanaGeneral, { exact: true }).first().boundingBox();
-  chequear('la entrada está arriba de todo, con «Pronto»', [caja.y < selector.y, await page.getByText(TX.moss.nombre, { exact: true }).filter({ visible: true }).count() >= 1, await page.getByText(TX.moss.pronto, { exact: true }).filter({ visible: true }).count() >= 1], [true, true, true]);
+  chequear('la entrada está arriba de todo, y dice solo «Moss»', [caja.y < selector.y, (await entrada.innerText()).trim()], [true, TX.moss.nombre]);
   await foto('moss-entrada');
   await entrada.click();
   await page.waitForTimeout(240);
@@ -191,10 +191,10 @@ try {
   await page.waitForTimeout(1100);
   const puesta = await moss.boundingBox();
   chequear('el cielo baja, y termina ocupando la pantalla', [bajando.y < -1, Math.round(puesta.y), Math.round(puesta.height)], [true, 0, 844]);
-  chequear('dice «Pronto»', await page.getByTestId('moss-pronto').filter({ visible: true }).count() >= 1, true);
+  chequear('adentro: «Vincula Ascent con Moss» y el botón, sin vincular', [(await page.getByTestId('moss-rotulo').filter({ visible: true }).first().innerText()).trim().toLowerCase(), await page.getByTestId('moss-vincular').filter({ visible: true }).count()], [TX.moss.vinculaTitulo.toLowerCase(), 1]);
   const conLetras = await page.evaluate(() => document.fonts.check('16px CormorantGaramond_400Regular_Italic') && document.fonts.check('13px Jost_400Regular'));
   chequear('con las letras de Moss', conLetras, true);
-  const fondo = await page.getByTestId('moss-pronto').first().evaluate((n) => getComputedStyle(n).color);
+  const fondo = await page.getByTestId('moss-rotulo').first().evaluate((n) => getComputedStyle(n).color);
   chequear('y sus colores, no los del rango', fondo, 'rgb(232, 196, 106)');
   await foto('moss');
   await page.getByTestId('moss-volver').first().click();

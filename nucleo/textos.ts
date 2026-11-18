@@ -47,9 +47,21 @@ const ES = {
 
     nombre: 'Moss',
 
-    pronto: 'Pronto',
-
     volver: 'Volver a Ascent',
+
+    vinculaTitulo: 'Vincula Ascent con Moss',
+
+    vinculaPie: 'Vincular es dar permiso: cada app sigue con su cuenta, y puedes desvincular cuando quieras.',
+
+    vincularConMoss: 'Vincular con Moss',
+
+    seAbreMoss: 'Se abre Moss: vincula desde ahí con tu correo de Ascent.',
+
+    vinculada: 'Vinculada con Moss',
+
+    desvincular: 'Desvincular',
+
+    sigueVinculada: 'Sigue vinculada con Moss. Prueba de nuevo.',
 
   },
   // ---------------------------------------------------------------
