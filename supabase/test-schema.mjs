@@ -21997,6 +21997,7 @@ console.log('\n339. Moss: la puerta dice solo «Moss» y adentro se vincula (18/
   chequear('adentro: vincula, o vinculada y desvincular', [/estado_del_vinculo/.test(puerta), /rpc\('desvincular'\)/.test(puerta), /moss-vincular/.test(puerta), /moss-desvincular/.test(puerta)], [true, true, true, true]);
   chequear('el botón abre Moss, y sin Moss va a conseguirla', /openURL\(ABRIR_MOSS\)\.catch\(\(\) => Linking\.openURL\(CONSEGUIR_MOSS\)/.test(puerta), true);
   chequear('al volver de Moss pregunta de nuevo', /plataforma\.ciclo\.alCambiar/.test(puerta), true);
+  chequear('va a la hoja de vincular de Moss, y si no está, a su ficha de la App Store', [/ABRIR_MOSS = 'moss:\/\/vincular'/.test(puerta), /CONSEGUIR_MOSS = 'https:\/\/apps\.apple\.com\/app\/id6828034537'/.test(puerta)], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

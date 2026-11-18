@@ -187,9 +187,10 @@ export function MossAsomando({ tiron }: { tiron: Animated.Value }) {
   );
 }
 
-// moss:// abre Moss; si no está instalada, el teléfono no la abre y se va a conseguirla.
-const ABRIR_MOSS = 'moss://';
-const CONSEGUIR_MOSS = 'https://condezuzu.github.io/moss-app/';
+// moss://vincular abre Moss en su hoja de vincular con Ascent; si no está instalada, el teléfono no la
+// abre y se va a la App Store.
+const ABRIR_MOSS = 'moss://vincular';
+const CONSEGUIR_MOSS = 'https://apps.apple.com/app/id6828034537';
 
 /**
  * VINCULAR CON MOSS (18/11). Sin el llavero compartido —llega con una build— Ascent no tiene la sesión de
