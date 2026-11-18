@@ -1,6 +1,11 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Animated, Modal, PanResponder, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Linking from 'expo-linking';
+import { plataforma } from '@plataforma';
+import { useEnVuelo } from '@compartido/useEnVuelo';
+import { estaVinculada } from '@nucleo/vinculoConMoss';
+import { supabase } from './supabase';
 import Svg, { Circle, Defs, Ellipse, G, Path, RadialGradient, Stop } from 'react-native-svg';
 import { T } from '@nucleo/textos';
 import { MOSS } from './coloresDeMoss';
@@ -73,12 +78,12 @@ function estrellasDelCielo(ancho: number, alto: number) {
 }
 
 /**
- * EL CIELO DE MOSS (2/11, a pedido): lo que hay del otro lado de Stats. Todavía no está hecho, y lo dice:
- * «Pronto». Con los colores y las letras de Moss (`src/tema.ts` de esa app), que no son los de Ascent: es
+ * EL CIELO DE MOSS (2/11, a pedido): lo que hay del otro lado de Stats. Desde el 18/11, en vez de «Pronto»,
+ * «Vincula Ascent con Moss» (o «Vinculada con Moss»): `rotulo`. Con los colores y las letras de Moss (`src/tema.ts` de esa app), que no son los de Ascent: es
  * otro lugar, y tiene que notarse. El borde de abajo es un horizonte de oro, que es lo que se ve bajar.
  * Desde el 5/11 con su logo, estrellas y la aurora de su cielo.
  */
-function CieloDeMoss({ avance, alto }: { avance: Animated.Value | Animated.AnimatedInterpolation<number>; alto: number }) {
+function CieloDeMoss({ avance, alto, rotulo = T.moss.vinculaTitulo }: { avance: Animated.Value | Animated.AnimatedInterpolation<number>; alto: number; rotulo?: string }) {
   const { width: ancho } = useWindowDimensions();
   const aparece = (avance as Animated.Value).interpolate({ inputRange: [0.25, 0.8], outputRange: [0, 1], extrapolate: 'clamp' });
   const cielo = useMemo(() => estrellasDelCielo(ancho, alto), [ancho, alto]);
@@ -109,8 +114,8 @@ function CieloDeMoss({ avance, alto }: { avance: Animated.Value | Animated.Anima
       <Animated.View style={[estilos.centro, { opacity: aparece, transform: [{ translateY: aparece.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}>
         <LogoDeMoss tam={190} />
         <Text style={estilos.nombre}>{T.moss.nombre}</Text>
-        <Text testID="moss-pronto" style={estilos.pronto}>
-          {T.moss.pronto}
+        <Text testID="moss-rotulo" style={estilos.rotulo}>
+          {rotulo}
         </Text>
       </Animated.View>
       {/* El horizonte que baja. */}
@@ -151,7 +156,7 @@ export default function PuertaDeMoss({ abierta, desde = 0, alAbrir, alCerrar }: 
   }, [flecha]);
   return (
     <>
-      <Tocable testID="entrada-a-moss" style={estilos.entrada} onPress={alAbrir} accessibilityRole="button" accessibilityLabel={`${T.moss.nombre}. ${T.moss.pronto}`}>
+      <Tocable testID="entrada-a-moss" style={estilos.entrada} onPress={alAbrir} accessibilityRole="button" accessibilityLabel={T.moss.nombre}>
         <Animated.View style={{ transform: [{ translateY: flecha.interpolate({ inputRange: [0, 1], outputRange: [2, -3] }) }] }}>
           <Svg width={18} height={10} viewBox="0 0 18 10">
             <Path d="M1 9l8-8 8 8" fill="none" stroke={MOSS.oro} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
@@ -159,8 +164,6 @@ export default function PuertaDeMoss({ abierta, desde = 0, alAbrir, alCerrar }: 
         </Animated.View>
         <LogoDeMoss tam={26} />
         <Text style={estilos.entradaNombre}>{T.moss.nombre}</Text>
-        <View style={estilos.entradaPunto} />
-        <Text style={estilos.entradaPronto}>{T.moss.pronto}</Text>
       </Tocable>
       <PantallaDeMoss visible={abierta} desde={desde} alCerrar={alCerrar} />
     </>
@@ -184,8 +187,54 @@ export function MossAsomando({ tiron }: { tiron: Animated.Value }) {
   );
 }
 
+// moss:// abre Moss; si no está instalada, el teléfono no la abre y se va a conseguirla.
+const ABRIR_MOSS = 'moss://';
+const CONSEGUIR_MOSS = 'https://condezuzu.github.io/moss-app/';
+
+/**
+ * VINCULAR CON MOSS (18/11). Sin el llavero compartido —llega con una build— Ascent no tiene la sesión de
+ * Moss, así que se vincula en Moss, con el correo de Ascent: el botón la abre, y al volver se pregunta de
+ * nuevo. Vinculada, lo dice y ofrece desvincular, que borra el vínculo de las dos apps.
+ */
+function useVinculoConMoss(abierta: boolean) {
+  // null mientras se pregunta: sin eso el botón salta de «Vincular» a «Desvincular».
+  const [vinculada, setVinculada] = useState<boolean | null>(null);
+  const [aviso, setAviso] = useState('');
+  const mirar = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.schema('moss').rpc('estado_del_vinculo');
+      setVinculada((antes) => (error ? (antes ?? false) : estaVinculada(data)));
+    } catch {
+      setVinculada((antes) => antes ?? false);
+    }
+  }, []);
+  useEffect(() => {
+    if (!abierta) return;
+    void mirar();
+    return plataforma.ciclo.alCambiar((visible) => {
+      if (visible) void mirar();
+    });
+  }, [abierta, mirar]);
+  const vincular = useEnVuelo(async () => {
+    setAviso('');
+    await Linking.openURL(ABRIR_MOSS).catch(() => Linking.openURL(CONSEGUIR_MOSS).catch(() => undefined));
+  });
+  const desvincular = useEnVuelo(async () => {
+    setAviso('');
+    try {
+      const { error } = await supabase.schema('moss').rpc('desvincular');
+      if (error) return setAviso(T.moss.sigueVinculada);
+      setVinculada(false);
+    } catch {
+      setAviso(T.moss.sigueVinculada);
+    }
+  });
+  return { vinculada, aviso, vincular, desvincular };
+}
+
 function PantallaDeMoss({ visible, desde, alCerrar }: { visible: boolean; desde: number; alCerrar: () => void }) {
   const { height: alto } = useWindowDimensions();
+  const vinculo = useVinculoConMoss(visible);
   const [montada, setMontada] = useState(visible);
   const avance = useRef(new Animated.Value(0)).current;
   const quien = useRef(Symbol('moss')).current;
@@ -240,7 +289,25 @@ function PantallaDeMoss({ visible, desde, alCerrar }: { visible: boolean; desde:
         {...gesto.panHandlers}
         style={[StyleSheet.absoluteFill, { transform: [{ translateY: avance.interpolate({ inputRange: [0, 1], outputRange: [-alto, 0] }) }] }]}
       >
-        <CieloDeMoss avance={avance} alto={alto} />
+        <CieloDeMoss avance={avance} alto={alto} rotulo={vinculo.vinculada ? T.moss.vinculada : T.moss.vinculaTitulo} />
+        {vinculo.vinculada !== null && (
+          <View style={estilos.vinculo}>
+            {vinculo.vinculada ? (
+              <Tocable testID="moss-desvincular" style={estilos.botonTenue} onPress={() => void vinculo.desvincular()} accessibilityRole="button">
+                <Text style={estilos.botonTenueTexto}>{T.moss.desvincular}</Text>
+              </Tocable>
+            ) : (
+              <>
+                <Text style={estilos.pie}>{T.moss.vinculaPie}</Text>
+                <Tocable testID="moss-vincular" style={estilos.boton} onPress={() => void vinculo.vincular()} accessibilityRole="button" accessibilityHint={T.moss.seAbreMoss}>
+                  <Text style={estilos.botonTexto}>{T.moss.vincularConMoss}</Text>
+                </Tocable>
+                <Text style={estilos.nota}>{T.moss.seAbreMoss}</Text>
+              </>
+            )}
+            {!!vinculo.aviso && <Text style={estilos.nota}>{vinculo.aviso}</Text>}
+          </View>
+        )}
         <Tocable testID="moss-volver" style={estilos.volver} onPress={alCerrar} accessibilityRole="button">
           <Svg width={18} height={10} viewBox="0 0 18 10">
             <Path d="M1 9l8-8 8 8" fill="none" stroke={MOSS.pergaminoTenue} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
@@ -256,12 +323,17 @@ const estilos = StyleSheet.create({
   // UN GLOBITO (5/11, a pedido), como lo que va a decir sin vincular y vinculada: con el logo de Moss adentro.
   entrada: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', gap: 8, minHeight: 40, paddingHorizontal: 16, marginTop: -8, marginBottom: 10, borderRadius: 999, borderWidth: 1, borderColor: MOSS.oroBorde, backgroundColor: MOSS.nocheVidrio },
   entradaNombre: { color: MOSS.oroClaro, fontFamily: LETRAS_DE_MOSS.titulo, fontSize: 20, lineHeight: 23 },
-  entradaPunto: { width: 3, height: 3, borderRadius: 2, backgroundColor: MOSS.oroPunto },
-  entradaPronto: { color: MOSS.pergamino, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 13, letterSpacing: 0.3 },
   cielo: { width: '100%', overflow: 'hidden', backgroundColor: MOSS.noche0 },
   centro: { position: 'absolute', left: 0, right: 0, top: '22%', alignItems: 'center' },
   nombre: { color: MOSS.pergamino, fontFamily: LETRAS_DE_MOSS.titulo, fontSize: 64, lineHeight: 72, marginTop: 6 },
-  pronto: { color: MOSS.oro, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 13, letterSpacing: 4, textTransform: 'uppercase', marginTop: 10 },
+  rotulo: { color: MOSS.oro, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 13, letterSpacing: 3, textTransform: 'uppercase', marginTop: 10, textAlign: 'center', paddingHorizontal: 24 },
+  vinculo: { position: 'absolute', left: 32, right: 32, bottom: 120, alignItems: 'center', gap: 14 },
+  pie: { color: MOSS.pergaminoTenue, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  boton: { alignSelf: 'stretch', minHeight: 48, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: MOSS.oro },
+  botonTexto: { color: MOSS.noche0, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 16, letterSpacing: 0.4 },
+  botonTenue: { minHeight: 44, paddingHorizontal: 22, borderRadius: 999, borderWidth: 1, borderColor: MOSS.oroBorde, alignItems: 'center', justifyContent: 'center' },
+  botonTenueTexto: { color: MOSS.pergamino, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 14 },
+  nota: { color: MOSS.pergaminoTenue, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 12, lineHeight: 17, textAlign: 'center' },
   brillo: { position: 'absolute', left: 0, right: 0, bottom: 1, height: 70 },
   horizonte: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 1, backgroundColor: MOSS.oro },
   volver: { position: 'absolute', left: 0, right: 0, bottom: 44, alignItems: 'center', gap: 8, paddingVertical: 10 },

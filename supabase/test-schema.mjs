@@ -5336,6 +5336,9 @@ console.log('\n71. Lo que el codigo nombra, existe');
 
   const textosQueNoEstan = new Set();
   const funcionesQueNoEstan = new Set();
+  // LAS DE MOSS (D27) viven en el esquema `moss`, que arma el repo de Moss: no están en este
+  // schema.sql. Se llaman con `.schema('moss')` y solo las anotadas; una nueva obliga a decidir.
+  const DE_MOSS = ['estado_del_vinculo', 'desvincular'];
   let textos = 0;
   let llamadas = 0;
   for (const a of archivos) {
@@ -5349,7 +5352,8 @@ console.log('\n71. Lo que el codigo nombra, existe');
     }
     for (const m of codigo.matchAll(/\.rpc\(\s*'([a-z_0-9]+)'/g)) {
       llamadas++;
-      if (!new RegExp(`function public\\.${m[1]}\\(`).test(esquema)) {
+      const aMoss = /\.schema\('moss'\)$/.test(codigo.slice(Math.max(0, m.index - 20), m.index));
+      if (aMoss ? !DE_MOSS.includes(m[1]) : !new RegExp(`function public\\.${m[1]}\\(`).test(esquema)) {
         funcionesQueNoEstan.add(`${donde}: ${m[1]}`);
       }
     }
@@ -21685,7 +21689,7 @@ console.log('\n330. La vuelta grande: cielo, horizonte, cifras, barra, rutina, m
 
   // ---- MOSS ----
   const mo330 = app330('PuertaDeMoss.tsx');
-  chequear('se entra tirando desde el tope o tocando, y se vuelve', [/onScrollEndDrag/.test(app330('Stats.tsx')), /TIRON_PARA_ENTRAR/.test(app330('Stats.tsx')), /entrada-a-moss/.test(mo330), /moss-volver/.test(mo330), /T\.moss\.pronto/.test(mo330)], [true, true, true, true, true]);
+  chequear('se entra tirando desde el tope o tocando, y se vuelve', [/onScrollEndDrag/.test(app330('Stats.tsx')), /TIRON_PARA_ENTRAR/.test(app330('Stats.tsx')), /entrada-a-moss/.test(mo330), /moss-volver/.test(mo330), /T\.moss\.vinculaTitulo/.test(mo330)], [true, true, true, true, true]);
   chequear('con las letras de Moss, cargadas aparte', [/cargarFuentesDeMoss\(\)/.test(mo330), ['CormorantGaramond_400Regular_Italic', 'Jost_400Regular'].every((f) => hay330(join(raiz330, 'movil', 'assets', 'fuentes', f + '.ttf')))], [true, true]);
   chequear('los colores de Moss no se tiñen, y el rango no los toca', [/from '\.\/colores'/.test(mo330), /C\.claro/.test(mo330)], [false, false]);
 }
@@ -21981,6 +21985,18 @@ console.log('\n338. La marca nueva como cajón sobre la racha, con los DOTS que 
   chequear('va sobre la racha, entrenando', /<RachaConRotulo[\s\S]{0,300}<CajonDeMarca marca=\{marca\.actual\}/.test(deBug('movil/src', 'Inicio.tsx')), true);
   chequear('el recuadro del bloque no la repite', /actual && !\(actual\.estado === 'guardada' && actual\.esNueva\)/.test(deBug('movil/src', 'MarcaEnElMomento.tsx')), true);
   chequear('el hook espera al cajón para soltarla', /setTimeout\(\(\) => setActual\(null\), 5600\)/.test(deBug('compartido', 'marcaSugerida.ts')), true);
+}
+console.log('\n339. Moss: la puerta dice solo «Moss» y adentro se vincula (18/11)');
+{
+  const V = await import('../nucleo/vinculoConMoss.ts');
+  const { TEXTOS_ES: ES339 } = await import('../nucleo/textos.ts');
+  const { EN: EN339 } = await import('../nucleo/textos-en.ts');
+  chequear('lo que contesta moss.estado_del_vinculo', [V.estaVinculada({ vinculada: true }), V.estaVinculada([{ vinculada: true }]), V.estaVinculada({ vinculada: false }), V.estaVinculada(null), V.estaVinculada('x')], [true, true, false, false, false]);
+  const puerta = deBug('movil/src', 'PuertaDeMoss.tsx');
+  chequear('ningún «Pronto»: ni en la puerta ni adentro', [/moss\.pronto|moss-pronto/.test(puerta), 'pronto' in ES339.moss, 'pronto' in EN339.moss], [false, false, false]);
+  chequear('adentro: vincula, o vinculada y desvincular', [/estado_del_vinculo/.test(puerta), /rpc\('desvincular'\)/.test(puerta), /moss-vincular/.test(puerta), /moss-desvincular/.test(puerta)], [true, true, true, true]);
+  chequear('el botón abre Moss, y sin Moss va a conseguirla', /openURL\(ABRIR_MOSS\)\.catch\(\(\) => Linking\.openURL\(CONSEGUIR_MOSS\)/.test(puerta), true);
+  chequear('al volver de Moss pregunta de nuevo', /plataforma\.ciclo\.alCambiar/.test(puerta), true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
