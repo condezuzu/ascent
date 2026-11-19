@@ -22059,6 +22059,17 @@ console.log('\n341. La rutina automática: días, series, zonas y tiempo (19/11,
   chequear('con un deporte, una serie menos en las piernas', [ejs(R.armarRutina({ ...base, deporte: true })).find((e) => e.ejercicio === 'sentadilla')?.series, ejs(R.armarRutina(base)).find((e) => e.ejercicio === 'sentadilla')?.series], [2, 3]);
   chequear('fuerza, menos repeticiones; con una condición, que vea a un médico', [ejs(R.armarRutina({ ...base, objetivo: 'fuerza' })).find((e) => e.ejercicio === 'sentadilla')?.reps, R.armarRutina({ ...base, condicion: true }).consultarMedico], [5, true]);
 }
+console.log('\n342. El catálogo muscular compartido con Moss (19/11)');
+{
+  const cat342 = JSON.parse(deBug('nucleo', 'catalogoMuscular.json'));
+  const MUSCULOS342 = ['cuadriceps', 'gluteos', 'isquios', 'espaldaBaja', 'aductores', 'pantorrillas', 'pecho', 'dorsales', 'trapecio', 'hombros', 'biceps', 'triceps', 'antebrazos', 'abdomen'];
+  // Todos los ejercicios del catálogo de la base, salvo el cardio (se mide en minutos, no en series).
+  const base342 = [...deBug('supabase', 'schema.sql').matchAll(/^\s+\('([a-z_]+)',\s*'[^']+',\s*'([a-z]+)'/gm)].filter((m) => ['piernas', 'pecho', 'espalda', 'hombros', 'brazos', 'core'].includes(m[2])).map((m) => m[1]);
+  chequear('cada ejercicio de la base tiene sus músculos', [...new Set(base342)].filter((id) => !cat342[id]).sort(), []);
+  chequear('y ninguno que la base no tenga', Object.keys(cat342).filter((id) => !base342.includes(id)), []);
+  chequear('solo los músculos de Moss, con al menos uno principal', Object.entries(cat342).filter(([, v]) => !v.principal.length || [...v.principal, ...v.ayuda].some((m) => !MUSCULOS342.includes(m))).map(([k]) => k), []);
+  chequear('partes, solo donde hay ensayos: el pecho alto en los inclinados y la cabeza larga en la extensión sobre la cabeza', Object.entries(cat342).filter(([, v]) => v.parte).map(([k, v]) => `${k}:${v.parte}`).sort(), ['press_inclinado:pechoAlto', 'press_inclinado_mancuernas:pechoAlto', 'press_inclinado_smith:pechoAlto', 'triceps_sobre_cabeza:tricepsLarga']);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
