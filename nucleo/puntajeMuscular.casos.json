@@ -1,0 +1,142 @@
+{
+  "nota": "Los casos de puntajeMuscular.ts, iguales en Moss y en Ascent. Cada uno: la función, lo que recibe y lo que tiene que dar.",
+  "casos": [
+    { "que": "todo a 2 de reserva, 6 series: al día siguiente", "funcion": "diasParaEstarListo", "entrada": [{"fecha": "2026-11-18", "series": 6, "rirMinimo": 2, "multiarticularDePiernas": true, "nuevo": false}], "salida": 1 },
+    { "que": "a 2 de reserva con 10 series: 2 días", "funcion": "diasParaEstarListo", "entrada": [{"fecha": "2026-11-18", "series": 10, "rirMinimo": 2, "multiarticularDePiernas": false, "nuevo": false}], "salida": 2 },
+    { "que": "a 1 de reserva: 2 días", "funcion": "diasParaEstarListo", "entrada": [{"fecha": "2026-11-18", "series": 4, "rirMinimo": 1, "multiarticularDePiernas": false, "nuevo": false}], "salida": 2 },
+    { "que": "sin la reserva anotada: 2 días", "funcion": "diasParaEstarListo", "entrada": [{"fecha": "2026-11-18", "series": 4, "rirMinimo": null, "multiarticularDePiernas": false, "nuevo": false}], "salida": 2 },
+    { "que": "al fallo en el tren superior: 2 días", "funcion": "diasParaEstarListo", "entrada": [{"fecha": "2026-11-18", "series": 6, "rirMinimo": 0, "multiarticularDePiernas": false, "nuevo": false}], "salida": 2 },
+    { "que": "al fallo con sentadilla: 3 días", "funcion": "diasParaEstarListo", "entrada": [{"fecha": "2026-11-18", "series": 6, "rirMinimo": 0, "multiarticularDePiernas": true, "nuevo": false}], "salida": 3 },
+    { "que": "al fallo con un ejercicio nuevo: 4 días", "funcion": "diasParaEstarListo", "entrada": [{"fecha": "2026-11-18", "series": 6, "rirMinimo": 0, "multiarticularDePiernas": true, "nuevo": true}], "salida": 4 },
+    { "que": "listo el día que toca", "funcion": "listoEl", "entrada": [[{"fecha": "2026-11-30", "series": 6, "rirMinimo": 0, "multiarticularDePiernas": true, "nuevo": false}]], "salida": "2026-12-03" },
+    { "que": "entrenado otra vez antes de estar listo: un día más desde la última", "funcion": "listoEl", "entrada": [[{"fecha": "2026-11-16", "series": 6, "rirMinimo": 0, "multiarticularDePiernas": true, "nuevo": false},{"fecha": "2026-11-18", "series": 6, "rirMinimo": 2, "multiarticularDePiernas": true, "nuevo": false}]], "salida": "2026-11-20" },
+    { "que": "entrenado ya listo: cuenta solo la última", "funcion": "listoEl", "entrada": [[{"fecha": "2026-11-10", "series": 6, "rirMinimo": 0, "multiarticularDePiernas": true, "nuevo": false},{"fecha": "2026-11-18", "series": 6, "rirMinimo": 2, "multiarticularDePiernas": true, "nuevo": false}]], "salida": "2026-11-19" },
+    { "que": "sin sesiones, null", "funcion": "listoEl", "entrada": [[]], "salida": null },
+    { "que": "faltan 2 días", "funcion": "diasHastaListo", "entrada": ["2026-11-21", "2026-11-19"], "salida": 2 },
+    { "que": "ya pasó: 0", "funcion": "diasHastaListo", "entrada": ["2026-11-18", "2026-11-19"], "salida": 0 },
+    { "que": "cargado con 2 días", "funcion": "estadoDeFatiga", "entrada": [2], "salida": "cargado" },
+    { "que": "recuperándose con 1", "funcion": "estadoDeFatiga", "entrada": [1], "salida": "recuperandose" },
+    { "que": "descansado con 0", "funcion": "estadoDeFatiga", "entrada": [0], "salida": "descansado" },
+    { "que": "hoy está en la semana", "funcion": "dentroDeLaSemana", "entrada": ["2026-11-19", "2026-11-19"], "salida": true },
+    { "que": "hace 6 días está en la semana", "funcion": "dentroDeLaSemana", "entrada": ["2026-11-13", "2026-11-19"], "salida": true },
+    { "que": "hace 7 días ya no", "funcion": "dentroDeLaSemana", "entrada": ["2026-11-12", "2026-11-19"], "salida": false },
+    { "que": "cruzando el mes", "funcion": "dentroDeLaSemana", "entrada": ["2026-10-29", "2026-11-02"], "salida": true },
+    { "que": "mañana no", "funcion": "dentroDeLaSemana", "entrada": ["2026-11-20", "2026-11-19"], "salida": false },
+    { "que": "Epley con 5 repeticiones", "funcion": "e1rm", "entrada": [90, 5], "salida": 105 },
+    { "que": "con una repetición, el peso", "funcion": "e1rm", "entrada": [120, 1], "salida": 120 },
+    { "que": "más de 10 repeticiones no se estima", "funcion": "e1rm", "entrada": [60, 12], "salida": null },
+    { "que": "sin repeticiones no se estima", "funcion": "e1rm", "entrada": [60, null], "salida": null },
+    { "que": "el mejor de unas series", "funcion": "mejorE1rm", "entrada": [[{ "peso": 90, "reps": 5 }, { "peso": 100, "reps": 2 }, { "peso": 60, "reps": 15 }]], "salida": 106.66666666666667 },
+    { "que": "el 60 % es de trabajo", "funcion": "esDeTrabajo", "entrada": [{ "peso": 60, "reps": 8 }, 100], "salida": true },
+    { "que": "menos del 60 % es entrada en calor", "funcion": "esDeTrabajo", "entrada": [{ "peso": 50, "reps": 8 }, 100], "salida": false },
+    { "que": "sin 1RM de referencia, cuenta", "funcion": "esDeTrabajo", "entrada": [{ "peso": 20, "reps": 8 }, null], "salida": true },
+    { "que": "sin repeticiones, cuenta", "funcion": "esDeTrabajo", "entrada": [{ "peso": 20, "reps": null }, 100], "salida": true },
+    { "que": "RIR 3 es dura", "funcion": "esDura", "entrada": [{ "reps": 8, "rir": 3 }], "salida": true },
+    { "que": "RIR 4 no es dura", "funcion": "esDura", "entrada": [{ "reps": 8, "rir": 4 }], "salida": false },
+    { "que": "al fallo es dura", "funcion": "esDura", "entrada": [{ "reps": 6, "rir": 0 }], "salida": true },
+    { "que": "sin RIR, llega al objetivo", "funcion": "esDura", "entrada": [{ "reps": 10 }, 10], "salida": true },
+    { "que": "sin RIR, no llega al objetivo", "funcion": "esDura", "entrada": [{ "reps": 7 }, 10], "salida": false },
+    { "que": "sin RIR ni objetivo, cuenta", "funcion": "esDura", "entrada": [{ "reps": 7 }], "salida": true },
+
+    { "que": "0 series", "funcion": "puntaje", "entrada": [0], "salida": 0 },
+    { "que": "5 series", "funcion": "puntaje", "entrada": [5], "salida": 35 },
+    { "que": "10 series", "funcion": "puntaje", "entrada": [10], "salida": 70 },
+    { "que": "12,5 series (con ayuda)", "funcion": "puntaje", "entrada": [12.5], "salida": 85 },
+    { "que": "15 series es el medio", "funcion": "puntaje", "entrada": [15], "salida": 100 },
+    { "que": "20 series", "funcion": "puntaje", "entrada": [20], "salida": 130 },
+    { "que": "40 series topa en 200", "funcion": "puntaje", "entrada": [40], "salida": 200 },
+
+    { "que": "sin entrenar", "funcion": "estadoDelPuntaje", "entrada": [0], "salida": "sinEntrenar" },
+    { "que": "poco", "funcion": "estadoDelPuntaje", "entrada": [69], "salida": "poco" },
+    { "que": "en su punto desde 70", "funcion": "estadoDelPuntaje", "entrada": [70], "salida": "enSuPunto" },
+    { "que": "en su punto hasta 130", "funcion": "estadoDelPuntaje", "entrada": [130], "salida": "enSuPunto" },
+    { "que": "mucho", "funcion": "estadoDelPuntaje", "entrada": [131], "salida": "mucho" },
+
+    {
+      "que": "press de banca: el pecho cuenta 1, tríceps y hombros 0,5; la serie con RIR 4 no cuenta",
+      "funcion": "seriesPorMusculo",
+      "entrada": [[{ "principal": ["pecho"], "ayuda": ["triceps", "hombros"], "series": [{ "reps": 8, "rir": 2 }, { "reps": 8, "rir": 1 }, { "reps": 8, "rir": 4 }] }]],
+      "salida": { "pecho": { "series": 2, "partes": {} }, "triceps": { "series": 1, "partes": {} }, "hombros": { "series": 1, "partes": {} } }
+    },
+    {
+      "que": "el press inclinado suma al pecho alto y la extensión por encima de la cabeza, al tríceps largo",
+      "funcion": "seriesPorMusculo",
+      "entrada": [[
+        { "principal": ["pecho"], "ayuda": ["triceps"], "parte": "pechoAlto", "series": [{ "reps": 10 }, { "reps": 10 }, { "reps": 9 }] },
+        { "principal": ["triceps"], "ayuda": [], "parte": "tricepsLarga", "series": [{ "reps": 12, "rir": 2 }, { "reps": 12, "rir": 2 }] }
+      ]],
+      "salida": { "pecho": { "series": 3, "partes": { "pechoAlto": 3 } }, "triceps": { "series": 3.5, "partes": { "tricepsLarga": 2 } } }
+    },
+
+    {
+      "que": "rutina con cada músculo grande dos veces y en rango: muy buena",
+      "funcion": "notaDeLaRutina",
+      "entrada": [[
+        [
+          { "principal": ["pecho"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] },
+          { "principal": ["dorsales"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] },
+          { "principal": ["hombros"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] }
+        ],
+        [
+          { "principal": ["cuadriceps"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] },
+          { "principal": ["isquios"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] },
+          { "principal": ["gluteos"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] }
+        ],
+        [
+          { "principal": ["pecho"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] },
+          { "principal": ["dorsales"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] },
+          { "principal": ["hombros"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] }
+        ],
+        [
+          { "principal": ["cuadriceps"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] },
+          { "principal": ["isquios"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] },
+          { "principal": ["gluteos"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] }
+        ]
+      ]],
+      "salida": { "nota": "muyBuena", "mejoras": [] }
+    },
+    {
+      "que": "solo pecho una vez: mejorable, primero lo que no se entrena",
+      "funcion": "notaDeLaRutina",
+      "entrada": [[[{ "principal": ["pecho"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] }]]],
+      "salida": { "nota": "mejorable", "mejoras": [{ "musculo": "dorsales", "que": "pocasSeries", "series": 0 }, { "musculo": "hombros", "que": "pocasSeries", "series": 0 }] }
+    },
+
+    {
+      "que": "dos sesiones en el tope con RIR 2: sube",
+      "funcion": "proximaSesion",
+      "entrada": [{ "sesiones": [{ "series": [{ "reps": 12, "rir": 2 }, { "reps": 12, "rir": 3 }] }, { "series": [{ "reps": 12, "rir": 2 }, { "reps": 12, "rir": 2 }] }], "tope": 12, "nocheCortaHoy": false }],
+      "salida": { "decision": "subir" }
+    },
+    {
+      "que": "una serie con RIR 1: mantiene",
+      "funcion": "proximaSesion",
+      "entrada": [{ "sesiones": [{ "series": [{ "reps": 12, "rir": 2 }] }, { "series": [{ "reps": 12, "rir": 1 }, { "reps": 12, "rir": 2 }] }], "tope": 12, "nocheCortaHoy": false }],
+      "salida": { "decision": "mantener", "razon": "faltaElTope" }
+    },
+    {
+      "que": "en el tope, pero hoy toca después de una noche corta: ese día mantiene",
+      "funcion": "proximaSesion",
+      "entrada": [{ "sesiones": [{ "series": [{ "reps": 10 }] }, { "series": [{ "reps": 10 }] }], "tope": 10, "nocheCortaHoy": true }],
+      "salida": { "decision": "mantener", "razon": "sueno" }
+    },
+    {
+      "que": "en el tope y comiendo de menos: sube igual (la comida no frena)",
+      "funcion": "proximaSesion",
+      "entrada": [{ "sesiones": [{ "series": [{ "reps": 10 }] }, { "series": [{ "reps": 10 }] }], "tope": 10, "nocheCortaHoy": false }],
+      "salida": { "decision": "subir" }
+    },
+    {
+      "que": "una sola sesión: no se sabe",
+      "funcion": "proximaSesion",
+      "entrada": [{ "sesiones": [{ "series": [{ "reps": 12, "rir": 3 }] }], "tope": 12, "nocheCortaHoy": false }],
+      "salida": { "decision": "noSeSabe", "razon": "pocasSesiones" }
+    },
+    {
+      "que": "sin repeticiones objetivo en la rutina: mantiene",
+      "funcion": "proximaSesion",
+      "entrada": [{ "sesiones": [{ "series": [{ "reps": 12 }] }, { "series": [{ "reps": 12 }] }], "tope": null, "nocheCortaHoy": false }],
+      "salida": { "decision": "mantener", "razon": "sinObjetivo" }
+    }
+  ]
+}

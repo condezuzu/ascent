@@ -27,4 +27,9 @@ export const MOSS = {
   terracota: '#d0866a',
   // Las líneas que separan sus bloques.
   linea: 'rgba(239,230,207,0.12)',
+  // El cuerpo de su sección: sin entrenar y poco (en su punto es el oro; mucho, la terracota).
+  musculoSin: 'rgba(239,230,207,0.10)',
+  musculoPoco: 'rgba(232,196,106,0.38)',
+  // Detrás del tutorial: su noche más honda, casi tapando.
+  velo: 'rgba(3,5,12,0.82)',
 } as const;

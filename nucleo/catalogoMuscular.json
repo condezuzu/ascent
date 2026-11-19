@@ -1,0 +1,923 @@
+{
+  "abdominales_polea": {
+    "principal": [
+      "abdomen"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "abductores": {
+    "principal": [
+      "gluteos"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "aductores": {
+    "principal": [
+      "aductores"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "aperturas": {
+    "principal": [
+      "pecho"
+    ],
+    "ayuda": [
+      "hombros"
+    ],
+    "multiarticular": false
+  },
+  "bicicleta_abdominal": {
+    "principal": [
+      "abdomen"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "buenos_dias": {
+    "principal": [
+      "isquios",
+      "gluteos"
+    ],
+    "ayuda": [
+      "espaldaBaja"
+    ],
+    "multiarticular": true
+  },
+  "cruce_polea_alta": {
+    "principal": [
+      "pecho"
+    ],
+    "ayuda": [
+      "hombros"
+    ],
+    "multiarticular": false
+  },
+  "cruce_polea_baja": {
+    "principal": [
+      "pecho"
+    ],
+    "ayuda": [
+      "hombros"
+    ],
+    "multiarticular": false
+  },
+  "crunch": {
+    "principal": [
+      "abdomen"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "crunch_declinado": {
+    "principal": [
+      "abdomen"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "curl_barra": {
+    "principal": [
+      "biceps"
+    ],
+    "ayuda": [
+      "antebrazos"
+    ],
+    "multiarticular": false
+  },
+  "curl_barra_z": {
+    "principal": [
+      "biceps"
+    ],
+    "ayuda": [
+      "antebrazos"
+    ],
+    "multiarticular": false
+  },
+  "curl_concentrado": {
+    "principal": [
+      "biceps"
+    ],
+    "ayuda": [
+      "antebrazos"
+    ],
+    "multiarticular": false
+  },
+  "curl_femoral": {
+    "principal": [
+      "isquios"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "curl_femoral_pie": {
+    "principal": [
+      "isquios"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "curl_inclinado": {
+    "principal": [
+      "biceps"
+    ],
+    "ayuda": [
+      "antebrazos"
+    ],
+    "multiarticular": false
+  },
+  "curl_mancuernas": {
+    "principal": [
+      "biceps"
+    ],
+    "ayuda": [
+      "antebrazos"
+    ],
+    "multiarticular": false
+  },
+  "curl_muneca": {
+    "principal": [
+      "antebrazos"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "curl_polea": {
+    "principal": [
+      "biceps"
+    ],
+    "ayuda": [
+      "antebrazos"
+    ],
+    "multiarticular": false
+  },
+  "curl_predicador": {
+    "principal": [
+      "biceps"
+    ],
+    "ayuda": [
+      "antebrazos"
+    ],
+    "multiarticular": false
+  },
+  "dead_bug": {
+    "principal": [
+      "abdomen"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "dominadas": {
+    "principal": [
+      "dorsales"
+    ],
+    "ayuda": [
+      "biceps"
+    ],
+    "multiarticular": true
+  },
+  "dominadas_lastradas": {
+    "principal": [
+      "dorsales"
+    ],
+    "ayuda": [
+      "biceps"
+    ],
+    "multiarticular": true
+  },
+  "dominadas_supinas": {
+    "principal": [
+      "dorsales"
+    ],
+    "ayuda": [
+      "biceps"
+    ],
+    "multiarticular": true
+  },
+  "elevacion_piernas": {
+    "principal": [
+      "abdomen"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "elevacion_rodillas": {
+    "principal": [
+      "abdomen"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "elevaciones_frontales": {
+    "principal": [
+      "hombros"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "elevaciones_laterales": {
+    "principal": [
+      "hombros"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "elevaciones_maquina": {
+    "principal": [
+      "hombros"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "elevaciones_polea": {
+    "principal": [
+      "hombros"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "encogimientos": {
+    "principal": [
+      "trapecio"
+    ],
+    "ayuda": [
+      "antebrazos"
+    ],
+    "multiarticular": false
+  },
+  "extension_cuadriceps": {
+    "principal": [
+      "cuadriceps"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "face_pull": {
+    "principal": [
+      "hombros"
+    ],
+    "ayuda": [
+      "trapecio"
+    ],
+    "multiarticular": false
+  },
+  "flexiones": {
+    "principal": [
+      "pecho"
+    ],
+    "ayuda": [
+      "triceps",
+      "hombros"
+    ],
+    "multiarticular": true
+  },
+  "fondos": {
+    "principal": [
+      "pecho",
+      "triceps"
+    ],
+    "ayuda": [
+      "hombros"
+    ],
+    "multiarticular": true
+  },
+  "fondos_banco": {
+    "principal": [
+      "triceps"
+    ],
+    "ayuda": [
+      "pecho",
+      "hombros"
+    ],
+    "multiarticular": true
+  },
+  "gemelos": {
+    "principal": [
+      "pantorrillas"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "gemelos_prensa": {
+    "principal": [
+      "pantorrillas"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "gemelos_sentado": {
+    "principal": [
+      "pantorrillas"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "giros_rusos": {
+    "principal": [
+      "abdomen"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "hip_thrust": {
+    "principal": [
+      "gluteos"
+    ],
+    "ayuda": [
+      "isquios"
+    ],
+    "multiarticular": false
+  },
+  "hiperextensiones": {
+    "principal": [
+      "espaldaBaja"
+    ],
+    "ayuda": [
+      "gluteos",
+      "isquios"
+    ],
+    "multiarticular": false
+  },
+  "jalon": {
+    "principal": [
+      "dorsales"
+    ],
+    "ayuda": [
+      "biceps"
+    ],
+    "multiarticular": true
+  },
+  "jalon_cerrado": {
+    "principal": [
+      "dorsales"
+    ],
+    "ayuda": [
+      "biceps"
+    ],
+    "multiarticular": true
+  },
+  "jalon_unilateral": {
+    "principal": [
+      "dorsales"
+    ],
+    "ayuda": [
+      "biceps"
+    ],
+    "multiarticular": true
+  },
+  "martillo": {
+    "principal": [
+      "biceps"
+    ],
+    "ayuda": [
+      "antebrazos"
+    ],
+    "multiarticular": false
+  },
+  "pajaros": {
+    "principal": [
+      "hombros"
+    ],
+    "ayuda": [
+      "trapecio"
+    ],
+    "multiarticular": false
+  },
+  "patada_gluteo": {
+    "principal": [
+      "gluteos"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "patada_triceps": {
+    "principal": [
+      "triceps"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "pec_deck": {
+    "principal": [
+      "pecho"
+    ],
+    "ayuda": [
+      "hombros"
+    ],
+    "multiarticular": false
+  },
+  "peso_muerto": {
+    "principal": [
+      "gluteos",
+      "isquios",
+      "espaldaBaja"
+    ],
+    "ayuda": [
+      "cuadriceps",
+      "trapecio",
+      "antebrazos"
+    ],
+    "multiarticular": true
+  },
+  "peso_muerto_rigidas": {
+    "principal": [
+      "isquios",
+      "gluteos"
+    ],
+    "ayuda": [
+      "espaldaBaja"
+    ],
+    "multiarticular": true
+  },
+  "peso_muerto_rumano": {
+    "principal": [
+      "isquios",
+      "gluteos"
+    ],
+    "ayuda": [
+      "espaldaBaja"
+    ],
+    "multiarticular": true
+  },
+  "peso_muerto_sumo": {
+    "principal": [
+      "gluteos",
+      "isquios",
+      "aductores"
+    ],
+    "ayuda": [
+      "cuadriceps",
+      "espaldaBaja"
+    ],
+    "multiarticular": true
+  },
+  "peso_muerto_una_pierna": {
+    "principal": [
+      "isquios",
+      "gluteos"
+    ],
+    "ayuda": [
+      "espaldaBaja"
+    ],
+    "multiarticular": true
+  },
+  "plancha": {
+    "principal": [
+      "abdomen"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "plancha_lateral": {
+    "principal": [
+      "abdomen"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "prensa": {
+    "principal": [
+      "cuadriceps"
+    ],
+    "ayuda": [
+      "gluteos",
+      "aductores"
+    ],
+    "multiarticular": true
+  },
+  "prensa_una_pierna": {
+    "principal": [
+      "cuadriceps",
+      "gluteos"
+    ],
+    "ayuda": [
+      "aductores"
+    ],
+    "multiarticular": true
+  },
+  "press_arnold": {
+    "principal": [
+      "hombros"
+    ],
+    "ayuda": [
+      "triceps"
+    ],
+    "multiarticular": true
+  },
+  "press_banca": {
+    "principal": [
+      "pecho"
+    ],
+    "ayuda": [
+      "triceps",
+      "hombros"
+    ],
+    "multiarticular": true
+  },
+  "press_cerrado": {
+    "principal": [
+      "triceps"
+    ],
+    "ayuda": [
+      "pecho",
+      "hombros"
+    ],
+    "multiarticular": true
+  },
+  "press_declinado": {
+    "principal": [
+      "pecho"
+    ],
+    "ayuda": [
+      "triceps",
+      "hombros"
+    ],
+    "multiarticular": true
+  },
+  "press_frances": {
+    "principal": [
+      "triceps"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "press_hombro_maquina": {
+    "principal": [
+      "hombros"
+    ],
+    "ayuda": [
+      "triceps"
+    ],
+    "multiarticular": true
+  },
+  "press_inclinado": {
+    "principal": [
+      "pecho"
+    ],
+    "ayuda": [
+      "triceps",
+      "hombros"
+    ],
+    "parte": "pechoAlto",
+    "multiarticular": true
+  },
+  "press_inclinado_mancuernas": {
+    "principal": [
+      "pecho"
+    ],
+    "ayuda": [
+      "triceps",
+      "hombros"
+    ],
+    "parte": "pechoAlto",
+    "multiarticular": true
+  },
+  "press_inclinado_smith": {
+    "principal": [
+      "pecho"
+    ],
+    "ayuda": [
+      "triceps",
+      "hombros"
+    ],
+    "parte": "pechoAlto",
+    "multiarticular": true
+  },
+  "press_mancuernas": {
+    "principal": [
+      "pecho"
+    ],
+    "ayuda": [
+      "triceps",
+      "hombros"
+    ],
+    "multiarticular": true
+  },
+  "press_militar": {
+    "principal": [
+      "hombros"
+    ],
+    "ayuda": [
+      "triceps"
+    ],
+    "multiarticular": true
+  },
+  "press_militar_mancuernas": {
+    "principal": [
+      "hombros"
+    ],
+    "ayuda": [
+      "triceps"
+    ],
+    "multiarticular": true
+  },
+  "press_pallof": {
+    "principal": [
+      "abdomen"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "press_pecho_maquina": {
+    "principal": [
+      "pecho"
+    ],
+    "ayuda": [
+      "triceps",
+      "hombros"
+    ],
+    "multiarticular": true
+  },
+  "press_plano_smith": {
+    "principal": [
+      "pecho"
+    ],
+    "ayuda": [
+      "triceps",
+      "hombros"
+    ],
+    "multiarticular": true
+  },
+  "puente_gluteo": {
+    "principal": [
+      "gluteos"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "pullover": {
+    "principal": [
+      "pecho"
+    ],
+    "ayuda": [
+      "dorsales"
+    ],
+    "multiarticular": false
+  },
+  "pullover_polea": {
+    "principal": [
+      "dorsales"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "rack_pull": {
+    "principal": [
+      "espaldaBaja",
+      "trapecio",
+      "gluteos"
+    ],
+    "ayuda": [
+      "isquios",
+      "antebrazos"
+    ],
+    "multiarticular": true
+  },
+  "remo_barra": {
+    "principal": [
+      "dorsales",
+      "trapecio"
+    ],
+    "ayuda": [
+      "biceps",
+      "hombros",
+      "espaldaBaja"
+    ],
+    "multiarticular": true
+  },
+  "remo_invertido": {
+    "principal": [
+      "dorsales",
+      "trapecio"
+    ],
+    "ayuda": [
+      "biceps",
+      "hombros"
+    ],
+    "multiarticular": true
+  },
+  "remo_mancuerna": {
+    "principal": [
+      "dorsales",
+      "trapecio"
+    ],
+    "ayuda": [
+      "biceps",
+      "hombros"
+    ],
+    "multiarticular": true
+  },
+  "remo_maquina": {
+    "principal": [
+      "dorsales",
+      "trapecio"
+    ],
+    "ayuda": [
+      "biceps",
+      "hombros"
+    ],
+    "multiarticular": true
+  },
+  "remo_menton": {
+    "principal": [
+      "hombros"
+    ],
+    "ayuda": [
+      "trapecio",
+      "biceps"
+    ],
+    "multiarticular": true
+  },
+  "remo_pendlay": {
+    "principal": [
+      "dorsales",
+      "trapecio"
+    ],
+    "ayuda": [
+      "biceps",
+      "hombros",
+      "espaldaBaja"
+    ],
+    "multiarticular": true
+  },
+  "remo_polea": {
+    "principal": [
+      "dorsales",
+      "trapecio"
+    ],
+    "ayuda": [
+      "biceps",
+      "hombros"
+    ],
+    "multiarticular": true
+  },
+  "remo_t": {
+    "principal": [
+      "dorsales",
+      "trapecio"
+    ],
+    "ayuda": [
+      "biceps",
+      "hombros",
+      "espaldaBaja"
+    ],
+    "multiarticular": true
+  },
+  "remo_unilateral_polea": {
+    "principal": [
+      "dorsales",
+      "trapecio"
+    ],
+    "ayuda": [
+      "biceps",
+      "hombros"
+    ],
+    "multiarticular": true
+  },
+  "rotacion_externa": {
+    "principal": [
+      "hombros"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "rueda_abdominal": {
+    "principal": [
+      "abdomen"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "sentadilla": {
+    "principal": [
+      "cuadriceps",
+      "gluteos"
+    ],
+    "ayuda": [
+      "aductores",
+      "espaldaBaja"
+    ],
+    "multiarticular": true
+  },
+  "sentadilla_bulgara": {
+    "principal": [
+      "cuadriceps",
+      "gluteos"
+    ],
+    "ayuda": [
+      "aductores"
+    ],
+    "multiarticular": true
+  },
+  "sentadilla_frontal": {
+    "principal": [
+      "cuadriceps"
+    ],
+    "ayuda": [
+      "gluteos",
+      "aductores"
+    ],
+    "multiarticular": true
+  },
+  "sentadilla_goblet": {
+    "principal": [
+      "cuadriceps"
+    ],
+    "ayuda": [
+      "gluteos",
+      "aductores"
+    ],
+    "multiarticular": true
+  },
+  "sentadilla_hack": {
+    "principal": [
+      "cuadriceps"
+    ],
+    "ayuda": [
+      "gluteos",
+      "aductores"
+    ],
+    "multiarticular": true
+  },
+  "sentadilla_smith": {
+    "principal": [
+      "cuadriceps"
+    ],
+    "ayuda": [
+      "gluteos",
+      "aductores"
+    ],
+    "multiarticular": true
+  },
+  "subida_cajon": {
+    "principal": [
+      "cuadriceps",
+      "gluteos"
+    ],
+    "ayuda": [
+      "aductores"
+    ],
+    "multiarticular": true
+  },
+  "triceps_mancuerna": {
+    "principal": [
+      "triceps"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "triceps_maquina": {
+    "principal": [
+      "triceps"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "triceps_polea": {
+    "principal": [
+      "triceps"
+    ],
+    "ayuda": [],
+    "multiarticular": false
+  },
+  "triceps_sobre_cabeza": {
+    "principal": [
+      "triceps"
+    ],
+    "ayuda": [],
+    "parte": "tricepsLarga",
+    "multiarticular": false
+  },
+  "zancada_inversa": {
+    "principal": [
+      "cuadriceps",
+      "gluteos"
+    ],
+    "ayuda": [
+      "aductores"
+    ],
+    "multiarticular": true
+  },
+  "zancadas": {
+    "principal": [
+      "cuadriceps",
+      "gluteos"
+    ],
+    "ayuda": [
+      "aductores"
+    ],
+    "multiarticular": true
+  },
+  "zancadas_caminando": {
+    "principal": [
+      "cuadriceps",
+      "gluteos"
+    ],
+    "ayuda": [
+      "aductores"
+    ],
+    "multiarticular": true
+  }
+}

@@ -5338,7 +5338,7 @@ console.log('\n71. Lo que el codigo nombra, existe');
   const funcionesQueNoEstan = new Set();
   // LAS DE MOSS (D27) viven en el esquema `moss`, que arma el repo de Moss: no están en este
   // schema.sql. Se llaman con `.schema('moss')` y solo las anotadas; una nueva obliga a decidir.
-  const DE_MOSS = ['estado_del_vinculo', 'desvincular', 'vincular_con_codigo', 'moss_hoy', 'moss_semanas', 'moss_objetivo', 'moss_anio'];
+  const DE_MOSS = ['estado_del_vinculo', 'desvincular', 'vincular_con_codigo', 'moss_hoy', 'moss_semanas', 'moss_objetivo', 'metas_de_fuerza', 'guardar_meta_de_fuerza', 'borrar_meta_de_fuerza'];
   let textos = 0;
   let llamadas = 0;
   for (const a of archivos) {
@@ -14131,9 +14131,9 @@ console.log('\n182. Las hojas nacen de nuevo en cada apertura');
   const clases182 = Object.entries(nativa182).map(([ruta, t]) => [ruta, clasificar182(ruta, t)]);
   chequear('ninguna hoja con estado propio queda sin decidir', clases182.filter(([, c]) => c === 'SIN DECIDIR').map(([ruta]) => ruta), []);
   chequear(
-    'las cinco que se abren con una prop nacen de nuevo en cada apertura',
+    'las seis que se abren con una prop nacen de nuevo en cada apertura',
     clases182.filter(([, c]) => c === 'nace-al-abrir').map(([ruta]) => ruta.split('/').pop()).sort(),
-    ['AccionesDeUsuario.tsx', 'CargarMarca.tsx', 'ListaDeBloques.tsx', 'RegistrarDia.tsx', 'SelectorEjercicio.tsx']
+    ['AccionesDeUsuario.tsx', 'CargarMarca.tsx', 'ListaDeBloques.tsx', 'RegistrarDia.tsx', 'SelectorEjercicio.tsx', 'TutorialMoss.tsx']
   );
   // Lo anotado a mano se comprueba: si alguien pasa a dibujar siempre una de
   // las que "se montan al abrir", vuelve a ser una hoja montada con estado viejo.
@@ -22187,29 +22187,6 @@ console.log('\n339. Moss: la puerta dice solo «Moss» y adentro se vincula (18/
   chequear('el enlace es universal (solo lo abre Ascent), y sin Ascent la web ofrece la tienda', [/'\/vincular\/\*'/.test(aasa339), /'\/vincular'\]/.test(deBug('src/lib/supabase', 'middleware.ts')), /href=\{TIENDA\}/.test(deBug('src/app/vincular/[codigo]', 'page.tsx')), /href=\{`ascent:\/\/vincular\/\$\{codigo\}`\}/.test(deBug('src/app/vincular/[codigo]', 'page.tsx'))], [true, true, true, true]);
   chequear('va a la hoja de vincular de Moss, y si no está, a su ficha de la App Store', [/ABRIR_MOSS = 'moss:\/\/vincular'/.test(puerta), /CONSEGUIR_MOSS = 'https:\/\/apps\.apple\.com\/app\/id6828034537'/.test(puerta)], [true, true]);
 }
-console.log('\n340. Lo de Moss en Ascent: qué esperar antes de entrenar y el contrato de 0015 (19/11)');
-{
-  const H = await import('../nucleo/mossHoy.ts');
-  const c = (min, proteina, carbos, grasas) => ({ min, proteina, carbos, grasas });
-  // Sesión a las 18:00 (1080), 80 kg.
-  chequear('sin nada anotado: que anote', H.queEsperar([], 1080, 80), ['sinAnotar']);
-  chequear('4 h o más sin comer antes de la sesión', H.queEsperar([c(780, 40, 120, 10)], 1080, 80), ['sinComer']);
-  chequear('carbohidratos hasta la sesión por debajo de 1 g/kg', H.queEsperar([c(960, 50, 60, 10)], 1080, 80), ['pocosCarbos']);
-  chequear('20 g de grasa o más en las 2 h antes', H.queEsperar([c(1000, 50, 90, 25)], 1080, 80), ['grasaCerca']);
-  chequear('proteína del día por debajo de 0,5 g/kg', H.queEsperar([c(1000, 30, 90, 5)], 1080, 80), ['pocaProteina']);
-  chequear('hasta dos, en el orden de Moss', H.queEsperar([c(700, 10, 20, 30)], 1080, 80), ['sinComer', 'pocosCarbos']);
-  chequear('si no aplica ninguna, bien comido', H.queEsperar([c(960, 60, 100, 10)], 1080, 80), ['bienComido']);
-  chequear('sin las comidas con hora (privacidad de Moss), solo la proteína del total', [H.queEsperarHoy({ total: { kcal: 900, proteina: 30, carbos: null, grasas: null }, meta: null, comidas: [] }, 1080, 80), H.queEsperarHoy({ total: { kcal: 900, proteina: 60, carbos: null, grasas: null }, meta: null, comidas: [] }, 1080, 80), H.queEsperarHoy(null, 1080, 80)], [['pocaProteina'], ['bienComido'], ['sinAnotar']]);
-  chequear('vinculada sin nada anotado (totales en 0, como manda Moss): que anote, no que comió bien', H.queEsperarHoy({ total: { kcal: 0, proteina: 0, carbos: 0, grasas: 0 }, meta: null, comidas: [] }, 1080, 80), ['sinAnotar']);
-  chequear('la deuda «sinDeuda» de 0015', H.leerMossHoy({ noche: { dormido: 480, necesidad: 480, cara: null, deuda: 0, deuda_palabra: 'sinDeuda' } }).noche.deudaPalabra, 'sinDeuda');
-  chequear('el día de Moss arranca a las 4', [H.fechaDeMoss(new Date(2026, 10, 19, 3, 59)), H.fechaDeMoss(new Date(2026, 10, 19, 4, 0))], ['2026-11-18', '2026-11-19']);
-  const hoy = H.leerMossHoy({ fecha: '2026-11-18', sin_deficit: true, noche: { dormido: 412, necesidad: 480, cara: 4, deuda: 290, deuda_palabra: 'baja' }, energia: 'rara', comida: { total: { kcal: 1450, proteina: 92, carbohidratos: 160, grasas: 48 }, meta: { kcal: 2300, proteina: 150 }, comidas: [{ momento: '2026-11-18T13:05:00', proteina: 40, carbohidratos: 70, grasas: 22 }] } });
-  chequear('moss_hoy: la noche, sin energía rara, y con «sin déficit» sin metas', [hoy.noche, hoy.energia, hoy.comida.meta, hoy.comida.comidas], [{ dormido: 412, necesidad: 480, cara: 4, deudaPalabra: 'baja' }, null, null, [{ min: 785, proteina: 40, carbos: 70, grasas: 22 }]]);
-  chequear('sin vínculo (null) o con otra forma, nada', [H.leerMossHoy(null), H.leerMossSemanas(null), H.leerMossObjetivo({ objetivo: 'otro' }), H.leerMossAnio('x')], [null, [], null, null]);
-  const vin = deBug('movil/src', 'MossVinculada.tsx');
-  chequear('las cuatro funciones de 0015, por el esquema moss', ['moss_hoy', 'moss_semanas', 'moss_objetivo', 'moss_anio'].every((n) => vin.includes(`supabase.schema('moss').rpc('${n}'`)), true);
-  chequear('se llega abajo, y sin datos de Moss no hay ningún bloque', [/scrollToEnd/.test(vin), /conDatos = vinculo\.vinculada === true && hayDatosDeMoss\(datosDeMoss\)/.test(deBug('movil/src', 'PuertaDeMoss.tsx'))], [true, true]);
-}
 console.log('\n341. La rutina automática: días, series, zonas y tiempo (19/11, galería 25)');
 {
   const R = await import('../nucleo/rutinaAutomatica.ts');
@@ -22236,6 +22213,94 @@ console.log('\n341. La rutina automática: días, series, zonas y tiempo (19/11,
   chequear('en silla de ruedas, nada de piernas', diasCon(R.armarRutina({ ...base, silla: true }), 'piernas'), 0);
   chequear('con un deporte, una serie menos en las piernas', [ejs(R.armarRutina({ ...base, deporte: true })).find((e) => e.ejercicio === 'sentadilla')?.series, ejs(R.armarRutina(base)).find((e) => e.ejercicio === 'sentadilla')?.series], [2, 3]);
   chequear('fuerza, menos repeticiones; con una condición, que vea a un médico', [ejs(R.armarRutina({ ...base, objetivo: 'fuerza' })).find((e) => e.ejercicio === 'sentadilla')?.reps, R.armarRutina({ ...base, condicion: true }).consultarMedico], [5, true]);
+}
+console.log('\n342. El catálogo muscular compartido con Moss (19/11)');
+{
+  const cat342 = JSON.parse(deBug('nucleo', 'catalogoMuscular.json'));
+  const MUSCULOS342 = ['cuadriceps', 'gluteos', 'isquios', 'espaldaBaja', 'aductores', 'pantorrillas', 'pecho', 'dorsales', 'trapecio', 'hombros', 'biceps', 'triceps', 'antebrazos', 'abdomen'];
+  // Todos los ejercicios del catálogo de la base, salvo el cardio (se mide en minutos, no en series).
+  const base342 = [...deBug('supabase', 'schema.sql').matchAll(/^\s+\('([a-z_]+)',\s*'[^']+',\s*'([a-z]+)'/gm)].filter((m) => ['piernas', 'pecho', 'espalda', 'hombros', 'brazos', 'core'].includes(m[2])).map((m) => m[1]);
+  chequear('cada ejercicio de la base tiene sus músculos', [...new Set(base342)].filter((id) => !cat342[id]).sort(), []);
+  chequear('y ninguno que la base no tenga', Object.keys(cat342).filter((id) => !base342.includes(id)), []);
+  chequear('cada uno dice si es multiarticular (la fatiga de Moss lo usa): la sentadilla sí, el curl no', [Object.values(cat342).every((v) => typeof v.multiarticular === 'boolean'), cat342.sentadilla.multiarticular, cat342.curl_barra.multiarticular], [true, true, false]);
+  chequear('solo los músculos de Moss, con al menos uno principal', Object.entries(cat342).filter(([, v]) => !v.principal.length || [...v.principal, ...v.ayuda].some((m) => !MUSCULOS342.includes(m))).map(([k]) => k), []);
+  chequear('partes, solo donde hay ensayos: el pecho alto en los inclinados y la cabeza larga en la extensión sobre la cabeza', Object.entries(cat342).filter(([, v]) => v.parte).map(([k, v]) => `${k}:${v.parte}`).sort(), ['press_inclinado:pechoAlto', 'press_inclinado_mancuernas:pechoAlto', 'press_inclinado_smith:pechoAlto', 'triceps_sobre_cabeza:tricepsLarga']);
+}
+console.log('\n343. Las cuentas de músculos, las mismas que Moss (puntajeMuscular.ts y sus casos, 19/11)');
+{
+  const P = await import('../nucleo/puntajeMuscular.ts');
+  const { casos } = JSON.parse(deBug('nucleo', 'puntajeMuscular.casos.json'));
+  // Como el toEqual de las pruebas de Moss: sin importar el orden de las claves.
+  const orden343 = (v) => (Array.isArray(v) ? v.map(orden343) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, orden343(v[k])])) : v);
+  const mal343 = casos.filter((c) => {
+    const r = P[c.funcion](...c.entrada);
+    return JSON.stringify(orden343(r instanceof Map ? Object.fromEntries(r) : r)) !== JSON.stringify(orden343(c.salida));
+  }).map((c) => c.que);
+  chequear(`los ${casos.length} casos compartidos dan lo mismo que en Moss`, mal343, []);
+  // Si la carpeta de Moss está en esta máquina, las dos copias tienen que ser idénticas (en CI no está).
+  const moss343 = 'C:/Users/agusc/AppData/Local/Claude-Data/claude_pzs8sxrjxfjjc/scratch-workspaces/72da519d-471d-42a1-aeb2-6c67de217f9c/f9bedcb3-8ceb-4006-8d30-0989e937913e/scratch-2026-10-21-9f7792/src/dominio/';
+  const igual343 = (a, b) => { try { return leerBug(moss343 + a, 'utf8').replace(/\r\n/g, '\n') === deBug('nucleo', b); } catch { return null; } };
+  const copias343 = [igual343('puntajeMuscular.ts', 'puntajeMuscular.ts'), igual343('puntajeMuscular.casos.json', 'puntajeMuscular.casos.json'), igual343('../secciones/ascent/cuerpo.ts', 'cuerpo.ts')];
+  if (copias343.every((x) => x !== null)) chequear('idénticos a los de Moss (las cuentas, sus casos y el cuerpo)', copias343, [true, true, true]);
+}
+console.log('\n343b. Progreso compartido con Moss: tendencia, estancados, razones y Tu año (progresoCompartido.ts, 19/11)');
+{
+  const G = await import('../nucleo/progresoCompartido.ts');
+  const { casos } = JSON.parse(deBug('nucleo', 'progresoCompartido.casos.json'));
+  const orden = (v) => (Array.isArray(v) ? v.map(orden) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, orden(v[k])])) : v);
+  const mal = casos.filter((c) => {
+    const r = G[c.funcion](...c.entrada);
+    return JSON.stringify(orden(r instanceof Map ? Object.fromEntries(r) : r)) !== JSON.stringify(orden(c.salida));
+  }).map((c) => c.que);
+  chequear(`los ${casos.length} casos compartidos dan lo mismo que en Moss`, mal, []);
+  const moss = 'C:/Users/agusc/AppData/Local/Claude-Data/claude_pzs8sxrjxfjjc/scratch-workspaces/72da519d-471d-42a1-aeb2-6c67de217f9c/f9bedcb3-8ceb-4006-8d30-0989e937913e/scratch-2026-10-21-9f7792/src/dominio/';
+  const igual = (a) => { try { return leerBug(moss + a, 'utf8').replace(/\r\n/g, '\n') === deBug('nucleo', a); } catch { return null; } };
+  const copias = [igual('progresoCompartido.ts'), igual('progresoCompartido.casos.json')];
+  if (copias.every((x) => x !== null)) chequear('idénticos a los de Moss', copias, [true, true]);
+}
+
+console.log('\n344. Lo que Ascent le pasa a las cuentas de músculos: la semana con su RIR (19/11)');
+{
+  const S = await import('../nucleo/semanaMuscular.ts');
+  const P = await import('../nucleo/puntajeMuscular.ts');
+  const cat344 = JSON.parse(deBug('nucleo', 'catalogoMuscular.json'));
+  const ses344 = [
+    // 100 × 5 hace 60 días: el 1RM de referencia del press es ~116,7, así que 50 kg (43 %) es entrada en calor.
+    { fecha: '2026-09-20', bloques: [{ ejercicio: 'press_banca', series: 1, pesos: [100], reps: [5] }] },
+    { fecha: '2026-11-18', bloques: [{ ejercicio: 'press_banca', series: 4, pesos: [50, 80, 80, 80], reps: [10, 8, 8, 6], rir: [5, 2, 1, 4] }, { ejercicio: 'cinta', series: 1, minutos: 20 }, { ejercicio: 'propio_abc', series: 2 }] },
+    { fecha: '2026-11-10', bloques: [{ ejercicio: 'sentadilla', series: 5, pesos: [100, 100, 100, 100, 100], reps: [5, 5, 5, 5, 5] }] },
+  ];
+  const ej344 = S.ejerciciosDeLaSemana(ses344, '2026-11-19', cat344, { propio_abc: 'espalda' }, { press_banca: 8 });
+  chequear('el press sin la entrada en calor, sin el cardio, el propio por su grupo, y nada de hace 9 días', ej344, [
+    { id: 'press_banca', fecha: '2026-11-18', principal: ['pecho'], ayuda: ['triceps', 'hombros'], objetivo: 8, series: [{ reps: 8, rir: 2 }, { reps: 8, rir: 1 }, { reps: 6, rir: 4 }] },
+    { id: 'propio_abc', fecha: '2026-11-18', principal: ['dorsales'], ayuda: [], objetivo: null, series: [{ reps: null, rir: null }, { reps: null, rir: null }] },
+  ]);
+  const rec344 = S.ejerciciosRecientes(ses344, '2026-11-19', cat344, { propio_abc: 'espalda' }, { press_banca: 8 });
+  chequear('las sesiones del press, de la más vieja a la nueva, para la próxima', S.sesionesDelEjercicio(rec344, 'press_banca').map((x) => x.series.length), [1, 3]);
+  const rut344 = S.diasDeLaRutina([{ descanso: true, ejercicios: [] }, { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 3, reps: 8 }, { ejercicio: 'cinta', series: 1, minutos: 20 }] }, { descanso: false, ejercicios: [{ ejercicio: 'sentadilla', series: 3 }] }], cat344, {});
+  chequear('la rutina como la reciben las cuentas: sin descansos ni cardio, con las series planeadas', rut344.map((d) => d.map((e) => [e.principal.join('+'), e.series.length, e.objetivo])), [[['pecho', 3, 8]], [['cuadriceps+gluteos', 3, null]]]);
+  // La fatiga: el press del 18/11 con RIR mínimo 1 → pecho listo 2 días después (20/11): mañana, «cargado» no; hoy 1 día.
+  const fat344 = S.musculosEnSesiones(rec344, cat344);
+  const pecho344 = fat344.get('pecho');
+  chequear('por músculo y sesión: series de trabajo y la reserva más baja', pecho344.map((x) => [x.fecha, x.series, x.rirMinimo]), [['2026-09-20', 1, null], ['2026-11-18', 3, 1]]);
+  chequear('y con las cuentas de Moss: el pecho vuelve el 20/11, a 1 día de hoy: recuperándose', [P.listoEl(pecho344), P.estadoDeFatiga(P.diasHastaListo(P.listoEl(pecho344), '2026-11-19'))], ['2026-11-20', 'recuperandose']);
+  chequear('una sentadilla al fallo cuenta como multiarticular de piernas', S.musculosEnSesiones([{ id: 'sentadilla', fecha: '2026-11-18', principal: ['cuadriceps', 'gluteos'], ayuda: [], series: [{ reps: 5, rir: 0 }] }], cat344).get('cuadriceps')[0].multiarticularDePiernas, true);
+  chequear('los grupos del día, del que más series tuvo al que menos (para Tu año)', S.gruposDelDia([{ ejercicio: 'curl_barra', series: 2 }, { ejercicio: 'press_banca', series: 4 }, { ejercicio: 'cinta', series: 1, minutos: 20 }], { curl_barra: 'brazos', press_banca: 'pecho', cinta: 'cardio' }), ['pecho', 'brazos', 'cardio']);
+  // Por qué: las 6 semanas hasta la de la marca (miércoles 4/11 → lunes 2/11) y las de después hasta hoy.
+  chequear('las semanas de las razones, como las de Moss', S.semanasParaLasRazones('2026-11-04', '2026-11-19'), {
+    antes: ['2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26', '2026-11-02'], ahora: ['2026-11-09', '2026-11-16'],
+  });
+  // El 1RM es el del día (95 × 7 → ~117,2): 40 kg es entrada en calor. Pecho como principal: 2 del press y 5 de aperturas; las
+  // pesadas, las del press nomás: 100 × 5 por las repeticiones, 95 × 7 por el 80 %. La sesión de otra semana no entra.
+  const sem344 = S.semanaDeEntreno([
+    { fecha: '2026-11-10', bloques: [{ ejercicio: 'press_banca', series: 3, pesos: [40, 100, 95], reps: [10, 5, 7] }, { ejercicio: 'aperturas', series: 3, pesos: [20, 20, 20], reps: [12, 12, 12] }] },
+    { fecha: '2026-11-12', bloques: [{ ejercicio: 'aperturas', series: 2, pesos: [20, 20], reps: [12, 12] }] },
+    { fecha: '2026-11-16', bloques: [{ ejercicio: 'press_banca', series: 3, pesos: [100, 100, 100], reps: [5, 5, 5] }] },
+  ], '2026-11-09', 'press_banca', 'pecho', cat344, {});
+  chequear('una semana del press: series del pecho con todos sus ejercicios, veces, pesadas', sem344, { lunes: '2026-11-09', series: 7, veces: 1, pesadas: 2, conReps: 2 });
+  const por344 = Object.fromEntries(P.seriesPorMusculo(ej344));
+  chequear('y las cuentas compartidas lo cuentan: pecho 2, tríceps 1, dorsales 2', [por344.pecho?.series, por344.triceps?.series, por344.dorsales?.series], [2, 1, 2]);
+  chequear('las reglas son las del archivo compartido, no unas propias', /from '\.\/puntajeMuscular\.ts'/.test(deBug('nucleo', 'semanaMuscular.ts')) && !/export function dentroDeLaSemana/.test(deBug('nucleo', 'semanaMuscular.ts')), true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

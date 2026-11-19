@@ -84,6 +84,13 @@ las cuentas las pinea la sección 330 de `test:db`. **Nada de esto se vio en un 
   globito con el logo de Moss («Moss · Pronto»); adentro, el logo (la estrella del ícono con su órbita), estrellas y
   la aurora, con los colores y las letras de Moss (`coloresDeMoss.ts`). Vincular espera a que Moss salga (galería
   16). **El tirón no se pudo probar**: la vista web no rebota.
+- **La sección de Moss, vinculada** (19/11, igual que la de Ascent en Moss, con la cara de Moss): se llega abajo, a
+  Tus músculos (cuerpo, barra 0–200 con la franja 70–130, el detalle con su RIR y la próxima, la nota de la rutina), y
+  se sube: fatigados, tu año, estancados, por qué y metas (0016). Tutorial de 5 pasos de 2 s, solo la primera vez y
+  desde el «!». Las cuentas son copias de Moss (`puntajeMuscular.ts`, `progresoCompartido.ts`, `cuerpo.ts`): se
+  recopian antes de cada commit (`test:db` 343). **Diferencia conocida** en «Por qué»: lo que bajas por semana sale
+  del peso de las dos últimas semanas de `moss_semanas` y los años, del primer registro de Ascent; Moss usa su
+  tendencia y el cuestionario (su 0017, propuesta, sin aplicar). Sonda: `probar-seccion-moss`.
 
 En Moss, Ascent se muda de Hábitos a Progreso (subiendo desde abajo), pendiente de su aprobación en esa galería.
 
