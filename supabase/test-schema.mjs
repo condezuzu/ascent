@@ -22084,8 +22084,28 @@ console.log('\n343. Las cuentas de músculos, las mismas que Moss (puntajeMuscul
   // Si la carpeta de Moss está en esta máquina, las dos copias tienen que ser idénticas (en CI no está).
   const moss343 = 'C:/Users/agusc/AppData/Local/Claude-Data/claude_pzs8sxrjxfjjc/scratch-workspaces/72da519d-471d-42a1-aeb2-6c67de217f9c/f9bedcb3-8ceb-4006-8d30-0989e937913e/scratch-2026-10-21-9f7792/src/dominio/';
   const igual343 = (a, b) => { try { return leerBug(moss343 + a, 'utf8').replace(/\r\n/g, '\n') === deBug('nucleo', b); } catch { return null; } };
-  const copias343 = [igual343('puntajeMuscular.ts', 'puntajeMuscular.ts'), igual343('puntajeMuscular.casos.json', 'puntajeMuscular.casos.json')];
-  if (copias343.every((x) => x !== null)) chequear('idénticos a los de Moss', copias343, [true, true]);
+  const copias343 = [igual343('puntajeMuscular.ts', 'puntajeMuscular.ts'), igual343('puntajeMuscular.casos.json', 'puntajeMuscular.casos.json'), igual343('../secciones/ascent/cuerpo.ts', 'cuerpo.ts')];
+  if (copias343.every((x) => x !== null)) chequear('idénticos a los de Moss (las cuentas, sus casos y el cuerpo)', copias343, [true, true, true]);
+}
+console.log('\n344. Lo que Ascent le pasa a las cuentas de músculos: la semana con su RIR (19/11)');
+{
+  const S = await import('../nucleo/semanaMuscular.ts');
+  const P = await import('../nucleo/puntajeMuscular.ts');
+  const cat344 = JSON.parse(deBug('nucleo', 'catalogoMuscular.json'));
+  const ses344 = [
+    // 100 × 5 hace 60 días: el 1RM de referencia del press es ~116,7, así que 50 kg (43 %) es entrada en calor.
+    { fecha: '2026-09-20', bloques: [{ ejercicio: 'press_banca', series: 1, pesos: [100], reps: [5] }] },
+    { fecha: '2026-11-18', bloques: [{ ejercicio: 'press_banca', series: 4, pesos: [50, 80, 80, 80], reps: [10, 8, 8, 6], rir: [5, 2, 1, 4] }, { ejercicio: 'cinta', series: 1, minutos: 20 }, { ejercicio: 'propio_abc', series: 2 }] },
+    { fecha: '2026-11-10', bloques: [{ ejercicio: 'sentadilla', series: 5, pesos: [100, 100, 100, 100, 100], reps: [5, 5, 5, 5, 5] }] },
+  ];
+  const ej344 = S.ejerciciosDeLaSemana(ses344, '2026-11-19', cat344, { propio_abc: 'espalda' }, { press_banca: 8 });
+  chequear('el press sin la entrada en calor, sin el cardio, el propio por su grupo, y nada de hace 9 días', ej344, [
+    { principal: ['pecho'], ayuda: ['triceps', 'hombros'], objetivo: 8, series: [{ reps: 8, rir: 2 }, { reps: 8, rir: 1 }, { reps: 6, rir: 4 }] },
+    { principal: ['dorsales'], ayuda: [], objetivo: null, series: [{ reps: null, rir: null }, { reps: null, rir: null }] },
+  ]);
+  const por344 = Object.fromEntries(P.seriesPorMusculo(ej344));
+  chequear('y las cuentas compartidas lo cuentan: pecho 2, tríceps 1, dorsales 2', [por344.pecho?.series, por344.triceps?.series, por344.dorsales?.series], [2, 1, 2]);
+  chequear('las reglas son las del archivo compartido, no unas propias', /from '\.\/puntajeMuscular\.ts'/.test(deBug('nucleo', 'semanaMuscular.ts')) && !/export function dentroDeLaSemana/.test(deBug('nucleo', 'semanaMuscular.ts')), true);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
