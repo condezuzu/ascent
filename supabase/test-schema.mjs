@@ -5338,7 +5338,7 @@ console.log('\n71. Lo que el codigo nombra, existe');
   const funcionesQueNoEstan = new Set();
   // LAS DE MOSS (D27) viven en el esquema `moss`, que arma el repo de Moss: no están en este
   // schema.sql. Se llaman con `.schema('moss')` y solo las anotadas; una nueva obliga a decidir.
-  const DE_MOSS = ['estado_del_vinculo', 'desvincular'];
+  const DE_MOSS = ['estado_del_vinculo', 'desvincular', 'vincular_con_codigo'];
   let textos = 0;
   let llamadas = 0;
   for (const a of archivos) {
@@ -22175,6 +22175,16 @@ console.log('\n339. Moss: la puerta dice solo «Moss» y adentro se vincula (18/
   chequear('adentro: vincula, o vinculada y desvincular', [/estado_del_vinculo/.test(puerta), /rpc\('desvincular'\)/.test(puerta), /moss-vincular/.test(puerta), /moss-desvincular/.test(puerta)], [true, true, true, true]);
   chequear('el botón abre Moss, y sin Moss va a conseguirla', /openURL\(ABRIR_MOSS\)\.catch\(\(\) => Linking\.openURL\(CONSEGUIR_MOSS\)/.test(puerta), true);
   chequear('al volver de Moss pregunta de nuevo', /plataforma\.ciclo\.alCambiar/.test(puerta), true);
+  chequear('el código de Moss: solo pasa con su forma', [V.codigoDeVinculo('a'.repeat(43)), V.codigoDeVinculo('a'.repeat(42)), V.codigoDeVinculo('a'.repeat(42) + '/'), V.codigoDeVinculo(undefined)], ['a'.repeat(43), null, null, null]);
+  chequear('lo que contesta moss.vincular_con_codigo', [V.resultadoDelCodigo({ ok: true, nombre: 'x' }), V.resultadoDelCodigo({ ok: false, error: 'vencido' }), V.resultadoDelCodigo({ ok: false, error: 'raro' }), V.resultadoDelCodigo(null)], [{ ok: true }, { ok: false, motivo: 'vencido' }, { ok: false, motivo: 'no_existe' }, { ok: false, motivo: 'red' }]);
+  chequear('desde Moss (/vincular/<código>): Stats abre Moss con «Vincular», que canjea el código', [
+    /pedirRecibirMoss\(codigoDeVinculo\(codigo\)\)/.test(deBug('movil/app/vincular', '[codigo].tsx')),
+    /hayRecibirMoss\(\)\) irA\('stats'\)/.test(deBug('movil/src', 'Pestanas.tsx')),
+    /tomarRecibirMoss\(\)/.test(deBug('movil/src', 'Stats.tsx')),
+    /rpc\('vincular_con_codigo', \{ p_codigo: codigo \}\)/.test(puerta),
+  ], [true, true, true, true]);
+  const aasa339 = deBug('src/app/.well-known/apple-app-site-association', 'route.ts');
+  chequear('el enlace es universal (solo lo abre Ascent), y sin Ascent la web ofrece la tienda', [/'\/vincular\/\*'/.test(aasa339), /'\/vincular'\]/.test(deBug('src/lib/supabase', 'middleware.ts')), /href=\{TIENDA\}/.test(deBug('src/app/vincular/[codigo]', 'page.tsx')), /href=\{`ascent:\/\/vincular\/\$\{codigo\}`\}/.test(deBug('src/app/vincular/[codigo]', 'page.tsx'))], [true, true, true, true]);
   chequear('va a la hoja de vincular de Moss, y si no está, a su ficha de la App Store', [/ABRIR_MOSS = 'moss:\/\/vincular'/.test(puerta), /CONSEGUIR_MOSS = 'https:\/\/apps\.apple\.com\/app\/id6828034537'/.test(puerta)], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);

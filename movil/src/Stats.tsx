@@ -52,6 +52,7 @@ import { LLEGA, MS, sinMovimiento } from './movimiento';
 import CifrasDelAno from './CifrasDelAno';
 import Entra from './Entra';
 import PuertaDeMoss, { MossAsomando, TIRON_PARA_ENTRAR } from './PuertaDeMoss';
+import { RECIBIR_MOSS, tomarRecibirMoss } from './recibirMoss';
 import { YA_SE_ABRIO_EL_DIA_MS } from './RutinaPlegada';
 import Surgir from './Surgir';
 import Relleno from './Relleno';
@@ -109,6 +110,18 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
   const [anoAbierto, setAnoAbierto] = useState(false);
   // MOSS, ARRIBA (2/11, a pedido). Cuánto se tiró para abajo desde el tope: es lo negativo del desplazamiento.
   const [enMoss, setEnMoss] = useState(false);
+  // Desde Moss (el enlace `/vincular/<código>`): se abre con «Vincular» para canjear el código.
+  const [codigoDeMoss, setCodigoDeMoss] = useState<string | null>(null);
+  useEffect(() => {
+    const abrir = () => {
+      const pedido = tomarRecibirMoss();
+      if (!pedido) return;
+      setCodigoDeMoss(pedido.codigo);
+      setEnMoss(true);
+    };
+    abrir();
+    return eventos.escuchar(RECIBIR_MOSS, abrir);
+  }, []);
   const tironAlSoltar = useRef(0);
   const desplazado = useRef(new Animated.Value(0)).current;
   const tiron = useRef(Animated.multiply(desplazado, -1)).current;
@@ -317,12 +330,16 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     >
       <PuertaDeMoss
         abierta={enMoss}
+        codigo={codigoDeMoss}
         desde={tironAlSoltar.current}
         alAbrir={() => {
           tironAlSoltar.current = 0;
           setEnMoss(true);
         }}
-        alCerrar={() => setEnMoss(false)}
+        alCerrar={() => {
+          setEnMoss(false);
+          setCodigoDeMoss(null);
+        }}
       />
       <Entra><Text style={estilos.titulo}>{T.stats.titulo}</Text></Entra>
 
