@@ -16,6 +16,7 @@ import { ponerDesenfoque, ponerTira } from './desenfoqueDelFondo';
 import { eventos } from '@compartido/eventos';
 import { SOCIAL_CAMBIO } from '@compartido/ranking';
 import { IR_A_PESTANA, PESTANA_ACTIVA, type Pestana } from './irAPestana';
+import { hayRecibirMoss } from './recibirMoss';
 import IconoDePestana from './IconoDePestana';
 import { ContextoVisible } from './pedidoDeFondo';
 import { deslizarPestanasBloqueado } from './gestoDePestanas';
@@ -408,6 +409,10 @@ export default function Pestanas({
 
   // "Ir a Ajustes" desde el texto de otra pantalla: ver `irAPestana.ts`.
   useEffect(() => eventos.escuchar(IR_A_PESTANA, (p) => irA(p as Pestana)), [irA]);
+  // `ascent://vincular` con la app cerrada: el pedido llegó antes que las pestañas.
+  useEffect(() => {
+    if (hayRecibirMoss()) irA('stats');
+  }, [irA]);
 
 
   const pan = useMemo(

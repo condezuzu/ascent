@@ -169,3 +169,23 @@ export function crearSesionCompartida(d: Dependencias) {
     },
   };
 }
+
+// EL CÓDIGO DE UN USO (18/11): vincular arrancando desde Moss sin contraseña. Moss lo crea
+// (`moss.crear_codigo_de_vinculo`, 32 bytes en base64url, 5 min, un uso) y abre Ascent con el enlace
+// universal `/vincular/<código>`; Ascent lo canjea con su sesión (`moss.vincular_con_codigo`).
+
+/** El código de la URL, si tiene la forma de uno; si no, null. */
+export function codigoDeVinculo(crudo: unknown): string | null {
+  return typeof crudo === 'string' && /^[A-Za-z0-9_-]{43}$/.test(crudo) ? crudo : null;
+}
+
+export type ResultadoDelCodigo = { ok: true } | { ok: false; motivo: 'vencido' | 'usado' | 'no_existe' | 'sin_ascent' | 'red' };
+
+/** Lo que contesta `moss.vincular_con_codigo`; `null` es que no llegó respuesta. */
+export function resultadoDelCodigo(datos: unknown): ResultadoDelCodigo {
+  const d = datos && typeof datos === 'object' && !Array.isArray(datos) ? (datos as Record<string, unknown>) : null;
+  if (!d) return { ok: false, motivo: 'red' };
+  if (d.ok === true) return { ok: true };
+  if (d.error === 'vencido' || d.error === 'usado' || d.error === 'sin_ascent') return { ok: false, motivo: d.error };
+  return { ok: false, motivo: 'no_existe' };
+}

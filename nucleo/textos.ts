@@ -63,6 +63,22 @@ const ES = {
 
     sigueVinculada: 'Sigue vinculada con Moss. Prueba de nuevo.',
 
+    mossQuiere: 'Moss quiere vincularse con esta cuenta de Ascent. Puedes desvincular cuando quieras.',
+
+    vincular: 'Vincular',
+
+    webSinAscent: 'Para vincular Moss con Ascent necesitas Ascent en este iPhone.',
+
+    conseguirAscent: 'Conseguir Ascent',
+
+    abrirAscent: 'Ya tengo Ascent: abrir',
+
+    webDespues: 'Después de instalarla y entrar, vuelve a Moss y toca Vincular otra vez.',
+
+    codigoViejo: 'Ese enlace de Moss ya no sirve. Vuelve a Moss y toca Vincular otra vez.',
+
+    noSeVinculo: 'No se vinculó. Prueba de nuevo.',
+
   },
   // ---------------------------------------------------------------
   // LAS VIDAS. Se llamaron "impulsos" un tiempo, por elegancia, y el humano lo

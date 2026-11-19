@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';
 import { plataforma } from '@plataforma';
 import { useEnVuelo } from '@compartido/useEnVuelo';
-import { estaVinculada } from '@nucleo/vinculoConMoss';
+import { estaVinculada, resultadoDelCodigo } from '@nucleo/vinculoConMoss';
 import { supabase } from './supabase';
 import Svg, { Circle, Defs, Ellipse, G, Path, RadialGradient, Stop } from 'react-native-svg';
 import { T } from '@nucleo/textos';
@@ -132,7 +132,7 @@ function CieloDeMoss({ avance, alto, rotulo = T.moss.vinculaTitulo }: { avance: 
  *
  * `tiron` es cuánto se tiró, atado al desplazamiento de Stats por el motor nativo, sin pasar por JS.
  */
-export default function PuertaDeMoss({ abierta, desde = 0, alAbrir, alCerrar }: { abierta: boolean; /** Cuánto se tiró antes de soltar: de ahí sigue bajando. */ desde?: number; alAbrir: () => void; alCerrar: () => void }) {
+export default function PuertaDeMoss({ abierta, codigo = null, desde = 0, alAbrir, alCerrar }: { abierta: boolean; /** Llegó desde Moss con un código de un uso: «Vincular» lo canjea. */ codigo?: string | null; /** Cuánto se tiró antes de soltar: de ahí sigue bajando. */ desde?: number; alAbrir: () => void; alCerrar: () => void }) {
   const flecha = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     void cargarFuentesDeMoss();
@@ -165,7 +165,7 @@ export default function PuertaDeMoss({ abierta, desde = 0, alAbrir, alCerrar }: 
         <LogoDeMoss tam={26} />
         <Text style={estilos.entradaNombre}>{T.moss.nombre}</Text>
       </Tocable>
-      <PantallaDeMoss visible={abierta} desde={desde} alCerrar={alCerrar} />
+      <PantallaDeMoss visible={abierta} codigo={codigo} desde={desde} alCerrar={alCerrar} />
     </>
   );
 }
@@ -196,6 +196,10 @@ const CONSEGUIR_MOSS = 'https://apps.apple.com/app/id6828034537';
  * VINCULAR CON MOSS (18/11). Sin el llavero compartido —llega con una build— Ascent no tiene la sesión de
  * Moss, así que se vincula en Moss, con el correo de Ascent: el botón la abre, y al volver se pregunta de
  * nuevo. Vinculada, lo dice y ofrece desvincular, que borra el vínculo de las dos apps.
+ *
+ * DESDE MOSS es al revés: Moss crea un código de un uso y abre el enlace universal `/vincular/<código>`,
+ * que solo puede abrir Ascent. «Vincular» lo canjea con la sesión de Ascent: sin contraseña, que las
+ * cuentas de Moss hechas con Apple no tienen.
  */
 function useVinculoConMoss(abierta: boolean) {
   // null mientras se pregunta: sin eso el botón salta de «Vincular» a «Desvincular».
@@ -220,6 +224,22 @@ function useVinculoConMoss(abierta: boolean) {
     setAviso('');
     await Linking.openURL(ABRIR_MOSS).catch(() => Linking.openURL(CONSEGUIR_MOSS).catch(() => undefined));
   });
+  // El código sirve una vez: canjeado, «Desvincular» vuelve al botón de siempre y no a canjearlo de nuevo.
+  const [canjeado, setCanjeado] = useState(false);
+  const conCodigo = useEnVuelo(async (codigo: string) => {
+    setAviso('');
+    try {
+      const { data, error } = await supabase.schema('moss').rpc('vincular_con_codigo', { p_codigo: codigo });
+      const r = resultadoDelCodigo(error ? null : data);
+      if (r.ok) {
+        setCanjeado(true);
+        return setVinculada(true);
+      }
+      setAviso(r.motivo === 'vencido' || r.motivo === 'usado' || r.motivo === 'no_existe' ? T.moss.codigoViejo : T.moss.noSeVinculo);
+    } catch {
+      setAviso(T.moss.noSeVinculo);
+    }
+  });
   const desvincular = useEnVuelo(async () => {
     setAviso('');
     try {
@@ -230,10 +250,10 @@ function useVinculoConMoss(abierta: boolean) {
       setAviso(T.moss.sigueVinculada);
     }
   });
-  return { vinculada, aviso, vincular, desvincular };
+  return { vinculada, aviso, vincular, conCodigo, canjeado, desvincular };
 }
 
-function PantallaDeMoss({ visible, desde, alCerrar }: { visible: boolean; desde: number; alCerrar: () => void }) {
+function PantallaDeMoss({ visible, codigo, desde, alCerrar }: { visible: boolean; codigo: string | null; desde: number; alCerrar: () => void }) {
   const { height: alto } = useWindowDimensions();
   const vinculo = useVinculoConMoss(visible);
   const [montada, setMontada] = useState(visible);
@@ -297,6 +317,13 @@ function PantallaDeMoss({ visible, desde, alCerrar }: { visible: boolean; desde:
               <Tocable testID="moss-desvincular" style={estilos.botonTenue} onPress={() => void vinculo.desvincular()} accessibilityRole="button">
                 <Text style={estilos.botonTenueTexto}>{T.moss.desvincular}</Text>
               </Tocable>
+            ) : codigo && !vinculo.canjeado ? (
+              <>
+                <Text style={estilos.pie}>{T.moss.mossQuiere}</Text>
+                <Tocable testID="moss-vincular-codigo" style={estilos.boton} onPress={() => void vinculo.conCodigo(codigo)} accessibilityRole="button">
+                  <Text style={estilos.botonTexto}>{T.moss.vincular}</Text>
+                </Tocable>
+              </>
             ) : (
               <>
                 <Text style={estilos.pie}>{T.moss.vinculaPie}</Text>
