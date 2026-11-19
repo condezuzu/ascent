@@ -68,21 +68,33 @@ export function hayDatosDeMoss(d: Datos | null): d is Datos {
   return !!d && !!(d.hoy?.noche || d.hoy?.comida || d.hoy?.energia || d.semanas.length || d.objetivo || d.anio);
 }
 
-function Barra({ valor, meta, raya }: { valor: number; meta: number; raya?: number }) {
+function Barra({ valor, meta, raya, gruesa }: { valor: number; meta: number; raya?: number; gruesa?: boolean }) {
   const lleno = Math.max(0, Math.min(1, valor / meta));
   return (
-    <View style={estilos.barra}>
+    <View style={[estilos.barra, gruesa && estilos.barraGruesa]}>
       <View style={[estilos.barraLlena, { width: `${lleno * 100}%` }]} />
       {raya !== undefined && <View style={[estilos.raya, { left: `${Math.min(1, raya / meta) * 100}%` }]} />}
     </View>
   );
 }
 
-function Fila({ izq, der }: { izq: string; der: string }) {
+/** Un número grande con lo que es abajo, como «Tu año» de Moss. */
+function Cifra({ valor, que }: { valor: string; que: string }) {
   return (
-    <View style={estilos.fila}>
-      <Text style={estilos.filaIzq}>{izq}</Text>
-      <Text style={estilos.filaDer}>{der}</Text>
+    <View style={estilos.cifra}>
+      <Text style={estilos.cifraValor}>{valor}</Text>
+      <Text style={estilos.cifraQue}>{que}</Text>
+    </View>
+  );
+}
+
+/** Lo comido contra la meta: el nombre, la barra y el número. */
+function Macro({ que, total, meta, unidad }: { que: string; total: number; meta: number | null; unidad: string }) {
+  return (
+    <View style={estilos.macro}>
+      <Text style={estilos.macroQue}>{que}</Text>
+      <View style={estilos.macroBarra}>{meta ? <Barra valor={total} meta={meta} gruesa /> : null}</View>
+      <Text style={estilos.macroNum}>{meta ? `${Math.round(total)}/${Math.round(meta)}` : Math.round(total)} {unidad}</Text>
     </View>
   );
 }
@@ -94,6 +106,7 @@ export default function MossVinculada({ datos, alDesvincular }: { datos: Datos; 
   const esperar = queEsperarHoy(hoy?.comida ?? null, ahora.getHours() * 60 + ahora.getMinutes(), objetivo?.peso ?? null);
   const semana = semanas[semanas.length - 1];
   const comida = hoy?.comida;
+  const kg = (n: number) => `${pesoCorto(n, 'kg')} kg`;
   return (
     <ScrollView
       ref={lista}
@@ -111,75 +124,101 @@ export default function MossVinculada({ datos, alDesvincular }: { datos: Datos; 
       {anio && (
         <View style={estilos.bloque}>
           <Text style={estilos.etiqueta}>{T.moss.tuAnio}</Text>
-          <Fila izq={T.moss.diasAnotados} der={String(anio.diasConComida)} />
-          {anio.pesoInicio !== null && anio.pesoHoy !== null && <Fila izq={T.moss.pesoDelAnio} der={`${pesoCorto(anio.pesoInicio, 'kg')} → ${pesoCorto(anio.pesoHoy, 'kg')} kg`} />}
+          <View style={estilos.cifras}>
+            <Cifra valor={String(anio.diasConComida)} que={T.moss.diasAnotados} />
+            <Cifra valor={String(anio.noches)} que={T.moss.noches} />
+            {anio.pesoInicio !== null && anio.pesoHoy !== null && <Cifra valor={`${pesoCorto(anio.pesoInicio, 'kg')} → ${pesoCorto(anio.pesoHoy, 'kg')}`} que={T.moss.pesoDelAnio} />}
+          </View>
         </View>
       )}
 
       {objetivo && (
         <View style={estilos.bloque}>
           <Text style={estilos.etiqueta}>{T.moss.tuObjetivo}</Text>
-          <Fila izq={T.moss.objetivos[objetivo.objetivo]} der={objetivo.pesoMeta !== null ? `${pesoCorto(objetivo.pesoMeta, 'kg')} kg` : ''} />
+          <Text style={estilos.grande}>{T.moss.objetivos[objetivo.objetivo]}</Text>
+          {objetivo.peso !== null && objetivo.pesoMeta !== null && <Text style={estilos.linea}>{`${kg(objetivo.peso)} → ${kg(objetivo.pesoMeta)}`}</Text>}
         </View>
       )}
 
       {semana && (
         <View style={estilos.bloque}>
           <Text style={estilos.etiqueta}>{T.moss.estaSemana}</Text>
-          {semana.dormido !== null && <Fila izq={T.moss.suenoPromedio} der={horas(semana.dormido)} />}
-          {semana.proteinaGKg !== null && <Fila izq={T.moss.proteinaPorDia} der={`${pesoCorto(semana.proteinaGKg, 'kg')} g/kg`} />}
-          {semana.balance !== null && <Fila izq={T.moss.balancePorDia} der={`${semana.balance > 0 ? '+' : ''}${Math.round(semana.balance)} kcal`} />}
-          {semana.peso !== null && <Fila izq={T.moss.peso} der={`${pesoCorto(semana.peso, 'kg')} kg`} />}
+          <View style={estilos.cifras}>
+            {semana.dormido !== null && <Cifra valor={horas(semana.dormido)} que={T.moss.suenoPromedio} />}
+            {semana.proteinaGKg !== null && <Cifra valor={`${pesoCorto(semana.proteinaGKg, 'kg')} g/kg`} que={T.moss.proteinaPorDia} />}
+            {semana.balance !== null && <Cifra valor={`${semana.balance > 0 ? '+' : ''}${Math.round(semana.balance)}`} que={T.moss.balancePorDia} />}
+            {semana.peso !== null && <Cifra valor={kg(semana.peso)} que={T.moss.peso} />}
+          </View>
         </View>
       )}
 
       <View style={estilos.bloque}>
         <Text style={estilos.etiqueta}>{datos.entrenoHoy ? T.moss.despuesDeEntrenar : T.moss.antesDeEntrenar}</Text>
         {comida && (
-          <>
-            <Fila izq={T.moss.proteina} der={comida.meta ? `${Math.round(comida.total.proteina)} / ${Math.round(comida.meta.proteina)} g` : `${Math.round(comida.total.proteina)} g`} />
-            {comida.meta && <Barra valor={comida.total.proteina} meta={comida.meta.proteina} />}
-            <Fila izq={T.moss.calorias} der={comida.meta ? `${Math.round(comida.total.kcal)} / ${Math.round(comida.meta.kcal)} kcal` : `${Math.round(comida.total.kcal)} kcal`} />
-            {comida.meta && <Barra valor={comida.total.kcal} meta={comida.meta.kcal} />}
-          </>
+          <View style={estilos.macros}>
+            <Macro que={T.moss.proteina} total={comida.total.proteina} meta={comida.meta?.proteina ?? null} unidad="g" />
+            {comida.total.carbos !== null && <Macro que={T.moss.carbohidratos} total={comida.total.carbos} meta={comida.meta?.carbos ?? null} unidad="g" />}
+            {comida.total.grasas !== null && <Macro que={T.moss.grasas} total={comida.total.grasas} meta={comida.meta?.grasas ?? null} unidad="g" />}
+            <Macro que={T.moss.calorias} total={comida.total.kcal} meta={comida.meta?.kcal ?? null} unidad="kcal" />
+          </View>
         )}
-        {!datos.entrenoHoy && esperar.map((e) => (
-          <Text key={e} testID={`moss-esperar-${e}`} style={estilos.linea}>
-            {T.moss.esperar[e]}
-          </Text>
-        ))}
+        {!datos.entrenoHoy &&
+          esperar.map((e) => (
+            <View key={e} style={estilos.esperar}>
+              {/* El punto, como en Moss: terracota si es un aviso, oro si está bien. */}
+              <View style={[estilos.punto, { backgroundColor: e === 'bienComido' ? MOSS.oro : MOSS.terracota }]} />
+              <Text testID={`moss-esperar-${e}`} style={estilos.linea}>
+                {T.moss.esperar[e]}
+              </Text>
+            </View>
+          ))}
       </View>
 
       {(hoy?.noche || hoy?.energia) && (
-        <View style={estilos.bloque}>
+        <View style={[estilos.bloque, estilos.ultimo]}>
           <Text style={estilos.etiqueta}>{T.moss.tuNoche}</Text>
           {hoy?.noche && (
             <>
-              <Fila izq={T.moss.dormiste} der={`${horas(hoy.noche.dormido)} / ${horas(hoy.noche.necesidad)}`} />
+              <Text style={estilos.enorme}>
+                {horas(hoy.noche.dormido)}
+                <Text style={estilos.deCuanto}>{`  ${T.moss.de} ${horas(hoy.noche.necesidad)}`}</Text>
+              </Text>
               {/* La raya de las 6 h, como en Moss. */}
-              <Barra valor={hoy.noche.dormido} meta={hoy.noche.necesidad} raya={360} />
-              {hoy.noche.deudaPalabra && <Fila izq={T.moss.deuda} der={T.moss.deudas[hoy.noche.deudaPalabra]} />}
+              <Barra valor={hoy.noche.dormido} meta={hoy.noche.necesidad} raya={360} gruesa />
+              {hoy.noche.deudaPalabra && <Text style={estilos.linea}>{T.moss.deudaEs(T.moss.deudas[hoy.noche.deudaPalabra])}</Text>}
             </>
           )}
-          {hoy?.energia && <Fila izq={T.moss.energia} der={T.moss.energias[hoy.energia]} />}
+          {hoy?.energia && <Text style={estilos.linea}>{T.moss.energiaEs(T.moss.energias[hoy.energia])}</Text>}
         </View>
       )}
-
     </ScrollView>
   );
 }
 
 const estilos = StyleSheet.create({
-  contenido: { flexGrow: 1, justifyContent: 'flex-end', paddingHorizontal: 28, paddingTop: 90, paddingBottom: 130, gap: 22 },
+  contenido: { flexGrow: 1, justifyContent: 'flex-end', paddingHorizontal: 24, paddingTop: 90, paddingBottom: 120 },
   titulo: { color: MOSS.pergamino, fontFamily: LETRAS_DE_MOSS.titulo, fontSize: 30, textAlign: 'center' },
-  bloque: { gap: 6 },
-  etiqueta: { color: MOSS.oro, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 11, letterSpacing: 2.4, textTransform: 'uppercase', marginBottom: 2 },
-  fila: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 },
-  filaIzq: { color: MOSS.pergaminoTenue, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 14 },
-  filaDer: { color: MOSS.pergamino, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 14 },
-  barra: { height: 3, borderRadius: 999, backgroundColor: MOSS.oroBorde, overflow: 'hidden', marginBottom: 4 },
-  barraLlena: { height: 3, backgroundColor: MOSS.oro },
-  raya: { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: MOSS.pergamino },
-  linea: { color: MOSS.pergamino, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 14, lineHeight: 20, marginTop: 4 },
-  desvincular: { color: MOSS.pergaminoTenue, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 13, textAlign: 'center', paddingVertical: 10 },
+  desvincular: { color: MOSS.pergaminoTenue, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 13, textAlign: 'center', paddingVertical: 10, marginBottom: 6 },
+  bloque: { gap: 10, paddingVertical: 22, borderTopWidth: 1, borderTopColor: MOSS.linea },
+  ultimo: { paddingBottom: 6 },
+  etiqueta: { color: MOSS.oro, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 12, letterSpacing: 2.6, textTransform: 'uppercase' },
+  grande: { color: MOSS.pergamino, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 26, lineHeight: 32 },
+  enorme: { color: MOSS.oroClaro, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 44, lineHeight: 52 },
+  deCuanto: { color: MOSS.pergaminoTenue, fontSize: 18 },
+  linea: { flex: 1, color: MOSS.pergamino, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 15, lineHeight: 21 },
+  cifras: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 16 },
+  cifra: { width: '50%', gap: 2 },
+  cifraValor: { color: MOSS.pergamino, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 26 },
+  cifraQue: { color: MOSS.pergaminoTenue, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 13 },
+  macros: { gap: 10 },
+  macro: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  macroQue: { width: 96, color: MOSS.pergamino, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 14 },
+  macroBarra: { flex: 1 },
+  macroNum: { minWidth: 84, textAlign: 'right', color: MOSS.pergaminoTenue, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 13 },
+  barra: { height: 4, borderRadius: 999, backgroundColor: MOSS.linea, overflow: 'hidden' },
+  barraGruesa: { height: 10 },
+  barraLlena: { height: '100%', backgroundColor: MOSS.oro, borderRadius: 999 },
+  raya: { position: 'absolute', top: 0, bottom: 0, width: 2, backgroundColor: MOSS.pergamino },
+  esperar: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  punto: { width: 8, height: 8, borderRadius: 4, marginTop: 7 },
 });

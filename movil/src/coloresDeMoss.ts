@@ -23,4 +23,8 @@ export const MOSS = {
   nocheVidrio: 'rgba(13,26,56,0.62)',
   pergamino: '#efe6cf',
   pergaminoTenue: 'rgba(239,230,207,0.62)',
+  // El de los avisos de su sección de Ascent (un músculo cargado, «qué esperar» que avisa).
+  terracota: '#d0866a',
+  // Las líneas que separan sus bloques.
+  linea: 'rgba(239,230,207,0.12)',
 } as const;
