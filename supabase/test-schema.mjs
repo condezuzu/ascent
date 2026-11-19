@@ -22070,6 +22070,23 @@ console.log('\n342. El catálogo muscular compartido con Moss (19/11)');
   chequear('solo los músculos de Moss, con al menos uno principal', Object.entries(cat342).filter(([, v]) => !v.principal.length || [...v.principal, ...v.ayuda].some((m) => !MUSCULOS342.includes(m))).map(([k]) => k), []);
   chequear('partes, solo donde hay ensayos: el pecho alto en los inclinados y la cabeza larga en la extensión sobre la cabeza', Object.entries(cat342).filter(([, v]) => v.parte).map(([k, v]) => `${k}:${v.parte}`).sort(), ['press_inclinado:pechoAlto', 'press_inclinado_mancuernas:pechoAlto', 'press_inclinado_smith:pechoAlto', 'triceps_sobre_cabeza:tricepsLarga']);
 }
+console.log('\n343. Las cuentas de músculos, las mismas que Moss (puntajeMuscular.ts y sus casos, 19/11)');
+{
+  const P = await import('../nucleo/puntajeMuscular.ts');
+  const { casos } = JSON.parse(deBug('nucleo', 'puntajeMuscular.casos.json'));
+  // Como el toEqual de las pruebas de Moss: sin importar el orden de las claves.
+  const orden343 = (v) => (Array.isArray(v) ? v.map(orden343) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, orden343(v[k])])) : v);
+  const mal343 = casos.filter((c) => {
+    const r = P[c.funcion](...c.entrada);
+    return JSON.stringify(orden343(r instanceof Map ? Object.fromEntries(r) : r)) !== JSON.stringify(orden343(c.salida));
+  }).map((c) => c.que);
+  chequear(`los ${casos.length} casos compartidos dan lo mismo que en Moss`, mal343, []);
+  // Si la carpeta de Moss está en esta máquina, las dos copias tienen que ser idénticas (en CI no está).
+  const moss343 = 'C:/Users/agusc/AppData/Local/Claude-Data/claude_pzs8sxrjxfjjc/scratch-workspaces/72da519d-471d-42a1-aeb2-6c67de217f9c/f9bedcb3-8ceb-4006-8d30-0989e937913e/scratch-2026-10-21-9f7792/src/dominio/';
+  const igual343 = (a, b) => { try { return leerBug(moss343 + a, 'utf8').replace(/\r\n/g, '\n') === deBug('nucleo', b); } catch { return null; } };
+  const copias343 = [igual343('puntajeMuscular.ts', 'puntajeMuscular.ts'), igual343('puntajeMuscular.casos.json', 'puntajeMuscular.casos.json')];
+  if (copias343.every((x) => x !== null)) chequear('idénticos a los de Moss', copias343, [true, true]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

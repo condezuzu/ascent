@@ -1,0 +1,112 @@
+{
+  "nota": "Los casos de puntajeMuscular.ts, iguales en Moss y en Ascent. Cada uno: la función, lo que recibe y lo que tiene que dar.",
+  "casos": [
+    { "que": "RIR 3 es dura", "funcion": "esDura", "entrada": [{ "reps": 8, "rir": 3 }], "salida": true },
+    { "que": "RIR 4 no es dura", "funcion": "esDura", "entrada": [{ "reps": 8, "rir": 4 }], "salida": false },
+    { "que": "al fallo es dura", "funcion": "esDura", "entrada": [{ "reps": 6, "rir": 0 }], "salida": true },
+    { "que": "sin RIR, llega al objetivo", "funcion": "esDura", "entrada": [{ "reps": 10 }, 10], "salida": true },
+    { "que": "sin RIR, no llega al objetivo", "funcion": "esDura", "entrada": [{ "reps": 7 }, 10], "salida": false },
+    { "que": "sin RIR ni objetivo, cuenta", "funcion": "esDura", "entrada": [{ "reps": 7 }], "salida": true },
+
+    { "que": "0 series", "funcion": "puntaje", "entrada": [0], "salida": 0 },
+    { "que": "5 series", "funcion": "puntaje", "entrada": [5], "salida": 35 },
+    { "que": "10 series", "funcion": "puntaje", "entrada": [10], "salida": 70 },
+    { "que": "12,5 series (con ayuda)", "funcion": "puntaje", "entrada": [12.5], "salida": 85 },
+    { "que": "15 series es el medio", "funcion": "puntaje", "entrada": [15], "salida": 100 },
+    { "que": "20 series", "funcion": "puntaje", "entrada": [20], "salida": 130 },
+    { "que": "40 series topa en 200", "funcion": "puntaje", "entrada": [40], "salida": 200 },
+
+    { "que": "sin entrenar", "funcion": "estadoDelPuntaje", "entrada": [0], "salida": "sinEntrenar" },
+    { "que": "poco", "funcion": "estadoDelPuntaje", "entrada": [69], "salida": "poco" },
+    { "que": "en su punto desde 70", "funcion": "estadoDelPuntaje", "entrada": [70], "salida": "enSuPunto" },
+    { "que": "en su punto hasta 130", "funcion": "estadoDelPuntaje", "entrada": [130], "salida": "enSuPunto" },
+    { "que": "mucho", "funcion": "estadoDelPuntaje", "entrada": [131], "salida": "mucho" },
+
+    {
+      "que": "press de banca: el pecho cuenta 1, tríceps y hombros 0,5; la serie con RIR 4 no cuenta",
+      "funcion": "seriesPorMusculo",
+      "entrada": [[{ "principal": ["pecho"], "ayuda": ["triceps", "hombros"], "series": [{ "reps": 8, "rir": 2 }, { "reps": 8, "rir": 1 }, { "reps": 8, "rir": 4 }] }]],
+      "salida": { "pecho": { "series": 2, "partes": {} }, "triceps": { "series": 1, "partes": {} }, "hombros": { "series": 1, "partes": {} } }
+    },
+    {
+      "que": "el press inclinado suma al pecho alto y la extensión por encima de la cabeza, al tríceps largo",
+      "funcion": "seriesPorMusculo",
+      "entrada": [[
+        { "principal": ["pecho"], "ayuda": ["triceps"], "parte": "pechoAlto", "series": [{ "reps": 10 }, { "reps": 10 }, { "reps": 9 }] },
+        { "principal": ["triceps"], "ayuda": [], "parte": "tricepsLarga", "series": [{ "reps": 12, "rir": 2 }, { "reps": 12, "rir": 2 }] }
+      ]],
+      "salida": { "pecho": { "series": 3, "partes": { "pechoAlto": 3 } }, "triceps": { "series": 3.5, "partes": { "tricepsLarga": 2 } } }
+    },
+
+    {
+      "que": "rutina con cada músculo grande dos veces y en rango: muy buena",
+      "funcion": "notaDeLaRutina",
+      "entrada": [[
+        [
+          { "principal": ["pecho"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] },
+          { "principal": ["dorsales"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] },
+          { "principal": ["hombros"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] }
+        ],
+        [
+          { "principal": ["cuadriceps"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] },
+          { "principal": ["isquios"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] },
+          { "principal": ["gluteos"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] }
+        ],
+        [
+          { "principal": ["pecho"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] },
+          { "principal": ["dorsales"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] },
+          { "principal": ["hombros"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] }
+        ],
+        [
+          { "principal": ["cuadriceps"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] },
+          { "principal": ["isquios"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] },
+          { "principal": ["gluteos"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] }
+        ]
+      ]],
+      "salida": { "nota": "muyBuena", "mejoras": [] }
+    },
+    {
+      "que": "solo pecho una vez: mejorable, primero lo que no se entrena",
+      "funcion": "notaDeLaRutina",
+      "entrada": [[[{ "principal": ["pecho"], "ayuda": [], "series": [{ "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }, { "reps": 8 }] }]]],
+      "salida": { "nota": "mejorable", "mejoras": [{ "musculo": "dorsales", "que": "pocasSeries" }, { "musculo": "hombros", "que": "pocasSeries" }] }
+    },
+
+    {
+      "que": "dos sesiones en el tope con RIR 2: sube",
+      "funcion": "proximaSesion",
+      "entrada": [{ "sesiones": [{ "series": [{ "reps": 12, "rir": 2 }, { "reps": 12, "rir": 3 }] }, { "series": [{ "reps": 12, "rir": 2 }, { "reps": 12, "rir": 2 }] }], "tope": 12, "suenoCorto": false, "deficit": 200 }],
+      "salida": { "decision": "subir" }
+    },
+    {
+      "que": "una serie con RIR 1: mantiene",
+      "funcion": "proximaSesion",
+      "entrada": [{ "sesiones": [{ "series": [{ "reps": 12, "rir": 2 }] }, { "series": [{ "reps": 12, "rir": 1 }, { "reps": 12, "rir": 2 }] }], "tope": 12, "suenoCorto": false, "deficit": null }],
+      "salida": { "decision": "mantener", "razon": "faltaElTope" }
+    },
+    {
+      "que": "en el tope pero con sueño corto: mantiene",
+      "funcion": "proximaSesion",
+      "entrada": [{ "sesiones": [{ "series": [{ "reps": 10 }] }, { "series": [{ "reps": 10 }] }], "tope": 10, "suenoCorto": true, "deficit": null }],
+      "salida": { "decision": "mantener", "razon": "sueno" }
+    },
+    {
+      "que": "en el tope con un déficit de 600: mantiene",
+      "funcion": "proximaSesion",
+      "entrada": [{ "sesiones": [{ "series": [{ "reps": 10 }] }, { "series": [{ "reps": 10 }] }], "tope": 10, "suenoCorto": false, "deficit": 600 }],
+      "salida": { "decision": "mantener", "razon": "deficit" }
+    },
+    {
+      "que": "una sola sesión: no se sabe",
+      "funcion": "proximaSesion",
+      "entrada": [{ "sesiones": [{ "series": [{ "reps": 12, "rir": 3 }] }], "tope": 12, "suenoCorto": false, "deficit": null }],
+      "salida": { "decision": "noSeSabe", "razon": "pocasSesiones" }
+    },
+    {
+      "que": "sin repeticiones objetivo en la rutina: mantiene",
+      "funcion": "proximaSesion",
+      "entrada": [{ "sesiones": [{ "series": [{ "reps": 12 }] }, { "series": [{ "reps": 12 }] }], "tope": null, "suenoCorto": false, "deficit": null }],
+      "salida": { "decision": "mantener", "razon": "sinObjetivo" }
+    }
+  ]
+}
