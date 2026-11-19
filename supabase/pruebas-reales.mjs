@@ -103,6 +103,8 @@
 //      guarda con ellas sin preguntar a cuántas; la que no, nada; sin repeticiones, pregunta (6/11).
 //  46. probar-rir — el botón RIR y «Rep. en Reserva», la última vez al tocar la fecha, el globo de subir
 //      que se va a los 4 s sin mover nada, Stats → Vidas con el mes y la barra de una pieza (12/11).
+//  47. probar-vincular-moss — el código de un uso de Moss abre /vincular/<código>: «Vincular» lo
+//      canjea en la base real, el mismo código otra vez no sirve, y «Desvincular» lo deshace (18/11).
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -169,6 +171,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: '«Crear rutina nueva» guarda lo que se entrenó', archivo: 'probar-rutina-nueva.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la marca, sin preguntar a cuántas', archivo: 'probar-marca-sin-preguntar.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el RIR, la última vez y el globo de subir', archivo: 'probar-rir.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'vincular desde Moss', archivo: 'probar-vincular-moss.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

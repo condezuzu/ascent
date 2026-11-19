@@ -17,8 +17,9 @@ export function GET() {
     applinks: {
       details: [
         // `appIDs` + `components` es la forma de iOS 13 en adelante; `appID` + `paths`, la de antes.
-        { appIDs: [APP], components: [{ '/': '/amigo/*', comment: 'Link de amigo' }, { '/': '/grupo/*', comment: 'Link de grupo' }] },
-        { appID: APP, paths: ['/amigo/*', '/grupo/*'] },
+        // `/vincular/<código>` (18/11): lo abre Moss para vincular. Por https y no `ascent://`: así ninguna otra app se lo queda.
+        { appIDs: [APP], components: [{ '/': '/amigo/*', comment: 'Link de amigo' }, { '/': '/grupo/*', comment: 'Link de grupo' }, { '/': '/vincular/*', comment: 'Vincular desde Moss' }] },
+        { appID: APP, paths: ['/amigo/*', '/grupo/*', '/vincular/*'] },
       ],
     },
   });
