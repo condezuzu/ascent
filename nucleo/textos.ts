@@ -73,6 +73,38 @@ const ES = {
 
     abrirAscent: 'Ya tengo Ascent: abrir',
 
+    // Lo de Moss en Ascent, vinculada (19/11): los mismos bloques que Moss muestra de Ascent.
+    tuAnio: 'Tu año',
+    diasAnotados: 'Días anotados en Moss',
+    pesoDelAnio: 'Peso desde el 1 de enero',
+    tuObjetivo: 'Tu objetivo',
+    objetivos: { bajar: 'Bajar de peso', mantener: 'Mantener el peso', subir: 'Subir de peso' },
+    estaSemana: 'Esta semana',
+    suenoPromedio: 'Sueño promedio',
+    proteinaPorDia: 'Proteína por día',
+    balancePorDia: 'Balance por día',
+    peso: 'Peso',
+    antesDeEntrenar: 'Hoy, antes de entrenar',
+    despuesDeEntrenar: 'Hoy, después de entrenar',
+    proteina: 'Proteína',
+    calorias: 'Calorías',
+    tuNoche: 'Tu noche',
+    dormiste: 'Dormiste',
+    deuda: 'Deuda de sueño',
+    deudas: { baja: 'baja', media: 'media', alta: 'alta' },
+    energia: 'Energía',
+    energias: { baja: 'baja', suficiente: 'suficiente', alta: 'alta' },
+
+    // Qué esperar antes de entrenar: las mismas frases que Moss dice de Ascent.
+    esperar: {
+      sinComer: 'Llegas con muchas horas sin comer: algo liviano ahora te da energía.',
+      pocosCarbos: 'Pocos carbohidratos hoy: las últimas series pueden costar más.',
+      grasaCerca: 'Comiste con bastante grasa hace poco: puedes sentirte pesado.',
+      pocaProteina: 'Poca proteína hasta ahora: después de entrenar, suma unos 30 g.',
+      bienComido: 'Llegas bien comido.',
+      sinAnotar: 'Anota en Moss lo que comiste hoy y te digo cómo llegas.',
+    },
+
     webDespues: 'Después de instalarla y entrar, vuelve a Moss y toca Vincular otra vez.',
 
     codigoViejo: 'Ese enlace de Moss ya no sirve. Vuelve a Moss y toca Vincular otra vez.',

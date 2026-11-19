@@ -5338,7 +5338,7 @@ console.log('\n71. Lo que el codigo nombra, existe');
   const funcionesQueNoEstan = new Set();
   // LAS DE MOSS (D27) viven en el esquema `moss`, que arma el repo de Moss: no están en este
   // schema.sql. Se llaman con `.schema('moss')` y solo las anotadas; una nueva obliga a decidir.
-  const DE_MOSS = ['estado_del_vinculo', 'desvincular', 'vincular_con_codigo'];
+  const DE_MOSS = ['estado_del_vinculo', 'desvincular', 'vincular_con_codigo', 'moss_hoy', 'moss_semanas', 'moss_objetivo', 'moss_anio'];
   let textos = 0;
   let llamadas = 0;
   for (const a of archivos) {
@@ -22008,6 +22008,27 @@ console.log('\n339. Moss: la puerta dice solo «Moss» y adentro se vincula (18/
   const aasa339 = deBug('src/app/.well-known/apple-app-site-association', 'route.ts');
   chequear('el enlace es universal (solo lo abre Ascent), y sin Ascent la web ofrece la tienda', [/'\/vincular\/\*'/.test(aasa339), /'\/vincular'\]/.test(deBug('src/lib/supabase', 'middleware.ts')), /href=\{TIENDA\}/.test(deBug('src/app/vincular/[codigo]', 'page.tsx')), /href=\{`ascent:\/\/vincular\/\$\{codigo\}`\}/.test(deBug('src/app/vincular/[codigo]', 'page.tsx'))], [true, true, true, true]);
   chequear('va a la hoja de vincular de Moss, y si no está, a su ficha de la App Store', [/ABRIR_MOSS = 'moss:\/\/vincular'/.test(puerta), /CONSEGUIR_MOSS = 'https:\/\/apps\.apple\.com\/app\/id6828034537'/.test(puerta)], [true, true]);
+}
+console.log('\n340. Lo de Moss en Ascent: qué esperar antes de entrenar y el contrato de 0015 (19/11)');
+{
+  const H = await import('../nucleo/mossHoy.ts');
+  const c = (min, proteina, carbos, grasas) => ({ min, proteina, carbos, grasas });
+  // Sesión a las 18:00 (1080), 80 kg.
+  chequear('sin nada anotado: que anote', H.queEsperar([], 1080, 80), ['sinAnotar']);
+  chequear('4 h o más sin comer antes de la sesión', H.queEsperar([c(780, 40, 120, 10)], 1080, 80), ['sinComer']);
+  chequear('carbohidratos hasta la sesión por debajo de 1 g/kg', H.queEsperar([c(960, 50, 60, 10)], 1080, 80), ['pocosCarbos']);
+  chequear('20 g de grasa o más en las 2 h antes', H.queEsperar([c(1000, 50, 90, 25)], 1080, 80), ['grasaCerca']);
+  chequear('proteína del día por debajo de 0,5 g/kg', H.queEsperar([c(1000, 30, 90, 5)], 1080, 80), ['pocaProteina']);
+  chequear('hasta dos, en el orden de Moss', H.queEsperar([c(700, 10, 20, 30)], 1080, 80), ['sinComer', 'pocosCarbos']);
+  chequear('si no aplica ninguna, bien comido', H.queEsperar([c(960, 60, 100, 10)], 1080, 80), ['bienComido']);
+  chequear('sin las comidas con hora (privacidad de Moss), solo la proteína del total', [H.queEsperarHoy({ total: { kcal: 900, proteina: 30, carbos: null, grasas: null }, meta: null, comidas: [] }, 1080, 80), H.queEsperarHoy({ total: { kcal: 900, proteina: 60, carbos: null, grasas: null }, meta: null, comidas: [] }, 1080, 80), H.queEsperarHoy(null, 1080, 80)], [['pocaProteina'], ['bienComido'], ['sinAnotar']]);
+  chequear('el día de Moss arranca a las 4', [H.fechaDeMoss(new Date(2026, 10, 19, 3, 59)), H.fechaDeMoss(new Date(2026, 10, 19, 4, 0))], ['2026-11-18', '2026-11-19']);
+  const hoy = H.leerMossHoy({ fecha: '2026-11-18', sin_deficit: true, noche: { dormido: 412, necesidad: 480, cara: 4, deuda: 290, deuda_palabra: 'baja' }, energia: 'rara', comida: { total: { kcal: 1450, proteina: 92, carbohidratos: 160, grasas: 48 }, meta: { kcal: 2300, proteina: 150 }, comidas: [{ momento: '2026-11-18T13:05:00', proteina: 40, carbohidratos: 70, grasas: 22 }] } });
+  chequear('moss_hoy: la noche, sin energía rara, y con «sin déficit» sin metas', [hoy.noche, hoy.energia, hoy.comida.meta, hoy.comida.comidas], [{ dormido: 412, necesidad: 480, cara: 4, deudaPalabra: 'baja' }, null, null, [{ min: 785, proteina: 40, carbos: 70, grasas: 22 }]]);
+  chequear('sin vínculo (null) o con otra forma, nada', [H.leerMossHoy(null), H.leerMossSemanas(null), H.leerMossObjetivo({ objetivo: 'otro' }), H.leerMossAnio('x')], [null, [], null, null]);
+  const vin = deBug('movil/src', 'MossVinculada.tsx');
+  chequear('las cuatro funciones de 0015, por el esquema moss', ['moss_hoy', 'moss_semanas', 'moss_objetivo', 'moss_anio'].every((n) => vin.includes(`supabase.schema('moss').rpc('${n}'`)), true);
+  chequear('se llega abajo, y sin datos de Moss no hay ningún bloque', [/scrollToEnd/.test(vin), /conDatos = vinculo\.vinculada === true && hayDatosDeMoss\(datosDeMoss\)/.test(deBug('movil/src', 'PuertaDeMoss.tsx'))], [true, true]);
 }
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);

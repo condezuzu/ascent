@@ -6,6 +6,7 @@ import { plataforma } from '@plataforma';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { estaVinculada, resultadoDelCodigo } from '@nucleo/vinculoConMoss';
 import { supabase } from './supabase';
+import MossVinculada, { hayDatosDeMoss, useDatosDeMoss } from './MossVinculada';
 import Svg, { Circle, Defs, Ellipse, G, Path, RadialGradient, Stop } from 'react-native-svg';
 import { T } from '@nucleo/textos';
 import { MOSS } from './coloresDeMoss';
@@ -83,7 +84,7 @@ function estrellasDelCielo(ancho: number, alto: number) {
  * otro lugar, y tiene que notarse. El borde de abajo es un horizonte de oro, que es lo que se ve bajar.
  * Desde el 5/11 con su logo, estrellas y la aurora de su cielo.
  */
-function CieloDeMoss({ avance, alto, rotulo = T.moss.vinculaTitulo }: { avance: Animated.Value | Animated.AnimatedInterpolation<number>; alto: number; rotulo?: string }) {
+function CieloDeMoss({ avance, alto, rotulo = T.moss.vinculaTitulo, sinCentro = false }: { avance: Animated.Value | Animated.AnimatedInterpolation<number>; alto: number; rotulo?: string; /** Con los datos de Moss encima: solo el cielo. */ sinCentro?: boolean }) {
   const { width: ancho } = useWindowDimensions();
   const aparece = (avance as Animated.Value).interpolate({ inputRange: [0.25, 0.8], outputRange: [0, 1], extrapolate: 'clamp' });
   const cielo = useMemo(() => estrellasDelCielo(ancho, alto), [ancho, alto]);
@@ -111,13 +112,15 @@ function CieloDeMoss({ avance, alto, rotulo = T.moss.vinculaTitulo }: { avance: 
           <Path key={'d' + i} d={caminoDeEstrella(d.r)} transform={`translate(${d.x} ${d.y})`} fill={MOSS.oroClaro} opacity={d.op} />
         ))}
       </Svg>
-      <Animated.View style={[estilos.centro, { opacity: aparece, transform: [{ translateY: aparece.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}>
-        <LogoDeMoss tam={190} />
-        <Text style={estilos.nombre}>{T.moss.nombre}</Text>
-        <Text testID="moss-rotulo" style={estilos.rotulo}>
-          {rotulo}
-        </Text>
-      </Animated.View>
+      {!sinCentro && (
+        <Animated.View style={[estilos.centro, { opacity: aparece, transform: [{ translateY: aparece.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}>
+          <LogoDeMoss tam={190} />
+          <Text style={estilos.nombre}>{T.moss.nombre}</Text>
+          <Text testID="moss-rotulo" style={estilos.rotulo}>
+            {rotulo}
+          </Text>
+        </Animated.View>
+      )}
       {/* El horizonte que baja. */}
       <LinearGradient colors={['transparent', MOSS.oroBrillo]} style={estilos.brillo} />
       <View style={estilos.horizonte} />
@@ -256,6 +259,8 @@ function useVinculoConMoss(abierta: boolean) {
 function PantallaDeMoss({ visible, codigo, desde, alCerrar }: { visible: boolean; codigo: string | null; desde: number; alCerrar: () => void }) {
   const { height: alto } = useWindowDimensions();
   const vinculo = useVinculoConMoss(visible);
+  const datosDeMoss = useDatosDeMoss(visible && vinculo.vinculada === true);
+  const conDatos = vinculo.vinculada === true && hayDatosDeMoss(datosDeMoss);
   const [montada, setMontada] = useState(visible);
   const avance = useRef(new Animated.Value(0)).current;
   const quien = useRef(Symbol('moss')).current;
@@ -307,11 +312,13 @@ function PantallaDeMoss({ visible, codigo, desde, alCerrar }: { visible: boolean
       <Animated.View
         testID="pantalla-de-moss"
         accessibilityViewIsModal
-        {...gesto.panHandlers}
+        // Con los datos de Moss hay que poder bajar y subir la lista: el gesto de salir se apaga y queda «Volver».
+        {...(conDatos ? {} : gesto.panHandlers)}
         style={[StyleSheet.absoluteFill, { transform: [{ translateY: avance.interpolate({ inputRange: [0, 1], outputRange: [-alto, 0] }) }] }]}
       >
-        <CieloDeMoss avance={avance} alto={alto} rotulo={vinculo.vinculada ? T.moss.vinculada : T.moss.vinculaTitulo} />
-        {vinculo.vinculada !== null && (
+        <CieloDeMoss avance={avance} alto={alto} rotulo={vinculo.vinculada ? T.moss.vinculada : T.moss.vinculaTitulo} sinCentro={conDatos} />
+        {conDatos && datosDeMoss && <MossVinculada datos={datosDeMoss} alDesvincular={() => void vinculo.desvincular()} />}
+        {vinculo.vinculada !== null && !conDatos && (
           <View style={estilos.vinculo}>
             {vinculo.vinculada ? (
               <Tocable testID="moss-desvincular" style={estilos.botonTenue} onPress={() => void vinculo.desvincular()} accessibilityRole="button">
