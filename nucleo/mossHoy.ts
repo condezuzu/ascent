@@ -32,7 +32,7 @@ export function queEsperar(comidas: Comida[], sesionMin: number, pesoKg: number 
 
 export type MossHoy = {
   sinDeficit: boolean;
-  noche: { dormido: number; necesidad: number; cara: number | null; deudaPalabra: 'baja' | 'media' | 'alta' | null } | null;
+  noche: { dormido: number; necesidad: number; cara: number | null; deudaPalabra: 'sinDeuda' | 'baja' | 'media' | 'alta' | null } | null;
   energia: 'baja' | 'suficiente' | 'alta' | null;
   comida: { total: Macros; meta: Macros | null; comidas: Comida[] } | null;
 };
@@ -83,7 +83,7 @@ export function leerMossHoy(v: unknown): MossHoy | null {
   const e = d.energia;
   return {
     sinDeficit: d.sin_deficit === true,
-    noche: dormido !== null && necesidad !== null && necesidad > 0 ? { dormido, necesidad, cara: num(n?.cara), deudaPalabra: palabra === 'baja' || palabra === 'media' || palabra === 'alta' ? palabra : null } : null,
+    noche: dormido !== null && necesidad !== null && necesidad > 0 ? { dormido, necesidad, cara: num(n?.cara), deudaPalabra: palabra === 'sinDeuda' || palabra === 'baja' || palabra === 'media' || palabra === 'alta' ? palabra : null } : null,
     energia: e === 'baja' || e === 'suficiente' || e === 'alta' ? e : null,
     comida: total ? { total, meta: d.sin_deficit === true ? null : macros(c?.meta), comidas } : null,
   };
@@ -115,7 +115,8 @@ export function leerMossAnio(v: unknown): MossAnio | null {
  * Moss), solo queda la regla de la proteína, sobre el total del día.
  */
 export function queEsperarHoy(comida: MossHoy['comida'], sesionMin: number, pesoKg: number | null): Esperar[] {
-  if (!comida) return ['sinAnotar'];
+  // Vinculada y sin nada anotado hoy, Moss manda los totales en 0: es que no comió nada anotado, no que comió bien.
+  if (!comida || (!comida.comidas.length && comida.total.kcal <= 0)) return ['sinAnotar'];
   if (comida.comidas.length) return queEsperar(comida.comidas, sesionMin, pesoKg);
   return pesoKg && pesoKg > 0 && comida.total.proteina < 0.5 * pesoKg ? ['pocaProteina'] : ['bienComido'];
 }

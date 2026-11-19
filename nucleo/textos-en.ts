@@ -48,7 +48,7 @@ export const EN: Textos = {
     tuNoche: 'Your night',
     dormiste: 'You slept',
     deuda: 'Sleep debt',
-    deudas: { baja: 'low', media: 'medium', alta: 'high' },
+    deudas: { sinDeuda: 'none', baja: 'low', media: 'medium', alta: 'high' },
     energia: 'Energy',
     energias: { baja: 'low', suficiente: 'enough', alta: 'high' },
     esperar: {

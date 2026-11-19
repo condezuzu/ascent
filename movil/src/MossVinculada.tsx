@@ -65,7 +65,8 @@ export function useDatosDeMoss(abierta: boolean) {
 
 /** ¿Hay algo de Moss para mostrar? Sin la 0015 no. */
 export function hayDatosDeMoss(d: Datos | null): d is Datos {
-  return !!d && !!(d.hoy?.noche || d.hoy?.comida || d.hoy?.energia || d.semanas.length || d.objetivo || d.anio);
+  // Vinculada, moss_hoy siempre contesta (aunque sea vacío); sin vínculo o con error, null.
+  return !!d && d.hoy !== null;
 }
 
 function Barra({ valor, meta, raya, gruesa }: { valor: number; meta: number; raya?: number; gruesa?: boolean }) {
@@ -104,7 +105,8 @@ export default function MossVinculada({ datos, alDesvincular }: { datos: Datos; 
   const { hoy, semanas, objetivo, anio } = datos;
   const ahora = new Date();
   const esperar = queEsperarHoy(hoy?.comida ?? null, ahora.getHours() * 60 + ahora.getMinutes(), objetivo?.peso ?? null);
-  const semana = semanas[semanas.length - 1];
+  // La última semana con algo: Moss manda todas las semanas, también las vacías.
+  const semana = [...semanas].reverse().find((w) => w.dormido !== null || w.proteinaGKg !== null || w.peso !== null);
   const comida = hoy?.comida;
   const kg = (n: number) => `${pesoCorto(n, 'kg')} kg`;
   return (
@@ -121,7 +123,7 @@ export default function MossVinculada({ datos, alDesvincular }: { datos: Datos; 
         {T.moss.desvincular}
       </Text>
 
-      {anio && (
+      {anio && (anio.diasConComida > 0 || anio.noches > 0) && (
         <View style={estilos.bloque}>
           <Text style={estilos.etiqueta}>{T.moss.tuAnio}</Text>
           <View style={estilos.cifras}>
@@ -154,7 +156,7 @@ export default function MossVinculada({ datos, alDesvincular }: { datos: Datos; 
 
       <View style={estilos.bloque}>
         <Text style={estilos.etiqueta}>{datos.entrenoHoy ? T.moss.despuesDeEntrenar : T.moss.antesDeEntrenar}</Text>
-        {comida && (
+        {comida && (comida.total.kcal > 0 || comida.comidas.length > 0) && (
           <View style={estilos.macros}>
             <Macro que={T.moss.proteina} total={comida.total.proteina} meta={comida.meta?.proteina ?? null} unidad="g" />
             {comida.total.carbos !== null && <Macro que={T.moss.carbohidratos} total={comida.total.carbos} meta={comida.meta?.carbos ?? null} unidad="g" />}

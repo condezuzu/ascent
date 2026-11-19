@@ -97,7 +97,7 @@ const ES = {
     tuNoche: 'Tu noche',
     dormiste: 'Dormiste',
     deuda: 'Deuda de sueño',
-    deudas: { baja: 'baja', media: 'media', alta: 'alta' },
+    deudas: { sinDeuda: 'ninguna', baja: 'baja', media: 'media', alta: 'alta' },
     energia: 'Energía',
     energias: { baja: 'baja', suficiente: 'suficiente', alta: 'alta' },
 
