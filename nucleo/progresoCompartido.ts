@@ -262,6 +262,8 @@ export const COLORES_DEL_ANIO = { pecho: '#419ec6', piernas: '#a77e33', espalda:
 
 /** Hasta un año al ritmo más lento del rango es una meta realista. */
 export const SEMANAS_REALISTA = 52;
+/** Más de 5 años al ritmo lento no es un plazo: el final queda abierto. */
+export const SEMANAS_TOPE = 260;
 
 export type ProyeccionDeMeta =
   | { estado: 'lograda' }
@@ -272,16 +274,19 @@ export type ProyeccionDeMeta =
 /**
  * Cuándo llegarías a una meta (su 1RM estimado) al ritmo de tus últimas 12 semanas, como un rango de semanas: del ritmo
  * más rápido al más lento del rango del 80 % (Rhea 2003, Swinton 2024 y Latella 2020: cada uno sube distinto). Con
- * menos de 6 sesiones no se sabe; si el rango no llega a subir, así no llega; si al ritmo lento no sube, el final queda
- * abierto (null). Realista si al ritmo lento llega en un año o menos.
+ * menos de 6 sesiones no se sabe. Si la tendencia dice «sin subida clara», o ni el ritmo rápido llega a +0,3 % por semana
+ * (el mismo corte), así no llega: con datos planos, el ritmo sale de un error de redondeo y daría millones de semanas.
+ * Si al ritmo lento no sube, o tardaría más de 5 años, el final queda abierto (null). Realista si al ritmo lento llega
+ * en un año o menos.
  */
-export function proyeccionDeMeta(t: Pick<TendenciaDeFuerza, 'sesiones' | 'nivel' | 'rango'>, meta: number): ProyeccionDeMeta {
+export function proyeccionDeMeta(t: Pick<TendenciaDeFuerza, 'sesiones' | 'nivel' | 'rango'> & { estado?: EstadoDeLaFuerza }, meta: number): ProyeccionDeMeta {
   if (t.nivel !== null && t.nivel >= meta) return { estado: 'lograda' };
   if (t.nivel === null || t.sesiones < SESIONES_MINIMAS || !t.rango) return { estado: 'noSeSabe' };
   const [lento, rapido] = t.rango;
-  if (rapido <= 0) return { estado: 'noSube' };
+  if (t.estado === 'sinSubidaClara' || rapido < porMesDe(SIN_SUBIDA_POR_SEMANA / 100)) return { estado: 'noSube' };
   const nivel = t.nivel;
   const semanas = (porMes: number) => Math.ceil((Math.log(meta / nivel) / Math.log(1 + porMes / 100)) * SEMANAS_POR_MES);
-  const hasta = lento > 0 ? semanas(lento) : null;
+  const lenta = lento > 0 ? semanas(lento) : null;
+  const hasta = lenta !== null && lenta <= SEMANAS_TOPE ? lenta : null;
   return { estado: 'enCamino', semanas: [semanas(rapido), hasta], realista: hasta !== null && hasta <= SEMANAS_REALISTA };
 }

@@ -4,7 +4,10 @@
 // Las reglas —la semana son los últimos 7 días, qué serie es de trabajo, el 1RM de referencia de los
 // últimos 126 días— son las de ese archivo, no las de Ascent: así las dos apps cuentan igual.
 
-import { DE_PIERNAS, DIAS_DEL_E1RM, dentroDeLaSemana, esDeTrabajo, mejorE1rm, type EjercicioHecho, type MusculoEnLaSesion } from './puntajeMuscular.ts';
+import { DE_PIERNAS, DE_TRABAJO, DIAS_DEL_E1RM, dentroDeLaSemana, esDeTrabajo, mejorE1rm, type EjercicioHecho, type MusculoEnLaSesion } from './puntajeMuscular.ts';
+import { PESADA, REPS_PESADAS, type SemanaDeEntreno } from './progresoCompartido.ts';
+import { restarDias } from './fechas.ts';
+import { lunesDe } from './volumen.ts';
 
 export type DelCatalogo = { principal: string[]; ayuda: string[]; parte?: string };
 export type BloqueHecho = { ejercicio: string | null; series: number; minutos?: number; pesos?: (number | null)[]; reps?: (number | null)[]; rir?: (number | null)[] };
@@ -142,4 +145,47 @@ export function gruposDelDia(bloques: readonly BloqueHecho[], grupoDe: Readonly<
     if (g) series.set(g, (series.get(g) ?? 0) + Math.max(1, b.series));
   }
   return [...series].sort((a, b) => b[1] - a[1]).map(([g]) => g);
+}
+
+/** «Cuando subía»: las 6 semanas (sus lunes) hasta la de la mejor marca, y las de después hasta esta (semanasParaLasRazones de Moss). */
+export function semanasParaLasRazones(mejor: string, hoy: string): { antes: string[]; ahora: string[] } {
+  const lunes = lunesDe(mejor);
+  const antes = Array.from({ length: 6 }, (_, i) => restarDias(lunes, 7 * (5 - i)));
+  const ahora: string[] = [];
+  for (let l = restarDias(lunes, -7); l <= lunesDe(hoy); l = restarDias(l, -7)) ahora.push(l);
+  return { antes, ahora };
+}
+
+/**
+ * Una semana de un ejercicio para las razones (semanaDeEntreno de Moss): las series de trabajo del músculo como
+ * principal, con todos sus ejercicios; las sesiones con el ejercicio, y sus series pesadas. El 1RM es el de la mejor
+ * serie de ese día, así la entrada en calor tampoco cuenta.
+ */
+export function semanaDeEntreno(
+  sesiones: readonly SesionHecha[],
+  lunes: string,
+  id: string,
+  musculo: string,
+  catalogo: Readonly<Record<string, DelCatalogo>>,
+  grupoDePropio: Readonly<Record<string, string>>
+): SemanaDeEntreno {
+  const fin = restarDias(lunes, -7);
+  let series = 0, veces = 0, pesadas = 0, conReps = 0;
+  for (const s of sesiones) {
+    if (s.fecha < lunes || s.fecha >= fin) continue;
+    if (s.bloques.some((b) => b.ejercicio === id)) veces++;
+    for (const b of s.bloques) {
+      if (!b.ejercicio) continue;
+      const xs = seriesDe(b);
+      const mejor = mejorE1rm(xs);
+      if (musculosDe(b.ejercicio, catalogo, grupoDePropio)?.principal.includes(musculo)) series += xs.filter((x) => esDeTrabajo(x, mejor)).length;
+      if (b.ejercicio !== id) continue;
+      for (const x of xs) {
+        if (x.reps === null || x.peso <= 0 || (mejor && x.peso < DE_TRABAJO * mejor)) continue;
+        conReps++;
+        if (x.reps <= REPS_PESADAS || (mejor !== null && x.peso >= PESADA * mejor)) pesadas++;
+      }
+    }
+  }
+  return { lunes, series, veces, pesadas, conReps };
 }

@@ -841,6 +841,123 @@
       }
     },
     {
+      "que": "sentadilla plana 11 semanas (la prueba de Ascent): así no llega, no millones de semanas",
+      "funcion": "proyeccionDeMeta",
+      "entrada": [
+        {
+          "estado": "sinSubidaClara",
+          "sesiones": 11,
+          "semanas": 10,
+          "porMes": 0,
+          "rango": [
+            -5.551115123125783e-14,
+            4.440892098500626e-14
+          ],
+          "sigma": 2.277216345829769,
+          "nivel": 116.66666666666659,
+          "ajuste": {
+            "tMedio": -5,
+            "yMedio": 4.759320865815349,
+            "b": 0,
+            "s": 9.819181883453728e-16,
+            "n": 11,
+            "sxx": 110
+          },
+          "puntos": [
+            {
+              "t": -10,
+              "e1rm": 116.66666666666667
+            },
+            {
+              "t": -9,
+              "e1rm": 116.66666666666667
+            },
+            {
+              "t": -8,
+              "e1rm": 116.66666666666667
+            },
+            {
+              "t": -7,
+              "e1rm": 116.66666666666667
+            },
+            {
+              "t": -6,
+              "e1rm": 116.66666666666667
+            },
+            {
+              "t": -5,
+              "e1rm": 116.66666666666667
+            },
+            {
+              "t": -4,
+              "e1rm": 116.66666666666667
+            },
+            {
+              "t": -3,
+              "e1rm": 116.66666666666667
+            },
+            {
+              "t": -2,
+              "e1rm": 116.66666666666667
+            },
+            {
+              "t": -1,
+              "e1rm": 116.66666666666667
+            },
+            {
+              "t": 0,
+              "e1rm": 116.66666666666667
+            }
+          ]
+        },
+        140
+      ],
+      "salida": {
+        "estado": "noSube"
+      }
+    },
+    {
+      "que": "el ritmo rápido no llega a +0,3 % por semana: así no llega",
+      "funcion": "proyeccionDeMeta",
+      "entrada": [
+        {
+          "sesiones": 10,
+          "nivel": 90,
+          "rango": [
+            -0.5,
+            1
+          ]
+        },
+        100
+      ],
+      "salida": {
+        "estado": "noSube"
+      }
+    },
+    {
+      "que": "al ritmo lento tardaría más de 5 años: final abierto",
+      "funcion": "proyeccionDeMeta",
+      "entrada": [
+        {
+          "sesiones": 10,
+          "nivel": 90,
+          "rango": [
+            0.05,
+            3
+          ]
+        },
+        100
+      ],
+      "salida": {
+        "estado": "enCamino",
+        "semanas": [
+          16,
+          null
+        ],
+        "realista": false
+      }
+    },
+    {
       "que": "el día de pecho",
       "funcion": "grupoDelAnio",
       "entrada": [

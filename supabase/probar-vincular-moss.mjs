@@ -54,6 +54,8 @@ const rotulo = () => page.getByTestId('pantalla-de-moss').getByTestId('moss-rotu
 try {
   await page.goto('http://localhost:8090', { waitUntil: 'domcontentloaded', timeout: 240000 });
   await page.evaluate(([u]) => localStorage.setItem(`ascent:guia:${u}`, JSON.stringify({ uid: u, recorrido: true, paso: 0, globos: ['elegir', 'series', 'descanso', 'peso', 'terminar', 'carga', 'sugerido', 'mas', 'grupo', 'stats'] })), [uid]);
+  // El tutorial de la sección ya visto: lo prueba probar-seccion-moss.
+  await page.evaluate(() => localStorage.setItem('ascent:moss-tutorial-visto', '1'));
   await page.goto('http://localhost:8090', { waitUntil: 'domcontentloaded', timeout: 240000 });
   await pasarLaEntradaNativa(page);
   await page.locator('input[type=email], input[inputmode=email]').first().fill(correo, { timeout: 90000 });
@@ -72,10 +74,9 @@ try {
 
   await visible('moss-vincular-codigo').click();
   await visible('moss-desvincular').waitFor({ timeout: 30000 }).catch(() => {});
-  // Vinculada, la pantalla pasa a los datos de Moss (moss_hoy de la 0015, contra la base real): una cuenta
-  // de Moss sin nada anotado, así que lo de hoy pide que anote.
+  // Vinculada, la pantalla pasa a la sección de Moss (sin entrenamientos: tus músculos lo dice).
   await visible('moss-vinculada').waitFor({ timeout: 30000 }).catch(() => {});
-  chequear('«Vincular» canjea el código: vinculada en la base, y la pantalla muestra lo de Moss', [await vinculada(), await visible('moss-vinculada').count(), await page.getByTestId('moss-esperar-sinAnotar').filter({ visible: true }).count()], [true, 1, 1]);
+  chequear('«Vincular» canjea el código: vinculada en la base, y la pantalla muestra lo de Moss', [await vinculada(), await visible('moss-vinculada').count(), await page.getByText(TX.moss.sec.tus.sinDatos, { exact: true }).filter({ visible: true }).count()], [true, 1, 1]);
   await page.screenshot({ path: join(SALIDA, '2-vinculada.png') });
 
   await visible('moss-desvincular').click();

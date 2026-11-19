@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   description: 'Qué guarda Ascent, dónde, y cómo se borra.',
 };
 
-const ACTUALIZADO = '22 de setiembre de 2026';
+const ACTUALIZADO = '19 de noviembre de 2026';
 
 export default function Privacidad() {
   return (
@@ -50,7 +50,8 @@ export default function Privacidad() {
         </li>
         <li>
           <strong>Tu entrenamiento.</strong> Los días que registras, las sesiones con su hora de inicio y
-          fin, las series de cada bloque con su ejercicio y su peso, y tus marcas personales.
+          fin, las series de cada bloque con su ejercicio, su peso, sus repeticiones y, si las anotas, las que
+          te quedaban, y tus marcas personales.
         </li>
         <li>
           <strong>Tu peso corporal</strong>, si lo anotas. Es privado siempre: no se comparte con nadie y
@@ -91,6 +92,39 @@ export default function Privacidad() {
       <p>
         El permiso se pide cuando vas a marcar el gimnasio, no al abrir la app, y puedes borrar el punto
         cuando quieras desde Ajustes. Sin punto marcado, la app no mira la ubicación nunca.
+      </p>
+
+      {/* Lo mismo que dice la privacidad de Moss de Ascent (19/11, con su 0017): las dos tienen que coincidir. */}
+      <h2>Si vinculas Moss</h2>
+      <p>
+        Moss es otra app nuestra, de hábitos, sueño y comida. Puedes vincularla con Ascent si quieres: Ascent
+        funciona igual sin ella. Son dos cuentas, cada una con su información; vincular las conecta para que
+        compartan estos datos, no las junta en una.
+      </p>
+      <ul>
+        <li>
+          <strong>Ascent le pasa a Moss:</strong> tus entrenamientos (el día, la hora en que empezaste, los
+          minutos, los ejercicios con su grupo muscular y las series con el peso, las repeticiones y, si las
+          anotas, las que te quedaban), tus marcas, el peso que anotas en Ascent y tu nombre de usuario.
+        </li>
+        <li>
+          <strong>Moss le pasa a Ascent:</strong> cuánto dormiste, cuánto necesitas dormir y cómo dijiste que
+          dormiste, tu deuda de sueño, tu energía del día, lo que comes por día y por comida (las calorías, la
+          proteína, los carbohidratos y las grasas, con la hora de cada comida) y tus metas de cada día, tu
+          peso, cuánto bajas por semana, tu objetivo (bajar, mantener o subir) y tu experiencia entrenando
+          (principiante, intermedio o avanzado).
+        </li>
+        <li>
+          <strong>Tus metas de fuerza</strong> (por ejemplo, 100 kg en press de banca) se guardan en tu cuenta
+          de Moss, las ven y las cambian las dos apps mientras están vinculadas, y se borran al desvincular.
+        </li>
+      </ul>
+      <p>
+        Ascent lo usa para mostrarte tus músculos, cuáles se recuperan, por qué un ejercicio puede estar
+        estancado y cuándo llegas a una meta. Nada se copia de una cuenta a la otra: cada app lee lo de la
+        otra mientras están vinculadas. Se vincula solo si tú lo eliges, al tocar «Vincular», y se deshace
+        en Stats › Moss › Desvincular o desde Moss. Si borras tu cuenta de Ascent, el vínculo se borra con
+        ella y tu cuenta de Moss sigue intacta.
       </p>
 
       <h2>Qué NO se guarda</h2>

@@ -6,7 +6,9 @@ import { plataforma } from '@plataforma';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { estaVinculada, resultadoDelCodigo } from '@nucleo/vinculoConMoss';
 import { supabase } from './supabase';
-import MossVinculada, { hayDatosDeMoss, useDatosDeMoss } from './MossVinculada';
+import SeccionMoss from './SeccionMoss';
+import TutorialMoss from './TutorialMoss';
+import { useSeccionMoss } from './useSeccionMoss';
 import Svg, { Circle, Defs, Ellipse, G, Path, RadialGradient, Stop } from 'react-native-svg';
 import { T } from '@nucleo/textos';
 import { MOSS } from './coloresDeMoss';
@@ -190,6 +192,8 @@ export function MossAsomando({ tiron }: { tiron: Animated.Value }) {
   );
 }
 
+const TUTORIAL_VISTO = 'ascent:moss-tutorial-visto';
+
 // moss://vincular abre Moss en su hoja de vincular con Ascent; si no está instalada, el teléfono no la
 // abre y se va a la App Store.
 const ABRIR_MOSS = 'moss://vincular';
@@ -259,8 +263,16 @@ function useVinculoConMoss(abierta: boolean) {
 function PantallaDeMoss({ visible, codigo, desde, alCerrar }: { visible: boolean; codigo: string | null; desde: number; alCerrar: () => void }) {
   const { height: alto } = useWindowDimensions();
   const vinculo = useVinculoConMoss(visible);
-  const datosDeMoss = useDatosDeMoss(visible && vinculo.vinculada === true);
-  const conDatos = vinculo.vinculada === true && hayDatosDeMoss(datosDeMoss);
+  const seccion = useSeccionMoss(visible && vinculo.vinculada === true);
+  const conDatos = vinculo.vinculada === true && !!seccion.datos;
+  // El tutorial sale solo la primera vez que se ve la sección vinculada; después, desde el «!».
+  const [tutorial, setTutorial] = useState(false);
+  useEffect(() => {
+    if (!conDatos) return;
+    void plataforma.almacenamiento.leer(TUTORIAL_VISTO).then((visto) => {
+      if (!visto) setTutorial(true);
+    });
+  }, [conDatos]);
   const [montada, setMontada] = useState(visible);
   const avance = useRef(new Animated.Value(0)).current;
   const quien = useRef(Symbol('moss')).current;
@@ -317,7 +329,14 @@ function PantallaDeMoss({ visible, codigo, desde, alCerrar }: { visible: boolean
         style={[StyleSheet.absoluteFill, { transform: [{ translateY: avance.interpolate({ inputRange: [0, 1], outputRange: [-alto, 0] }) }] }]}
       >
         <CieloDeMoss avance={avance} alto={alto} rotulo={vinculo.vinculada ? T.moss.vinculada : T.moss.vinculaTitulo} sinCentro={conDatos} />
-        {conDatos && datosDeMoss && <MossVinculada datos={datosDeMoss} alDesvincular={() => void vinculo.desvincular()} />}
+        {conDatos && seccion.datos && <SeccionMoss datos={seccion.datos} alDesvincular={() => void vinculo.desvincular()} alCambiar={() => void seccion.recargar()} alAbrirTutorial={() => setTutorial(true)} />}
+        <TutorialMoss
+          visible={tutorial}
+          alTerminar={() => {
+            setTutorial(false);
+            void plataforma.almacenamiento.guardar(TUTORIAL_VISTO, '1');
+          }}
+        />
         {vinculo.vinculada !== null && !conDatos && (
           <View style={estilos.vinculo}>
             {vinculo.vinculada ? (
