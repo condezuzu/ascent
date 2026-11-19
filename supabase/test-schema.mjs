@@ -22124,6 +22124,13 @@ console.log('\n344. Lo que Ascent le pasa a las cuentas de músculos: la semana 
   chequear('las sesiones del press, de la más vieja a la nueva, para la próxima', S.sesionesDelEjercicio(rec344, 'press_banca').map((x) => x.series.length), [1, 3]);
   const rut344 = S.diasDeLaRutina([{ descanso: true, ejercicios: [] }, { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 3, reps: 8 }, { ejercicio: 'cinta', series: 1, minutos: 20 }] }, { descanso: false, ejercicios: [{ ejercicio: 'sentadilla', series: 3 }] }], cat344, {});
   chequear('la rutina como la reciben las cuentas: sin descansos ni cardio, con las series planeadas', rut344.map((d) => d.map((e) => [e.principal.join('+'), e.series.length, e.objetivo])), [[['pecho', 3, 8]], [['cuadriceps+gluteos', 3, null]]]);
+  // La fatiga: el press del 18/11 con RIR mínimo 1 → pecho listo 2 días después (20/11): mañana, «cargado» no; hoy 1 día.
+  const fat344 = S.musculosEnSesiones(rec344, cat344);
+  const pecho344 = fat344.get('pecho');
+  chequear('por músculo y sesión: series de trabajo y la reserva más baja', pecho344.map((x) => [x.fecha, x.series, x.rirMinimo]), [['2026-09-20', 1, null], ['2026-11-18', 3, 1]]);
+  chequear('y con las cuentas de Moss: el pecho vuelve el 20/11, a 1 día de hoy: recuperándose', [P.listoEl(pecho344), P.estadoDeFatiga(P.diasHastaListo(P.listoEl(pecho344), '2026-11-19'))], ['2026-11-20', 'recuperandose']);
+  chequear('una sentadilla al fallo cuenta como multiarticular de piernas', S.musculosEnSesiones([{ id: 'sentadilla', fecha: '2026-11-18', principal: ['cuadriceps', 'gluteos'], ayuda: [], series: [{ reps: 5, rir: 0 }] }], cat344).get('cuadriceps')[0].multiarticularDePiernas, true);
+  chequear('los grupos del día, del que más series tuvo al que menos (para Tu año)', S.gruposDelDia([{ ejercicio: 'curl_barra', series: 2 }, { ejercicio: 'press_banca', series: 4 }, { ejercicio: 'cinta', series: 1, minutos: 20 }], { curl_barra: 'brazos', press_banca: 'pecho', cinta: 'cardio' }), ['pecho', 'brazos', 'cardio']);
   const por344 = Object.fromEntries(P.seriesPorMusculo(ej344));
   chequear('y las cuentas compartidas lo cuentan: pecho 2, tríceps 1, dorsales 2', [por344.pecho?.series, por344.triceps?.series, por344.dorsales?.series], [2, 1, 2]);
   chequear('las reglas son las del archivo compartido, no unas propias', /from '\.\/puntajeMuscular\.ts'/.test(deBug('nucleo', 'semanaMuscular.ts')) && !/export function dentroDeLaSemana/.test(deBug('nucleo', 'semanaMuscular.ts')), true);

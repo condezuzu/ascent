@@ -257,3 +257,31 @@ export function grupoDelAnio(grupos: readonly string[]): GrupoDelAnio | null {
 
 /** Los colores de los grupos de «Tu año»: cuatro tonos apagados que se distinguen también con daltonismo. */
 export const COLORES_DEL_ANIO = { pecho: '#419ec6', piernas: '#a77e33', espalda: '#765190', brazos: '#b5677d' } as const;
+
+// ------------------------------------------------------------ metas
+
+/** Hasta un año al ritmo más lento del rango es una meta realista. */
+export const SEMANAS_REALISTA = 52;
+
+export type ProyeccionDeMeta =
+  | { estado: 'lograda' }
+  | { estado: 'noSeSabe' }
+  | { estado: 'noSube' }
+  | { estado: 'enCamino'; semanas: [number, number | null]; realista: boolean };
+
+/**
+ * Cuándo llegarías a una meta (su 1RM estimado) al ritmo de tus últimas 12 semanas, como un rango de semanas: del ritmo
+ * más rápido al más lento del rango del 80 % (Rhea 2003, Swinton 2024 y Latella 2020: cada uno sube distinto). Con
+ * menos de 6 sesiones no se sabe; si el rango no llega a subir, así no llega; si al ritmo lento no sube, el final queda
+ * abierto (null). Realista si al ritmo lento llega en un año o menos.
+ */
+export function proyeccionDeMeta(t: Pick<TendenciaDeFuerza, 'sesiones' | 'nivel' | 'rango'>, meta: number): ProyeccionDeMeta {
+  if (t.nivel !== null && t.nivel >= meta) return { estado: 'lograda' };
+  if (t.nivel === null || t.sesiones < SESIONES_MINIMAS || !t.rango) return { estado: 'noSeSabe' };
+  const [lento, rapido] = t.rango;
+  if (rapido <= 0) return { estado: 'noSube' };
+  const nivel = t.nivel;
+  const semanas = (porMes: number) => Math.ceil((Math.log(meta / nivel) / Math.log(1 + porMes / 100)) * SEMANAS_POR_MES);
+  const hasta = lento > 0 ? semanas(lento) : null;
+  return { estado: 'enCamino', semanas: [semanas(rapido), hasta], realista: hasta !== null && hasta <= SEMANAS_REALISTA };
+}

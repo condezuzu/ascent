@@ -4,7 +4,7 @@
 // Las reglas —la semana son los últimos 7 días, qué serie es de trabajo, el 1RM de referencia de los
 // últimos 126 días— son las de ese archivo, no las de Ascent: así las dos apps cuentan igual.
 
-import { DIAS_DEL_E1RM, dentroDeLaSemana, esDeTrabajo, mejorE1rm, type EjercicioHecho } from './puntajeMuscular.ts';
+import { DE_PIERNAS, DIAS_DEL_E1RM, dentroDeLaSemana, esDeTrabajo, mejorE1rm, type EjercicioHecho, type MusculoEnLaSesion } from './puntajeMuscular.ts';
 
 export type DelCatalogo = { principal: string[]; ayuda: string[]; parte?: string };
 export type BloqueHecho = { ejercicio: string | null; series: number; minutos?: number; pesos?: (number | null)[]; reps?: (number | null)[]; rir?: (number | null)[] };
@@ -105,4 +105,41 @@ export function diasDeLaRutina(
         return m ? [{ principal: m.principal, ayuda: m.ayuda, ...(m.parte ? { parte: m.parte } : {}), objetivo: e.reps ?? null, series: Array.from({ length: e.series }, () => ({ reps: e.reps ?? null })) }] : [];
       })
     );
+}
+
+/**
+ * Lo que pide la fatiga de Moss (`listoEl`): por músculo, cada sesión en que fue principal, con sus series de trabajo,
+ * la reserva más baja anotada y si lo trabajó un multiarticular de piernas o espalda baja. `nuevo` va en false: hacen
+ * falta 26 semanas de historia y Ascent mira 18.
+ */
+export function musculosEnSesiones(recientes: readonly EjercicioDeLaSemana[], catalogo: Readonly<Record<string, DelCatalogo & { multiarticular?: boolean }>>): Map<string, MusculoEnLaSesion[]> {
+  const porDia = new Map<string, MusculoEnLaSesion>();
+  for (const e of recientes) {
+    if (!e.series.length) continue;
+    for (const m of e.principal) {
+      const clave = `${m}|${e.fecha}`;
+      const x = porDia.get(clave) ?? { fecha: e.fecha, series: 0, rirMinimo: null, multiarticularDePiernas: false, nuevo: false };
+      x.series += e.series.length;
+      for (const s of e.series) if (s.rir != null) x.rirMinimo = x.rirMinimo === null ? s.rir : Math.min(x.rirMinimo, s.rir);
+      if (catalogo[e.id]?.multiarticular && (DE_PIERNAS as readonly string[]).includes(m)) x.multiarticularDePiernas = true;
+      porDia.set(clave, x);
+    }
+  }
+  const r = new Map<string, MusculoEnLaSesion[]>();
+  for (const [clave, x] of porDia) {
+    const m = clave.split('|')[0];
+    r.set(m, [...(r.get(m) ?? []), x].sort((a, b) => a.fecha.localeCompare(b.fecha)));
+  }
+  return r;
+}
+
+/** Los grupos de Ascent de un día (todos los bloques del día, de todas sus sesiones), del que más series tuvo al que menos; si empatan, el que apareció antes. Lo que pide `grupoDelAnio`. */
+export function gruposDelDia(bloques: readonly BloqueHecho[], grupoDe: Readonly<Record<string, string>>): string[] {
+  const series = new Map<string, number>();
+  for (const b of bloques) {
+    const g = b.ejercicio ? grupoDe[b.ejercicio] : undefined;
+    // Como gruposDeLaSesion de Moss: todas las series anotadas, con un mínimo de 1 por ejercicio.
+    if (g) series.set(g, (series.get(g) ?? 0) + Math.max(1, b.series));
+  }
+  return [...series].sort((a, b) => b[1] - a[1]).map(([g]) => g);
 }

@@ -744,6 +744,103 @@
       }
     },
     {
+      "que": "meta ya lograda",
+      "funcion": "proyeccionDeMeta",
+      "entrada": [
+        {
+          "sesiones": 10,
+          "nivel": 101,
+          "rango": [
+            0.5,
+            2
+          ]
+        },
+        100
+      ],
+      "salida": {
+        "estado": "lograda"
+      }
+    },
+    {
+      "que": "meta con pocas sesiones: no se sabe",
+      "funcion": "proyeccionDeMeta",
+      "entrada": [
+        {
+          "sesiones": 4,
+          "nivel": 90,
+          "rango": null
+        },
+        100
+      ],
+      "salida": {
+        "estado": "noSeSabe"
+      }
+    },
+    {
+      "que": "meta sin subida: así no llega",
+      "funcion": "proyeccionDeMeta",
+      "entrada": [
+        {
+          "sesiones": 10,
+          "nivel": 90,
+          "rango": [
+            -1,
+            -0.1
+          ]
+        },
+        100
+      ],
+      "salida": {
+        "estado": "noSube"
+      }
+    },
+    {
+      "que": "meta realista: de 24 a 47 semanas",
+      "funcion": "proyeccionDeMeta",
+      "entrada": [
+        {
+          "sesiones": 10,
+          "nivel": 90,
+          "rango": [
+            1,
+            2
+          ]
+        },
+        100
+      ],
+      "salida": {
+        "estado": "enCamino",
+        "semanas": [
+          24,
+          47
+        ],
+        "realista": true
+      }
+    },
+    {
+      "que": "meta lejana: el ritmo lento no sube",
+      "funcion": "proyeccionDeMeta",
+      "entrada": [
+        {
+          "sesiones": 10,
+          "nivel": 90,
+          "rango": [
+            -0.5,
+            2
+          ]
+        },
+        100
+      ],
+      "salida": {
+        "estado": "enCamino",
+        "semanas": [
+          24,
+          null
+        ],
+        "realista": false
+      }
+    },
+    {
       "que": "el día de pecho",
       "funcion": "grupoDelAnio",
       "entrada": [
