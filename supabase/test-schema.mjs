@@ -22030,6 +22030,33 @@ console.log('\n340. Lo de Moss en Ascent: qué esperar antes de entrenar y el co
   chequear('las cuatro funciones de 0015, por el esquema moss', ['moss_hoy', 'moss_semanas', 'moss_objetivo', 'moss_anio'].every((n) => vin.includes(`supabase.schema('moss').rpc('${n}'`)), true);
   chequear('se llega abajo, y sin datos de Moss no hay ningún bloque', [/scrollToEnd/.test(vin), /conDatos = vinculo\.vinculada === true && hayDatosDeMoss\(datosDeMoss\)/.test(deBug('movil/src', 'PuertaDeMoss.tsx'))], [true, true]);
 }
+console.log('\n341. La rutina automática: días, series, zonas y tiempo (19/11, galería 25)');
+{
+  const R = await import('../nucleo/rutinaAutomatica.ts');
+  const grupo341 = Object.fromEntries([...deBug('supabase', 'schema.sql').matchAll(/\('([a-z_]+)',\s*'[^']+',\s*'([a-z]+)'/g)].map((m) => [m[1], m[2]]));
+  chequear('todos los ejercicios que usa están en el catálogo', R.EJERCICIOS_QUE_USA.filter((id) => !grupo341[id]), []);
+  const base = { objetivo: 'musculo', experiencia: 'hasta2a', dias: 3, minutos: 60, lugar: 'gimnasio', deporte: false, zonas: {}, silla: false, condicion: false };
+  const ejs = (rut) => rut.dias.flatMap((d) => d.ejercicios);
+  const diasCon = (rut, g) => rut.dias.filter((d) => d.ejercicios.some((e) => grupo341[e.ejercicio] === g)).length;
+  const seriesDe = (rut, g) => ejs(rut).filter((e) => grupo341[e.ejercicio] === g).reduce((s, e) => s + e.series, 0);
+  chequear('de 2 a 6 días: pecho, espalda, hombros y piernas, cada uno al menos 2 días', [2, 3, 4, 5, 6].flatMap((dias) => ['pecho', 'espalda', 'hombros', 'piernas'].filter((g) => diasCon(R.armarRutina({ ...base, dias }), g) < 2).map((g) => `${dias} días: ${g}`)), []);
+  chequear('cuántos días entrena, y el domingo descansa', [2, 3, 4, 5, 6].map((dias) => { const r = R.armarRutina({ ...base, dias }); return [r.dias.filter((d) => !d.descanso).length, r.dias[0].descanso]; }), [[2, true], [3, true], [4, true], [5, true], [6, true]]);
+  const nuevo = R.armarRutina({ ...base, experiencia: 'nunca' });
+  const viejo = R.armarRutina({ ...base, experiencia: 'mas' });
+  const cuatro = R.armarRutina({ ...base, experiencia: 'mas', dias: 4 });
+  // Piernas no entra en el tope de 20: son cuatro músculos (cuádriceps, isquios, glúteos, gemelos).
+  chequear('quien empieza, pocas series; con experiencia, más; de 8 a 20 por músculo', [['pecho', 'espalda'].every((g) => seriesDe(nuevo, g) >= 4 && seriesDe(nuevo, g) <= 12), ['pecho', 'espalda'].every((g) => seriesDe(viejo, g) > seriesDe(nuevo, g)), ['pecho', 'espalda'].every((g) => seriesDe(cuatro, g) >= 8 && seriesDe(cuatro, g) <= 20)], [true, true, true]);
+  chequear('lo que entra en el tiempo: 45 min, hasta 12 series por sesión', R.armarRutina({ ...base, minutos: 45, experiencia: 'mas' }).dias.every((d) => d.ejercicios.reduce((s, e) => s + e.series, 0) <= 12), true);
+  const sinRodilla = R.armarRutina({ ...base, zonas: { rodilla: 'evitar' } });
+  chequear('rodilla «Evitar»: nada que la cargue, y la pierna se trabaja igual', [ejs(sinRodilla).filter((e) => ['sentadilla', 'prensa', 'sentadilla_goblet', 'sentadilla_bulgara', 'zancada_inversa', 'prensa_una_pierna', 'subida_cajon', 'extension_cuadriceps', 'curl_femoral'].includes(e.ejercicio)).length, diasCon(sinRodilla, 'piernas') >= 2], [0, true]);
+  const conHombro = R.armarRutina({ ...base, zonas: { hombro: 'molesta' } });
+  chequear('hombro «Molesta»: si todas las variantes lo cargan, una serie menos', [ejs(conHombro).find((e) => e.ejercicio === 'press_banca')?.series, ejs(R.armarRutina(base)).find((e) => e.ejercicio === 'press_banca')?.series], [2, 3]);
+  const corporales341 = ['flexiones', 'dominadas', 'remo_invertido', 'fondos_banco', 'plancha', 'dead_bug', 'puente_gluteo', 'sentadilla_bulgara', 'subida_cajon'];
+  chequear('en casa, solo peso corporal', ejs(R.armarRutina({ ...base, lugar: 'casa' })).filter((e) => !corporales341.includes(e.ejercicio)).map((e) => e.ejercicio), []);
+  chequear('en silla de ruedas, nada de piernas', diasCon(R.armarRutina({ ...base, silla: true }), 'piernas'), 0);
+  chequear('con un deporte, una serie menos en las piernas', [ejs(R.armarRutina({ ...base, deporte: true })).find((e) => e.ejercicio === 'sentadilla')?.series, ejs(R.armarRutina(base)).find((e) => e.ejercicio === 'sentadilla')?.series], [2, 3]);
+  chequear('fuerza, menos repeticiones; con una condición, que vea a un médico', [ejs(R.armarRutina({ ...base, objetivo: 'fuerza' })).find((e) => e.ejercicio === 'sentadilla')?.reps, R.armarRutina({ ...base, condicion: true }).consultarMedico], [5, true]);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {
