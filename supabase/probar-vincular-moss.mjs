@@ -72,7 +72,10 @@ try {
 
   await visible('moss-vincular-codigo').click();
   await visible('moss-desvincular').waitFor({ timeout: 30000 }).catch(() => {});
-  chequear('«Vincular» canjea el código: vinculada en la pantalla y en la base', [(await rotulo()).trim().toLowerCase(), await vinculada()], [TX.moss.vinculada.toLowerCase(), true]);
+  // Vinculada, la pantalla pasa a los datos de Moss (moss_hoy de la 0015, contra la base real): una cuenta
+  // de Moss sin nada anotado, así que lo de hoy pide que anote.
+  await visible('moss-vinculada').waitFor({ timeout: 30000 }).catch(() => {});
+  chequear('«Vincular» canjea el código: vinculada en la base, y la pantalla muestra lo de Moss', [await vinculada(), await visible('moss-vinculada').count(), await page.getByTestId('moss-esperar-sinAnotar').filter({ visible: true }).count()], [true, 1, 1]);
   await page.screenshot({ path: join(SALIDA, '2-vinculada.png') });
 
   await visible('moss-desvincular').click();
