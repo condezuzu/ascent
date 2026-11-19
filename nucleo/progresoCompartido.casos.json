@@ -1,0 +1,791 @@
+{
+  "nota": "Los casos de progresoCompartido.ts, iguales en Moss y en Ascent. Salen de correr las funciones: si una cambia a propósito, se vuelven a armar (herramienta en la sesión del 19/11/2026) y se copian en las dos.",
+  "casos": [
+    {
+      "que": "la fuerza sube",
+      "funcion": "tendenciaDeFuerza",
+      "entrada": [
+        [
+          {
+            "t": 0,
+            "e1rm": 101.49999999999999
+          },
+          {
+            "t": 1,
+            "e1rm": 99.99496654133262
+          },
+          {
+            "t": 2,
+            "e1rm": 102.02013400267558
+          },
+          {
+            "t": 3,
+            "e1rm": 104.59113519628197
+          },
+          {
+            "t": 4,
+            "e1rm": 103.04026664504643
+          },
+          {
+            "t": 5,
+            "e1rm": 105.12710963760242
+          },
+          {
+            "t": 6,
+            "e1rm": 107.77640947435398
+          },
+          {
+            "t": 7,
+            "e1rm": 106.17830994416744
+          },
+          {
+            "t": 8,
+            "e1rm": 108.32870676749586
+          },
+          {
+            "t": 9,
+            "e1rm": 111.05868979607884
+          },
+          {
+            "t": 10,
+            "e1rm": 109.41192088948912
+          },
+          {
+            "t": 11,
+            "e1rm": 111.62780704588712
+          }
+        ],
+        {
+          "hoy": 11,
+          "entrenado": true
+        }
+      ],
+      "salida": {
+        "estado": "sube",
+        "sesiones": 12,
+        "semanas": 11,
+        "porMes": 4.2569541165105695,
+        "rango": [
+          3.718267569585887,
+          4.798438465622246
+        ],
+        "sigma": 2.3476008944634215,
+        "nivel": 111.55217170123262,
+        "ajuste": {
+          "tMedio": 5.5,
+          "yMedio": 4.6617829448681745,
+          "b": 0.009583535314860137,
+          "s": 0.01111173213908618,
+          "n": 12,
+          "sxx": 143
+        },
+        "puntos": [
+          {
+            "t": 0,
+            "e1rm": 101.49999999999999
+          },
+          {
+            "t": 1,
+            "e1rm": 99.99496654133262
+          },
+          {
+            "t": 2,
+            "e1rm": 102.02013400267558
+          },
+          {
+            "t": 3,
+            "e1rm": 104.59113519628197
+          },
+          {
+            "t": 4,
+            "e1rm": 103.04026664504643
+          },
+          {
+            "t": 5,
+            "e1rm": 105.12710963760242
+          },
+          {
+            "t": 6,
+            "e1rm": 107.77640947435398
+          },
+          {
+            "t": 7,
+            "e1rm": 106.17830994416744
+          },
+          {
+            "t": 8,
+            "e1rm": 108.32870676749586
+          },
+          {
+            "t": 9,
+            "e1rm": 111.05868979607884
+          },
+          {
+            "t": 10,
+            "e1rm": 109.41192088948912
+          },
+          {
+            "t": 11,
+            "e1rm": 111.62780704588712
+          }
+        ]
+      }
+    },
+    {
+      "que": "la fuerza no sube",
+      "funcion": "tendenciaDeFuerza",
+      "entrada": [
+        [
+          {
+            "t": 0,
+            "e1rm": 99
+          },
+          {
+            "t": 1,
+            "e1rm": 101
+          },
+          {
+            "t": 2,
+            "e1rm": 99
+          },
+          {
+            "t": 3,
+            "e1rm": 101
+          },
+          {
+            "t": 4,
+            "e1rm": 99
+          },
+          {
+            "t": 5,
+            "e1rm": 101
+          },
+          {
+            "t": 6,
+            "e1rm": 99
+          },
+          {
+            "t": 7,
+            "e1rm": 101
+          },
+          {
+            "t": 8,
+            "e1rm": 99
+          },
+          {
+            "t": 9,
+            "e1rm": 101
+          }
+        ],
+        {
+          "hoy": 9,
+          "entrenado": true
+        }
+      ],
+      "salida": {
+        "estado": "sinSubidaClara",
+        "sesiones": 10,
+        "semanas": 9,
+        "porMes": 0.2639930015023495,
+        "rango": [
+          -0.4112820110482085,
+          0.9438468092395791
+        ],
+        "sigma": 2.4351346596357137,
+        "nivel": 100.26809484738072,
+        "ajuste": {
+          "tMedio": 4.5,
+          "yMedio": 4.605120183487925,
+          "b": 0.000606080809293027,
+          "s": 0.011010004661206364,
+          "n": 10,
+          "sxx": 82.5
+        },
+        "puntos": [
+          {
+            "t": 0,
+            "e1rm": 99
+          },
+          {
+            "t": 1,
+            "e1rm": 101
+          },
+          {
+            "t": 2,
+            "e1rm": 99
+          },
+          {
+            "t": 3,
+            "e1rm": 101
+          },
+          {
+            "t": 4,
+            "e1rm": 99
+          },
+          {
+            "t": 5,
+            "e1rm": 101
+          },
+          {
+            "t": 6,
+            "e1rm": 99
+          },
+          {
+            "t": 7,
+            "e1rm": 101
+          },
+          {
+            "t": 8,
+            "e1rm": 99
+          },
+          {
+            "t": 9,
+            "e1rm": 101
+          }
+        ]
+      }
+    },
+    {
+      "que": "con 4 sesiones, todavía no se sabe",
+      "funcion": "tendenciaDeFuerza",
+      "entrada": [
+        [
+          {
+            "t": 0,
+            "e1rm": 100
+          },
+          {
+            "t": 1,
+            "e1rm": 101
+          },
+          {
+            "t": 2,
+            "e1rm": 102
+          },
+          {
+            "t": 3,
+            "e1rm": 101
+          }
+        ],
+        {
+          "hoy": 3,
+          "entrenado": false
+        }
+      ],
+      "salida": {
+        "estado": "noSeSabe",
+        "sesiones": 4,
+        "semanas": 3,
+        "porMes": null,
+        "rango": null,
+        "sigma": 4.657348791251553,
+        "nivel": 101.60080939400717,
+        "ajuste": {
+          "tMedio": 1.5,
+          "yMedio": 4.61509600823872,
+          "b": 0.003970328900251463,
+          "s": 0.007656920683970094,
+          "n": 4,
+          "sxx": 5
+        },
+        "puntos": [
+          {
+            "t": 0,
+            "e1rm": 100
+          },
+          {
+            "t": 1,
+            "e1rm": 101
+          },
+          {
+            "t": 2,
+            "e1rm": 102
+          },
+          {
+            "t": 3,
+            "e1rm": 101
+          }
+        ]
+      }
+    },
+    {
+      "que": "la tendencia en un punto, con su rango",
+      "funcion": "nivelEn",
+      "entrada": [
+        {
+          "tMedio": 4.5,
+          "yMedio": 4.62,
+          "b": 0.008,
+          "s": 0.012,
+          "n": 10,
+          "sxx": 82.5
+        },
+        9
+      ],
+      "salida": {
+        "nivel": 105.21438179103109,
+        "abajo": 104.26761513752479,
+        "arriba": 106.16974523746308
+      }
+    },
+    {
+      "que": "tu ruido, acercado al de los estudios",
+      "funcion": "sigmaTuyo",
+      "entrada": [
+        [
+          2,
+          -3,
+          1.5,
+          -1,
+          4,
+          -2.5
+        ],
+        true
+      ],
+      "salida": 3.0352100421552377
+    },
+    {
+      "que": "sin desvíos, el de los estudios (novato)",
+      "funcion": "sigmaTuyo",
+      "entrada": [
+        [],
+        false
+      ],
+      "salida": 5.5
+    },
+    {
+      "que": "estancado: sin subida clara, 8 semanas y pasado el umbral",
+      "funcion": "estaEstancado",
+      "entrada": [
+        {
+          "estado": "sinSubidaClara",
+          "semanas": 9
+        },
+        7,
+        6
+      ],
+      "salida": true
+    },
+    {
+      "que": "no estancado antes del umbral",
+      "funcion": "estaEstancado",
+      "entrada": [
+        {
+          "estado": "sinSubidaClara",
+          "semanas": 9
+        },
+        5,
+        6
+      ],
+      "salida": false
+    },
+    {
+      "que": "no estancado con menos de 8 semanas",
+      "funcion": "estaEstancado",
+      "entrada": [
+        {
+          "estado": "sinSubidaClara",
+          "semanas": 7
+        },
+        9,
+        6
+      ],
+      "salida": false
+    },
+    {
+      "que": "bajó de verdad",
+      "funcion": "bajoDeVerdad",
+      "entrada": [
+        [
+          12,
+          12,
+          13,
+          12
+        ],
+        [
+          7,
+          8,
+          7,
+          7
+        ],
+        2
+      ],
+      "salida": {
+        "antes": 12.25,
+        "ahora": 7.25,
+        "bajo": true
+      }
+    },
+    {
+      "que": "no bajó de verdad",
+      "funcion": "bajoDeVerdad",
+      "entrada": [
+        [
+          12,
+          11,
+          13,
+          12
+        ],
+        [
+          12,
+          11,
+          12,
+          12
+        ],
+        2
+      ],
+      "salida": {
+        "antes": 12,
+        "ahora": 11.75,
+        "bajo": false
+      }
+    },
+    {
+      "que": "sin causa clara",
+      "funcion": "razonesDeEstancamiento",
+      "entrada": [
+        {
+          "antes": [
+            {
+              "lunes": "2026-08-03",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            },
+            {
+              "lunes": "2026-08-10",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            },
+            {
+              "lunes": "2026-08-17",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            },
+            {
+              "lunes": "2026-08-24",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            }
+          ],
+          "ahora": [
+            {
+              "lunes": "2026-08-03",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            },
+            {
+              "lunes": "2026-08-10",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            },
+            {
+              "lunes": "2026-08-17",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            },
+            {
+              "lunes": "2026-08-24",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            }
+          ],
+          "objetivo": "mantener",
+          "bajaSemanal": null,
+          "comida": [
+            {
+              "dias": 6,
+              "proteina": 150
+            },
+            {
+              "dias": 6,
+              "proteina": 145
+            }
+          ],
+          "pesoKg": 80,
+          "sueno": {
+            "antes": 460,
+            "ahora": 455
+          },
+          "anios": null
+        }
+      ],
+      "salida": {
+        "razones": [],
+        "anios": null,
+        "faltan": []
+      }
+    },
+    {
+      "que": "menos series y menos veces",
+      "funcion": "razonesDeEstancamiento",
+      "entrada": [
+        {
+          "antes": [
+            {
+              "lunes": "2026-08-03",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            },
+            {
+              "lunes": "2026-08-10",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            },
+            {
+              "lunes": "2026-08-17",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            },
+            {
+              "lunes": "2026-08-24",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            }
+          ],
+          "ahora": [
+            {
+              "lunes": "2026-09-07",
+              "series": 7,
+              "veces": 1,
+              "pesadas": 1,
+              "conReps": 7
+            },
+            {
+              "lunes": "2026-09-14",
+              "series": 7,
+              "veces": 1,
+              "pesadas": 1,
+              "conReps": 7
+            },
+            {
+              "lunes": "2026-09-21",
+              "series": 7,
+              "veces": 1,
+              "pesadas": 1,
+              "conReps": 7
+            },
+            {
+              "lunes": "2026-09-28",
+              "series": 7,
+              "veces": 1,
+              "pesadas": 1,
+              "conReps": 7
+            }
+          ],
+          "objetivo": "mantener",
+          "bajaSemanal": null,
+          "comida": [
+            {
+              "dias": 6,
+              "proteina": 150
+            },
+            {
+              "dias": 6,
+              "proteina": 145
+            }
+          ],
+          "pesoKg": 80,
+          "sueno": {
+            "antes": 460,
+            "ahora": 455
+          },
+          "anios": null
+        }
+      ],
+      "salida": {
+        "razones": [
+          {
+            "que": "series",
+            "antes": 12,
+            "ahora": 7
+          },
+          {
+            "que": "frecuencia",
+            "antes": 2,
+            "ahora": 1
+          },
+          {
+            "que": "pesadas",
+            "pesadas": 4,
+            "de": 28
+          }
+        ],
+        "anios": null,
+        "faltan": []
+      }
+    },
+    {
+      "que": "bajando rápido, poca proteína y menos sueño",
+      "funcion": "razonesDeEstancamiento",
+      "entrada": [
+        {
+          "antes": [
+            {
+              "lunes": "2026-08-03",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            },
+            {
+              "lunes": "2026-08-10",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            },
+            {
+              "lunes": "2026-08-17",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            },
+            {
+              "lunes": "2026-08-24",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            }
+          ],
+          "ahora": [
+            {
+              "lunes": "2026-08-03",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            },
+            {
+              "lunes": "2026-08-10",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            },
+            {
+              "lunes": "2026-08-17",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            },
+            {
+              "lunes": "2026-08-24",
+              "series": 12,
+              "veces": 2,
+              "pesadas": 4,
+              "conReps": 12
+            }
+          ],
+          "objetivo": "bajar",
+          "bajaSemanal": 1.3,
+          "comida": [
+            {
+              "dias": 6,
+              "proteina": 95
+            },
+            {
+              "dias": 5,
+              "proteina": 100
+            }
+          ],
+          "pesoKg": 80,
+          "sueno": {
+            "antes": 470,
+            "ahora": 350
+          },
+          "anios": 4
+        }
+      ],
+      "salida": {
+        "razones": [
+          {
+            "que": "bajando",
+            "porSemana": 1.3
+          },
+          {
+            "que": "proteina",
+            "gPorKg": 1.21875
+          },
+          {
+            "que": "sueno",
+            "ahora": 350,
+            "antes": 470
+          }
+        ],
+        "anios": 4,
+        "faltan": []
+      }
+    },
+    {
+      "que": "el día de pecho",
+      "funcion": "grupoDelAnio",
+      "entrada": [
+        [
+          "pecho",
+          "brazos"
+        ]
+      ],
+      "salida": "pecho"
+    },
+    {
+      "que": "los hombros van con el pecho",
+      "funcion": "grupoDelAnio",
+      "entrada": [
+        [
+          "hombros",
+          "brazos"
+        ]
+      ],
+      "salida": "pecho"
+    },
+    {
+      "que": "el día de brazos",
+      "funcion": "grupoDelAnio",
+      "entrada": [
+        [
+          "brazos",
+          "espalda"
+        ]
+      ],
+      "salida": "brazos"
+    },
+    {
+      "que": "el core solo no dice de qué día es",
+      "funcion": "grupoDelAnio",
+      "entrada": [
+        [
+          "core",
+          "cardio"
+        ]
+      ],
+      "salida": null
+    }
+  ]
+}

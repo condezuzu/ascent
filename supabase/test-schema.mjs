@@ -22067,6 +22067,7 @@ console.log('\n342. El catálogo muscular compartido con Moss (19/11)');
   const base342 = [...deBug('supabase', 'schema.sql').matchAll(/^\s+\('([a-z_]+)',\s*'[^']+',\s*'([a-z]+)'/gm)].filter((m) => ['piernas', 'pecho', 'espalda', 'hombros', 'brazos', 'core'].includes(m[2])).map((m) => m[1]);
   chequear('cada ejercicio de la base tiene sus músculos', [...new Set(base342)].filter((id) => !cat342[id]).sort(), []);
   chequear('y ninguno que la base no tenga', Object.keys(cat342).filter((id) => !base342.includes(id)), []);
+  chequear('cada uno dice si es multiarticular (la fatiga de Moss lo usa): la sentadilla sí, el curl no', [Object.values(cat342).every((v) => typeof v.multiarticular === 'boolean'), cat342.sentadilla.multiarticular, cat342.curl_barra.multiarticular], [true, true, false]);
   chequear('solo los músculos de Moss, con al menos uno principal', Object.entries(cat342).filter(([, v]) => !v.principal.length || [...v.principal, ...v.ayuda].some((m) => !MUSCULOS342.includes(m))).map(([k]) => k), []);
   chequear('partes, solo donde hay ensayos: el pecho alto en los inclinados y la cabeza larga en la extensión sobre la cabeza', Object.entries(cat342).filter(([, v]) => v.parte).map(([k, v]) => `${k}:${v.parte}`).sort(), ['press_inclinado:pechoAlto', 'press_inclinado_mancuernas:pechoAlto', 'press_inclinado_smith:pechoAlto', 'triceps_sobre_cabeza:tricepsLarga']);
 }
@@ -22087,6 +22088,22 @@ console.log('\n343. Las cuentas de músculos, las mismas que Moss (puntajeMuscul
   const copias343 = [igual343('puntajeMuscular.ts', 'puntajeMuscular.ts'), igual343('puntajeMuscular.casos.json', 'puntajeMuscular.casos.json'), igual343('../secciones/ascent/cuerpo.ts', 'cuerpo.ts')];
   if (copias343.every((x) => x !== null)) chequear('idénticos a los de Moss (las cuentas, sus casos y el cuerpo)', copias343, [true, true, true]);
 }
+console.log('\n343b. Progreso compartido con Moss: tendencia, estancados, razones y Tu año (progresoCompartido.ts, 19/11)');
+{
+  const G = await import('../nucleo/progresoCompartido.ts');
+  const { casos } = JSON.parse(deBug('nucleo', 'progresoCompartido.casos.json'));
+  const orden = (v) => (Array.isArray(v) ? v.map(orden) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, orden(v[k])])) : v);
+  const mal = casos.filter((c) => {
+    const r = G[c.funcion](...c.entrada);
+    return JSON.stringify(orden(r instanceof Map ? Object.fromEntries(r) : r)) !== JSON.stringify(orden(c.salida));
+  }).map((c) => c.que);
+  chequear(`los ${casos.length} casos compartidos dan lo mismo que en Moss`, mal, []);
+  const moss = 'C:/Users/agusc/AppData/Local/Claude-Data/claude_pzs8sxrjxfjjc/scratch-workspaces/72da519d-471d-42a1-aeb2-6c67de217f9c/f9bedcb3-8ceb-4006-8d30-0989e937913e/scratch-2026-10-21-9f7792/src/dominio/';
+  const igual = (a) => { try { return leerBug(moss + a, 'utf8').replace(/\r\n/g, '\n') === deBug('nucleo', a); } catch { return null; } };
+  const copias = [igual('progresoCompartido.ts'), igual('progresoCompartido.casos.json')];
+  if (copias.every((x) => x !== null)) chequear('idénticos a los de Moss', copias, [true, true]);
+}
+
 console.log('\n344. Lo que Ascent le pasa a las cuentas de músculos: la semana con su RIR (19/11)');
 {
   const S = await import('../nucleo/semanaMuscular.ts');
@@ -22100,9 +22117,13 @@ console.log('\n344. Lo que Ascent le pasa a las cuentas de músculos: la semana 
   ];
   const ej344 = S.ejerciciosDeLaSemana(ses344, '2026-11-19', cat344, { propio_abc: 'espalda' }, { press_banca: 8 });
   chequear('el press sin la entrada en calor, sin el cardio, el propio por su grupo, y nada de hace 9 días', ej344, [
-    { principal: ['pecho'], ayuda: ['triceps', 'hombros'], objetivo: 8, series: [{ reps: 8, rir: 2 }, { reps: 8, rir: 1 }, { reps: 6, rir: 4 }] },
-    { principal: ['dorsales'], ayuda: [], objetivo: null, series: [{ reps: null, rir: null }, { reps: null, rir: null }] },
+    { id: 'press_banca', fecha: '2026-11-18', principal: ['pecho'], ayuda: ['triceps', 'hombros'], objetivo: 8, series: [{ reps: 8, rir: 2 }, { reps: 8, rir: 1 }, { reps: 6, rir: 4 }] },
+    { id: 'propio_abc', fecha: '2026-11-18', principal: ['dorsales'], ayuda: [], objetivo: null, series: [{ reps: null, rir: null }, { reps: null, rir: null }] },
   ]);
+  const rec344 = S.ejerciciosRecientes(ses344, '2026-11-19', cat344, { propio_abc: 'espalda' }, { press_banca: 8 });
+  chequear('las sesiones del press, de la más vieja a la nueva, para la próxima', S.sesionesDelEjercicio(rec344, 'press_banca').map((x) => x.series.length), [1, 3]);
+  const rut344 = S.diasDeLaRutina([{ descanso: true, ejercicios: [] }, { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 3, reps: 8 }, { ejercicio: 'cinta', series: 1, minutos: 20 }] }, { descanso: false, ejercicios: [{ ejercicio: 'sentadilla', series: 3 }] }], cat344, {});
+  chequear('la rutina como la reciben las cuentas: sin descansos ni cardio, con las series planeadas', rut344.map((d) => d.map((e) => [e.principal.join('+'), e.series.length, e.objetivo])), [[['pecho', 3, 8]], [['cuadriceps+gluteos', 3, null]]]);
   const por344 = Object.fromEntries(P.seriesPorMusculo(ej344));
   chequear('y las cuentas compartidas lo cuentan: pecho 2, tríceps 1, dorsales 2', [por344.pecho?.series, por344.triceps?.series, por344.dorsales?.series], [2, 1, 2]);
   chequear('las reglas son las del archivo compartido, no unas propias', /from '\.\/puntajeMuscular\.ts'/.test(deBug('nucleo', 'semanaMuscular.ts')) && !/export function dentroDeLaSemana/.test(deBug('nucleo', 'semanaMuscular.ts')), true);
