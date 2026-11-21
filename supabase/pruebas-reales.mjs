@@ -48,8 +48,8 @@
 //      distancia de la vuelta (21/10), en la nativa.
 //  18. probar-octogonos — los botones de Inicio y del bloque tienen las esquinas cortadas en
 //      diagonal (21/10), en la nativa.
-//  19. probar-dos-por-dos — el aviso de subir el peso con la regla 2 por 2: avisa con el rango,
-//      y no avisa si la última serie no llegó al objetivo + 2 (21/10), en la nativa.
+//  19. probar-subir-peso — el peso que parpadea cuando conviene subir, con la regla de la sección de
+//      Moss: dice a cuánto, se explica la primera vez, tocarlo lo pone; «Editar la rutina» en la sesión (21/11).
 //  20. probar-maximo-reps — en Stats, el peso máximo de cada ejercicio con sus repeticiones
 //      («90 kg × 5»), con una marca de verdad (21/10), en la nativa.
 //  21. (sacada el 29/10: era el globo de «Novedad», que ya no existe.)
@@ -146,7 +146,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'las vidas son estrellas', archivo: 'probar-estrellas.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el cardio', archivo: 'probar-cardio.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'los botones en octágono', archivo: 'probar-octogonos.mjs', args: [], navegador: true }]),
-  ...(soloApi ? [] : [{ nombre: 'subir el peso, 2 por 2', archivo: 'probar-dos-por-dos.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'subir el peso y la rutina en la sesión', archivo: 'probar-subir-peso.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el máximo con sus repeticiones', archivo: 'probar-maximo-reps.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'descansar sin arrancar', archivo: 'probar-descansar.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la rutina en Stats, sin saltar', archivo: 'probar-rutina-stats.mjs', args: [], navegador: true }]),

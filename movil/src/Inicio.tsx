@@ -951,6 +951,8 @@ export default function Inicio({
             alElegirRir={sesion.elegirRir}
             alElegirDistancia={sesion.elegirDistancia}
             subirPesoDe={sesion.subirPesoDe}
+            alReleerRutina={sesion.releerLaRutina}
+            globoDelMasVisible={globoDelMas}
             alSumar={sesion.serieHecha}
             alRestar={sesion.deshacerSerie}
             alSiguiente={sesion.bloqueSiguiente}
@@ -1036,7 +1038,7 @@ export default function Inicio({
           ) : (
             <Surgir demora={MS.terminar}>
               {/* Un enlace (2/11, «Cifras»): lo sólido de esta pantalla es el +, que se toca doce veces. */}
-              <Fantasma texto={T.sesion.terminar} alTocar={() => setTerminando(true)} estilo={globoDelMas ? estilos.terminarBajoElGlobo : estilos.terminar} />
+              <Fantasma texto={T.sesion.terminar} alTocar={() => setTerminando(true)} estilo={estilos.terminar} />
             </Surgir>
           )}
         </View>
@@ -1338,9 +1340,8 @@ const estilos = conTema(() => StyleSheet.create({
   // Pegada a las vidas, como en el aviso: se leen juntas.
   tiraBajoVidas: { marginTop: 14 },
   alFondo: { marginTop: 'auto' },
-  // Pegado a «Ver lista» (5/11, a pedido). Solo con el globo del + a la vista baja: flota sin correr nada, y lo tapaba.
+  // Pegado a «Ver lista» y «Editar la rutina» (5/11, a pedido). El que baja con el globo del + a la vista es «Editar la rutina».
   terminar: { marginTop: 8 },
-  terminarBajoElGlobo: { marginTop: 48 },
   filaTerminar: { flexDirection: 'row', gap: 8, marginTop: 18 },
   terminarAhora: { width: 116, paddingVertical: 15, alignItems: 'center', justifyContent: 'center' },
   terminarAhoraTexto: { color: C.tinta, fontSize: 15 },

@@ -15,7 +15,7 @@ const CLAVE = 'ascent:guia';
  * nueva. `series` es el del + de siempre (mismo nombre: quien ya lo cerró no lo ve
  * de nuevo).
  */
-export type Globo = 'elegir' | 'series' | 'descanso' | 'amigos' | 'album' | 'rutina';
+export type Globo = 'elegir' | 'series' | 'descanso' | 'amigos' | 'album' | 'rutina' | 'subir';
 
 /**
  * LAS CUENTAS DE ANTES NO VEN LOS GLOBITOS NUEVOS: ya conocen la app. Se decide por
