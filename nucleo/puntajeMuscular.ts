@@ -161,16 +161,17 @@ export const SESIONES_PARA_SUBIR = 2;
 export type SesionDelEjercicio = { series: readonly SerieHecha[] };
 export type Proxima =
   | { decision: 'subir' }
-  | { decision: 'mantener'; razon: 'faltaElTope' | 'sueno' | 'sinObjetivo' }
+  | { decision: 'mantener'; razon: 'faltaElTope' | 'sueno' | 'fatiga' | 'sinObjetivo' }
   | { decision: 'noSeSabe'; razon: 'pocasSesiones' };
 
 /**
  * La doble progresión: sube cuando todas las series de las dos últimas sesiones llegan al tope del rango con RIR 2
  * o más (sin RIR anotado, alcanza con el tope). La comida no frena: el déficit no le quita fuerza a lo ganado
  * (spec/estudio/musculos-recuperacion.md, 6). `nocheCortaHoy`: si hoy toca este ejercicio después de una noche de
- * 6 h o menos (o de despertarte 1 h antes): ese día no se sube. `sesiones`, de la más vieja a la más nueva.
+ * 6 h o menos (o de despertarte 1 h antes): ese día no se sube; `fatigadoHoy`, lo mismo si un músculo suyo todavía se
+ * recupera. `sesiones`, de la más vieja a la más nueva.
  */
-export function proximaSesion(p: { sesiones: readonly SesionDelEjercicio[]; tope: number | null; nocheCortaHoy: boolean }): Proxima {
+export function proximaSesion(p: { sesiones: readonly SesionDelEjercicio[]; tope: number | null; nocheCortaHoy: boolean; fatigadoHoy?: boolean }): Proxima {
   // Sin las repeticiones del objetivo en la rutina no hay doble progresión: se mantiene.
   if (p.tope == null) return { decision: 'mantener', razon: 'sinObjetivo' };
   const ultimas = p.sesiones.filter((s) => s.series.length > 0).slice(-SESIONES_PARA_SUBIR);
@@ -179,6 +180,8 @@ export function proximaSesion(p: { sesiones: readonly SesionDelEjercicio[]; tope
   const llega = ultimas.every((s) => s.series.every((x) => x.reps != null && x.reps >= tope && (x.rir == null || x.rir >= RIR_PARA_SUBIR)));
   if (!llega) return { decision: 'mantener', razon: 'faltaElTope' };
   if (p.nocheCortaHoy) return { decision: 'mantener', razon: 'sueno' };
+  // Si hoy toca y alguno de sus músculos todavía se recupera, hoy no se sube: que no diga «sube» y «recupérate» a la vez.
+  if (p.fatigadoHoy) return { decision: 'mantener', razon: 'fatiga' };
   return { decision: 'subir' };
 }
 
@@ -232,3 +235,12 @@ export const diasHastaListo = (listo: string | null, hoy: string) => (listo === 
 export type EstadoDeFatiga = 'descansado' | 'recuperandose' | 'cargado';
 /** Cargado si faltan 2 días o más; recuperándose si falta 1. */
 export const estadoDeFatiga = (dias: number): EstadoDeFatiga => (dias >= 2 ? 'cargado' : dias === 1 ? 'recuperandose' : 'descansado');
+
+/**
+ * El peso para subir: el salto más chico que suele tener la barra o la máquina, dentro del 2 al 10 % del ACSM 2009 (el
+ * 2,5 kg y el 1 kg son convención). Sin peso (el del cuerpo), null.
+ */
+export function pesoSiguiente(kg: number): number | null {
+  if (kg <= 0) return null;
+  return kg >= 20 ? kg + 2.5 : kg + 1;
+}

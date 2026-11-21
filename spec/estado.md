@@ -84,13 +84,17 @@ las cuentas las pinea la sección 330 de `test:db`. **Nada de esto se vio en un 
   globito con el logo de Moss («Moss · Pronto»); adentro, el logo (la estrella del ícono con su órbita), estrellas y
   la aurora, con los colores y las letras de Moss (`coloresDeMoss.ts`). Vincular espera a que Moss salga (galería
   16). **El tirón no se pudo probar**: la vista web no rebota.
-- **La sección de Moss, vinculada** (19/11, igual que la de Ascent en Moss, con la cara de Moss): se llega abajo, a
-  Tus músculos (cuerpo, barra 0–200 con la franja 70–130, el detalle con su RIR y la próxima, la nota de la rutina), y
-  se sube: fatigados, tu año, estancados, por qué y metas (0016). Tutorial de 5 pasos de 2 s, solo la primera vez y
-  desde el «!». Las cuentas son copias de Moss (`puntajeMuscular.ts`, `progresoCompartido.ts`, `cuerpo.ts`): se
-  recopian antes de cada commit (`test:db` 343). **Diferencia conocida** en «Por qué»: lo que bajas por semana sale
-  del peso de las dos últimas semanas de `moss_semanas` y los años, del primer registro de Ascent; Moss usa su
-  tendencia y el cuestionario (su 0017, propuesta, sin aplicar). Sonda: `probar-seccion-moss`.
+- **La sección de Moss, vinculada** (19/11, rehecha el mismo día como la de Ascent en Moss, para alguien que entra
+  por primera vez; con la cara de Moss): se llega abajo, a Tus músculos (para qué sirve, el cuerpo de frente o de
+  espalda con la lista de ese lado y las series duras de 0 a 30 con la franja de 10 a 20, qué hacer en cada estado,
+  al tocar uno el resto en gris, el pecho y el tríceps de cerca, el reloj de la recuperación y los kilos de la
+  próxima vez) con **Para hoy** (entrenamiento, comida y sueño, `sugerenciasDeHoy.ts`); y se sube: fatigados, tu
+  rutina, tu año, estancados, por qué (solo con alguno) y metas (0016). Tutorial de 5 pasos de 2 s, solo la primera
+  vez y desde «! Cómo se lee». Las cuentas son copias de Moss (`puntajeMuscular.ts`, `progresoCompartido.ts`,
+  `sugerenciasDeHoy.ts`, `cuerpo.ts`): se recopian antes de cada commit (`test:db` 343, 343b y 343c). **Diferencias
+  conocidas**: Para hoy no dice la hora de acostarse (es de Moss y no la sube; «Más en Sueño» abre `moss://sueno`); no sabe de
+  un trastorno de la alimentación ni de cuándo te despertaste; los textos de Moss de más de 95 caracteres van en dos
+  renglones. Sonda: `probar-seccion-moss`.
 
 En Moss, Ascent se muda de Hábitos a Progreso (subiendo desde abajo), pendiente de su aprobación en esa galería.
 

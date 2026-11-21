@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Modal, StyleSheet, View } from 'react-native';
 import { T } from '@nucleo/textos';
 import { MOSS } from './coloresDeMoss';
+import { Reloj } from './CuerpoDeMoss';
 import { LETRAS_DE_MOSS } from './fuentes';
 import { nuevaEnCadaApertura } from './hojaNueva';
 import { Text } from './Texto';
@@ -33,6 +34,14 @@ function TutorialMoss({ visible, alTerminar }: { visible: boolean; alTerminar: (
           <Text style={e.paso}>{T.moss.sec.tutorial.paso(n + 1, titulos.length)}</Text>
           <Text style={e.titulo}>{titulos[n]}</Text>
           <Text style={e.texto}>{textos[n]}</Text>
+          {n === 1 && <Text style={e.texto}>{T.moss.sec.tutorial.serieDura}</Text>}
+          {/* El paso de los fatigados muestra el círculo que se llena hasta que el músculo está listo. */}
+          {n === 3 && (
+            <View style={e.reloj}>
+              <Reloj tam={34} hecho={0.6} />
+              <Text style={e.texto}>{T.moss.sec.fatigados.vuelve(T.moss.sec.fatigados.manana)}</Text>
+            </View>
+          )}
           <View style={e.puntos}>
             {titulos.map((_, i) => (
               <View key={i} style={[e.punto, i === n && e.puntoActual]} />
@@ -60,6 +69,7 @@ const e = StyleSheet.create({
   paso: { color: MOSS.oro, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 12, letterSpacing: 2.4, textTransform: 'uppercase' },
   titulo: { color: MOSS.pergamino, fontFamily: LETRAS_DE_MOSS.titulo, fontSize: 30 },
   texto: { color: MOSS.pergamino, fontFamily: LETRAS_DE_MOSS.texto, fontSize: 16, lineHeight: 23 },
+  reloj: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   puntos: { flexDirection: 'row', gap: 6 },
   punto: { width: 6, height: 6, borderRadius: 3, backgroundColor: MOSS.linea },
   puntoActual: { backgroundColor: MOSS.oro },

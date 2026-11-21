@@ -1,6 +1,10 @@
 {
   "nota": "Los casos de puntajeMuscular.ts, iguales en Moss y en Ascent. Cada uno: la función, lo que recibe y lo que tiene que dar.",
   "casos": [
+    { "que": "en el tope, pero hoy un músculo suyo todavía se recupera: mantiene", "funcion": "proximaSesion", "entrada": [{ "sesiones": [{ "series": [{ "reps": 10 }] }, { "series": [{ "reps": 10 }] }], "tope": 10, "nocheCortaHoy": false, "fatigadoHoy": true }], "salida": { "decision": "mantener", "razon": "fatiga" } },
+    { "que": "subir 80 kg: 82,5", "funcion": "pesoSiguiente", "entrada": [80], "salida": 82.5 },
+    { "que": "subir 10 kg: 11", "funcion": "pesoSiguiente", "entrada": [10], "salida": 11 },
+    { "que": "con el peso del cuerpo no hay peso que subir", "funcion": "pesoSiguiente", "entrada": [0], "salida": null },
     { "que": "todo a 2 de reserva, 6 series: al día siguiente", "funcion": "diasParaEstarListo", "entrada": [{"fecha": "2026-11-18", "series": 6, "rirMinimo": 2, "multiarticularDePiernas": true, "nuevo": false}], "salida": 1 },
     { "que": "a 2 de reserva con 10 series: 2 días", "funcion": "diasParaEstarListo", "entrada": [{"fecha": "2026-11-18", "series": 10, "rirMinimo": 2, "multiarticularDePiernas": false, "nuevo": false}], "salida": 2 },
     { "que": "a 1 de reserva: 2 días", "funcion": "diasParaEstarListo", "entrada": [{"fecha": "2026-11-18", "series": 4, "rirMinimo": 1, "multiarticularDePiernas": false, "nuevo": false}], "salida": 2 },
