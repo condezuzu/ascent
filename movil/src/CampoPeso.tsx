@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import type { Unidad } from '@nucleo/peso';
 import { confirmarCampo, hayQueAvisar, limpiarTecleo, pasoDelCampo, pesoEscrito, textoDelCampo } from '@nucleo/campoPeso';
 import { T } from '@nucleo/textos';
@@ -8,6 +8,7 @@ import { useTema } from './useTema';
 import { Text, TextInput } from './Texto';
 import { L } from './fuentes';
 import Tocable from './Tocable';
+import { sinMovimiento } from './movimiento';
 
 /**
  * EL PESO, escrito una vez. La misma pieza que `src/components/CampoPeso.tsx`:
@@ -25,6 +26,7 @@ export default function CampoPeso({
   etiqueta,
   enCadaTecla = false,
   alTeclear,
+  parpadea = false,
 }: {
   kg: number | null | undefined;
   unidad: Unidad;
@@ -39,6 +41,8 @@ export default function CampoPeso({
    * (`null`). Para quien cierra la pantalla sin sacar el foco del campo.
    */
   alTeclear?: (confirmar: (() => void) | null) => void;
+  /** Conviene probar un peso nuevo (21/11): el número late hasta que se cuenta una serie o sube. */
+  parpadea?: boolean;
 }) {
   useTema();
   const mostrar = (v: number | null | undefined) => textoDelCampo(v, unidad);
@@ -86,6 +90,25 @@ export default function CampoPeso({
     []
   );
 
+  // EL PESO QUE PARPADEA: late suave; con «Reducir movimiento», quieto, con la raya del color del rango.
+  const latido = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!parpadea) return;
+    let vivo = true;
+    let lazo: Animated.CompositeAnimation | null = null;
+    void sinMovimiento().then((quieto) => {
+      if (!vivo || quieto) return;
+      const ir = (a: number) => Animated.timing(latido, { toValue: a, duration: 550, useNativeDriver: true });
+      lazo = Animated.loop(Animated.sequence([ir(0.3), ir(1)]));
+      lazo.start();
+    });
+    return () => {
+      vivo = false;
+      lazo?.stop();
+      latido.setValue(1);
+    };
+  }, [parpadea, latido]);
+
   function paso(signo: 1 | -1) {
     const nuevo = pasoDelCampo(kg, unidad, signo);
     if (nuevo === undefined) return;
@@ -102,7 +125,7 @@ export default function CampoPeso({
           <Text style={[estilos.pasoTexto, !kg && estilos.apagado]}>−</Text>
         </Tocable>
       )}
-      <View style={estilos.caja}>
+      <Animated.View testID={parpadea ? 'peso-parpadea' : undefined} style={[estilos.caja, parpadea && estilos.cajaParpadea, { opacity: latido }]}>
         <TextInput
           style={[estilos.input, compacto && estilos.inputCompacto]}
           value={texto}
@@ -123,7 +146,7 @@ export default function CampoPeso({
           selectTextOnFocus
         />
         <Text style={[estilos.unidad, compacto && estilos.unidadCompacta]}>{unidad}</Text>
-      </View>
+      </Animated.View>
       {!compacto && (
         <Tocable style={estilos.paso} onPress={() => paso(1)} disabled={!kg} accessibilityLabel={T.sesion.pesoSubir}>
           <Text style={[estilos.pasoTexto, !kg && estilos.apagado]}>+</Text>
@@ -147,6 +170,7 @@ const estilos = conTema(() => StyleSheet.create({
     borderBottomColor: C.lineaFuerte,
     paddingVertical: 2,
   },
+  cajaParpadea: { borderBottomColor: C.claro },
   input: {
     color: C.tinta,
     fontSize: 16,

@@ -121,8 +121,10 @@ export const rutinaEsGuardada: { current: boolean } = { current: false };
 export const sesionesRutinaRef: { current: SesionRutina[] } = { current: [] };
 /** El mismo historial con los pesos de cada bloque: para «la última vez» de un ejercicio. */
 export const historialConPesosRef: { current: SesionConPesos[] } = { current: [] };
-/** Las repeticiones objetivo de la rutina activa, por ejercicio: para la regla 2 por 2 (21/10). */
+/** Las repeticiones objetivo de la rutina activa, por ejercicio: el tope contra el que mira el aviso de subir. */
 export const objetivosRef: { current: Record<string, number> } = { current: {} };
+/** Anoche, según Moss (si está vinculada), se durmió 6 h o menos: hoy no se sugiere subir (21/11). */
+export const nocheCortaRef: { current: boolean } = { current: false };
 /** Las marcas de la cuenta con sus repeticiones: para «las repeticiones de la última vez». */
 export const marcasConRepsRef: { current: MarcaConReps[] } = { current: [] };
 

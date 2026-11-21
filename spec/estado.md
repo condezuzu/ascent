@@ -95,6 +95,14 @@ las cuentas las pinea la sección 330 de `test:db`. **Nada de esto se vio en un 
   conocidas**: Para hoy no dice la hora de acostarse (es de Moss y no la sube; «Más en Sueño» abre `moss://sueno`); no sabe de
   un trastorno de la alimentación ni de cuándo te despertaste; los textos de Moss de más de 95 caracteres van en dos
   renglones. Sonda: `probar-seccion-moss`.
+- **Subir el peso y la rutina, en medio del entrenamiento** (21/11, a pedido). Cuando conviene subir, el peso
+  **parpadea** (quieto con «Reducir movimiento») y debajo queda «↑ Puedes subir a …» hasta la primera serie; tocarlo
+  pone el peso. La primera vez, un globo lo explica. La regla es **la de la sección de Moss** (`subirHoy` en
+  `nucleo/semanaMuscular.ts`: todas las series al tope con 2 de reserva, dos sesiones seguidas; no con un músculo que
+  se recupera ni tras una noche corta de Moss) y reemplaza a la 2 por 2 y a la del RIR (`nucleo/dosPorDos.ts`,
+  borrado). «Editar la rutina», debajo del +, abre el editor de Stats encima de la sesión (`HojaDeRutina`); la sesión
+  relee la rutina cuando cambia (`releerLaRutina`): los topes y, con el bloque sin nada contado, lo que propone.
+  Sonda: `probar-subir-peso`. **Solo en la nativa**: la web no tiene ni el aviso ni el editor en la sesión.
 
 En Moss, Ascent se muda de Hábitos a Progreso (subiendo desde abajo), pendiente de su aprobación en esa galería.
 

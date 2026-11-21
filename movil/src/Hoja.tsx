@@ -16,7 +16,7 @@ import { useQueSube } from './movimiento';
  *
  * Con el teclado arriba la hoja sube: los pesos de la lista se escriben ahí.
  */
-export default function Hoja({ visible, alCerrar, children }: { visible: boolean; alCerrar: () => void; children: ReactNode }) {
+export default function Hoja({ visible, alCerrar, children, desplazable = true }: { visible: boolean; alCerrar: () => void; children: ReactNode; desplazable?: boolean }) {
   useTema();
   const { montada, avance } = useQueSube(visible);
   const { height: alto } = useWindowDimensions();
@@ -32,7 +32,7 @@ export default function Hoja({ visible, alCerrar, children }: { visible: boolean
             la sonda un lugar concreto donde buscar lo que la hoja pregunta. */}
         <Animated.View style={[estilos.hoja, { transform: [{ translateY: avance.interpolate({ inputRange: [0, 1], outputRange: [alto, 0] }) }] }]} testID="hoja">
           <FondoOctogonal relleno={C.hoja} borde={C.linea} corte={14} soloArriba />
-          <ScrollView contentContainerStyle={estilos.contenido} keyboardShouldPersistTaps="handled">
+          <ScrollView contentContainerStyle={estilos.contenido} keyboardShouldPersistTaps="handled" scrollEnabled={desplazable}>
             {children}
           </ScrollView>
         </Animated.View>

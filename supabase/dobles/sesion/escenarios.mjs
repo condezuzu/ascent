@@ -1597,11 +1597,11 @@ async function repsPorSerie(modo = 'con') {
 }
 
 /**
- * `dosPorDos` (21/10): la rutina activa pone 8 repeticiones objetivo a press de banca, y las dos
- * sesiones anteriores terminaron con 10 en la última serie, con 60 kg. Al entrenar, el aviso de
- * subir el peso sale con el objetivo de la rutina y el rango de 2 a 5 %.
+ * `subirElPeso` (21/10; desde el 21/11 con la regla de la sección de Moss): la rutina activa pone 8
+ * repeticiones objetivo a press de banca, y las dos sesiones anteriores llegaron a 8 o más en todas las series,
+ * con 60 kg. Al entrenar, el aviso de subir sale con el tope de la rutina y el peso siguiente, 62,5.
  */
-async function dosPorDos() {
+async function subirElPeso() {
   servidor.version = 95;
   datos.set('ascent:perfil', JSON.stringify({ id: 'yo', username: 'yo', racha_actual: 1, unidad_peso: 'kg' }));
   const { hoyISO, restarDias } = await import('@nucleo/fechas');
@@ -1620,6 +1620,37 @@ async function dosPorDos() {
   await dormir(500);
   await asentar();
   return { subir: una.r.subirPesoDe('press_banca', 'pecho') };
+}
+
+/**
+ * `rutinaEnElMedio` (21/11, a pedido: «que puedas editarla en medio del entrenamiento»): lunes, sin nada cargado
+ * para hoy en la rutina activa y sin último ejercicio; se empieza y el bloque queda en blanco. En medio, la rutina se
+ * guarda con sentadilla (10 repeticiones objetivo) y press de banca para hoy, y la sesión la relee: el bloque en blanco
+ * propone la sentadilla y su tope pasa a valer para el aviso de subir.
+ */
+async function rutinaEnElMedio() {
+  relojDeLunes();
+  servidor.version = 95;
+  datos.set('ascent:perfil', JSON.stringify({ id: 'yo', username: 'yo', racha_actual: 1, unidad_peso: 'kg' }));
+  const vacia = Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: [] }));
+  servidor.rutinas = [{ id: 'r1', nombre: 'Entrenamiento 1', activa: true, dias: vacia }];
+  datos.set('ascent:rutina-activa', JSON.stringify({ de: 'yo', id: 'r1', dias: vacia }));
+  servidor.historial = [];
+  const una = montar(() => useSesion());
+  await asentar();
+  await una.r.empezar();
+  await dormir(500);
+  await asentar();
+  const antes = una.r.estado.bloques.ejercicio ?? null;
+  const dias = vacia.map((d) => ({ ...d }));
+  dias[1] = { descanso: false, ejercicios: [{ ejercicio: 'sentadilla', series: 3, reps: 10 }, { ejercicio: 'press_banca', series: 3 }] };
+  servidor.rutinas = [{ id: 'r1', nombre: 'Entrenamiento 1', activa: true, dias }];
+  datos.set('ascent:rutina-activa', JSON.stringify({ de: 'yo', id: 'r1', dias }));
+  await una.r.releerLaRutina();
+  await dormir(300);
+  await asentar();
+  const { objetivosRef } = await import('@compartido/sesionViva');
+  return { antes, despues: una.r.estado.bloques.ejercicio ?? null, tope: objetivosRef.current.sentadilla ?? null };
 }
 
 /**
@@ -1803,7 +1834,7 @@ async function fantasma() {
   return { antes, despues: [inicio.r.estado.sugerido, cache()?.sugerido ?? null] };
 }
 
-const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho, serieEnCinta, cantidades, rutinaDelDia, primerEjercicio, repsUltimaVez, segundaCambia, segundaRepite, repsPorSerie, dosPorDos }[escenario](...argumentos);
+const resultado = await { bloques, refresco, releer, eleccion, hoja, turno, senal, copia, cardio, yaCorria, viejas, dueno, cruce, releerVieja, fantasma, cronometro, cardioLargo, descansoLargo, vueltaDos, vueltaTres, vueltaCuatro, vueltaCinco, vueltaSeis, vueltaSiete, vueltaOcho, serieEnCinta, cantidades, rutinaDelDia, primerEjercicio, repsUltimaVez, segundaCambia, segundaRepite, repsPorSerie, subirElPeso, rutinaEnElMedio }[escenario](...argumentos);
 console.log(JSON.stringify(resultado));
 // El hook deja un intervalo andando mientras hay sesión: se corta acá.
 process.exit(0);

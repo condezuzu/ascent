@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
-import { eventos, EJERCICIOS_CAMBIO } from '@compartido/eventos';
+import { eventos, EJERCICIOS_CAMBIO, RUTINA_CAMBIO } from '@compartido/eventos';
 import { Animated, StyleSheet, View, type GestureResponderEvent, Pressable } from 'react-native';
 import { supabase } from './supabase';
 import { metaAMano, metaCumplida, pildorasDeMeta, type EstadoBloques } from '@nucleo/bloques';
@@ -18,6 +18,8 @@ import { ponerNombres } from '@compartido/enCurso';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import SelectorEjercicio from './SelectorEjercicio';
 import ListaDeBloques from './ListaDeBloques';
+import HojaDeRutina from './HojaDeRutina';
+import GloboPrimeraVez from './GloboPrimeraVez';
 import CampoPeso from './CampoPeso';
 import CampoReps from './CampoReps';
 import CampoDistancia from './CampoDistancia';
@@ -29,10 +31,6 @@ import FondoOctogonal from './FondoOctogonal';
 const FONDO_BOTON = C.superficie;
 const CORTE = 12;
 import { unidadDeDistancia } from '@nucleo/distancia';
-import { rangoParaMostrar, type SubirPeso } from '@nucleo/dosPorDos';
-
-// Los globitos de "ya puedes subir" que ya se cerraron, por ejercicio y día: no vuelven en la misma corrida.
-const SUBIR_VISTOS = new Set<string>();
 
 // Con lo que arranca una vuelta de cardio si no se tocaron los minutos.
 const MINUTOS_DE_ARRANQUE = 20;
@@ -116,6 +114,8 @@ export default function Bloque({
   alElegirRir,
   alElegirDistancia,
   subirPesoDe,
+  alReleerRutina,
+  globoDelMasVisible = false,
   alSumar,
   debajoDelMas,
   globoDelMas,
@@ -156,8 +156,12 @@ export default function Bloque({
   alElegirRir?: (n: number) => void;
   /** Los kilómetros de la vuelta de cardio, a cada tecla (21/10). */
   alElegirDistancia?: (km: number | null) => void;
-  /** El aviso de subir el peso con la regla 2 por 2, para ese ejercicio y su grupo (21/10). */
-  subirPesoDe?: (id: string, grupo: string | null) => SubirPeso | null;
+  /** Si hoy conviene subir el peso de ese ejercicio y a cuánto (la regla de la sección de Moss, 21/11). */
+  subirPesoDe?: (id: string, grupo: string | null) => { peso: number; siguiente: number } | null;
+  /** La rutina cambió con la sesión andando: que la sesión la relea (21/11). */
+  alReleerRutina?: () => Promise<void>;
+  /** El globo de la primera vez del + está a la vista: flota sin correr nada, y lo de abajo le deja lugar. */
+  globoDelMasVisible?: boolean;
   alSumar: (opciones?: { sinDescanso?: boolean }) => void;
   /** La pregunta de marca de la serie recién confirmada: pegada al `+` (ver la web). */
   debajoDelMas?: ReactNode;
@@ -185,6 +189,11 @@ export default function Bloque({
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([]);
   const [eligiendo, setEligiendo] = useState(false);
   const [lista, setLista] = useState(false);
+  const [rutinaAbierta, setRutinaAbierta] = useState(false);
+  // La rutina cambiada en medio del entrenamiento —en la hoja de acá o en Stats— la relee la sesión, una vez.
+  const releer = useRef(alReleerRutina);
+  releer.current = alReleerRutina;
+  useEffect(() => eventos.escuchar(RUTINA_CAMBIO, () => void releer.current?.()), []);
   const [pausa, setPausa] = useState(false);
   const [aDonde, setADonde] = useState<string | null | undefined>(undefined);
   const [prefierePeso, setPrefierePeso] = useState(true);
@@ -325,26 +334,11 @@ export default function Bloque({
     };
   }, [estado.ejercicio, cargaVista]);
   const dia = diaDeSesion ?? hoyISO();
-  // Al volver a ese ejercicio, antes de la primera serie, y si el peso de hoy no subió ya.
-  // YA PUEDES SUBIR, CON LA REGLA 2 POR 2 (21/10): antes era "el mismo peso entero dos veces",
-  // que no sabía de repeticiones. Ver `nucleo/dosPorDos.ts`.
+  // YA PUEDES SUBIR (21/11, a pedido): antes de la primera serie y mientras el peso no haya subido, el peso parpadea y
+  // arriba queda «↑ Puedes subir a …» hasta que se cuenta una serie. Era un globo de 4 s que se perdía. La regla es la de
+  // la sección de Moss (`subirHoy`), así las dos dicen lo mismo.
   const subirPeso = estado.ejercicio && subirPesoDe ? subirPesoDe(estado.ejercicio, actual?.grupo ?? null) : null;
-  const globitoSubir =
-    !!subirPeso && estado.hechas === 0 && !!estado.ejercicio && (estado.peso ?? 0) <= subirPeso.peso && !SUBIR_VISTOS.has(`${estado.ejercicio}:${dia}`);
-  const rangoSubir = subirPeso ? rangoParaMostrar(subirPeso, unidad) : null;
-  // Se muestra una vez por ejercicio y día, y se va solo a los cuatro segundos.
-  const [subirVisible, setSubirVisible] = useState(false);
-  useEffect(() => {
-    if (!globitoSubir || !estado.ejercicio) return;
-    SUBIR_VISTOS.add(`${estado.ejercicio}:${dia}`);
-    setSubirVisible(true);
-  }, [globitoSubir, estado.ejercicio, dia]);
-  // Aparte: marcarlo como visto vuelve a correr el de arriba, y su limpieza cancelaba la salida.
-  useEffect(() => {
-    if (!subirVisible) return;
-    const t = setTimeout(() => setSubirVisible(false), 4000);
-    return () => clearTimeout(t);
-  }, [subirVisible]);
+  const parpadea = !!subirPeso && anotarPeso && !esCorporal && estado.hechas === 0 && (estado.peso ?? 0) <= subirPeso.peso;
   const marcada = !!oferta && !!marca && marca.dia === dia && marca.peso === oferta.peso && marca.carga === cargaVista;
   function ponerMarca(s: Subida | null) {
     if (!estado.ejercicio) return;
@@ -572,29 +566,12 @@ export default function Bloque({
         </Aparece>
       )}
 
-      {/* PUEDES SUBIR (12/11, galería 21): un globo liviano arriba del peso, cuatro segundos, que no mueve
-          nada. Tocarlo pone el peso. Avisa con la regla 2 por 2 o con el RIR (ver `nucleo/dosPorDos.ts`). */}
-      <View style={estilos.ancla}>
-        {subirVisible && subirPeso && rangoSubir && (
-          <Tocable
-            testID="globito-subir"
-            style={[estilos.globo, estilos.globoSubir]}
-            onPress={() => {
-              alElegirPeso(rangoSubir[0]);
-              setSubirVisible(false);
-            }}
-            accessibilityRole="button"
-          >
-            <Text style={estilos.globoSubirTexto}>↑ {T.sesion.puedesSubirA(pesoCorto(rangoSubir[0], unidad), unidad)}</Text>
-          </Tocable>
-        )}
-      </View>
       {(anotarPeso || conReps) && admitePeso && (
         <View style={[estilos.peso, esFantasma && estilos.fantasmaPeso]}>
           {/* PESO CORPORAL (6.2): el peso es tu cuerpo, no hay número que anotar.
               Se esconde el campo pero se DEJA la etiqueta, para poder volver a un
               peso si algún día lo hacés con lastre. */}
-          {anotarPeso && !esCorporal && <CampoPeso kg={estado.peso} unidad={unidad} alCambiar={alElegirPeso} />}
+          {anotarPeso && !esCorporal && <CampoPeso kg={estado.peso} unidad={unidad} alCambiar={alElegirPeso} parpadea={parpadea} />}
           {conReps && alElegirReps && <CampoReps reps={estado.repsAhora} pista={pistaDeReps} alCambiar={alElegirReps} />}
           {conCarga && !preguntar && (
             <EtiquetaDeCarga carga={cargaVista} ejercicio={estado.ejercicio} alElegir={alElegirCarga} />
@@ -605,6 +582,23 @@ export default function Bloque({
             </Text>
           )}
         </View>
+      )}
+
+      {/* PUEDES SUBIR (galería 21): un globo liviano DEBAJO del peso, en el hueco antes del +, que no mueve nada; tocarlo
+          pone el peso. Arriba tapaba las series (×2 ×3 ×4) ahora que se queda hasta la primera serie. */}
+      <View style={estilos.ancla}>
+        {/* Con el RIR abierto se corre: su globo cae en el mismo lugar. */}
+        {parpadea && subirPeso && !rirAbierto && (
+          <Tocable testID="globito-subir" style={[estilos.globo, estilos.globoSubir]} onPress={() => alElegirPeso(subirPeso.siguiente)} accessibilityRole="button">
+            <Text style={estilos.globoSubirTexto}>↑ {T.sesion.puedesSubirA(pesoCorto(subirPeso.siguiente, unidad), unidad)}</Text>
+          </Tocable>
+        )}
+      </View>
+      {/* La primera vez que parpadea, qué quiere decir: debajo del globito, sin correr nada. */}
+      {parpadea && (
+        <GloboPrimeraVez cual="subir" colaX={80} subir={-30} cerrarCuando={estado.hechas > 0}>
+          {T.globos.subir}
+        </GloboPrimeraVez>
       )}
 
       {deUnaMarca && subida && (
@@ -775,6 +769,9 @@ export default function Bloque({
       {(estado.cerrados.length > 0 || estado.hechas > 0) && (
         <Fantasma texto={T.sesion.verLista} alTocar={() => setLista(true)} />
       )}
+      {/* LA RUTINA EN MEDIO DEL ENTRENAMIENTO (21/11, a pedido): no hace falta armarla antes. */}
+      {alReleerRutina && <Fantasma testID="editar-rutina" texto={T.sesion.editarRutina} alTocar={() => setRutinaAbierta(true)} estilo={globoDelMasVisible ? estilos.bajoElGlobo : undefined} />}
+      <HojaDeRutina visible={rutinaAbierta} alCerrar={() => setRutinaAbierta(false)} />
 
       <SelectorEjercicio
         visible={eligiendo}
@@ -993,10 +990,11 @@ const estilos = conTema(() => StyleSheet.create({
   globo: { position: 'absolute', backgroundColor: C.globo, borderWidth: 1, borderColor: C.bordeGlobo, borderRadius: 2, padding: 12 },
   globoUltima: { top: 6, right: 0, minWidth: 180, gap: 4 },
   globoRir: { top: 6, left: 0, right: 0, gap: 8 },
-  globoSubir: { bottom: 6, left: 0, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
+  globoSubir: { top: 0, left: 0, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 12 },
   globoTitulo: { color: C.sub, fontSize: 12, textAlign: 'center' },
   globoSerie: { color: C.tinta, fontSize: 14, fontFamily: L.dato },
   globoSubirTexto: { color: C.tinta, fontSize: 13 },
+  bajoElGlobo: { marginTop: 40 },
   rirFila: { flexDirection: 'row', gap: 6 },
   rirOpcion: { flex: 1, borderWidth: 1, borderColor: C.linea, borderRadius: 999, paddingVertical: 8, alignItems: 'center' },
   rirOpcionPrendida: { backgroundColor: C.claro, borderColor: C.claro },

@@ -702,6 +702,8 @@ const ES = {
     amigos: 'Agrega amigos para seguir su progreso.',
     album: 'Aquí se ven las fotos de tu progreso.',
     rutina: 'Crea tu rutina',
+    // La primera vez que el peso parpadea (21/11).
+    subir: 'Si el peso parpadea, prueba uno nuevo.',
   },
 
   // ---------------------------------------------------------------
@@ -1555,6 +1557,7 @@ const ES = {
     // LA LISTA DE LO HECHO. El − solo arregla el bloque en curso; si te
     // equivocaste hace veinte minutos no había forma de volver.
     verLista: 'Ver lista',
+    editarRutina: 'Editar la rutina',
     listaTitulo: 'Lo que llevas hoy',
     listaVacia: 'Todavía no contaste ninguna serie.',
     listaAhora: 'en curso',
