@@ -197,6 +197,8 @@ const TUTORIAL_VISTO = 'ascent:moss-tutorial-visto';
 // moss://vincular abre Moss en su hoja de vincular con Ascent; si no está instalada, el teléfono no la
 // abre y se va a la App Store.
 const ABRIR_MOSS = 'moss://vincular';
+// «Más en Sueño», desde la sugerencia de sueño de «Para hoy»: Moss abierta en Sueño.
+const SUENO_DE_MOSS = 'moss://sueno';
 const CONSEGUIR_MOSS = 'https://apps.apple.com/app/id6828034537';
 
 /**
@@ -329,7 +331,7 @@ function PantallaDeMoss({ visible, codigo, desde, alCerrar }: { visible: boolean
         style={[StyleSheet.absoluteFill, { transform: [{ translateY: avance.interpolate({ inputRange: [0, 1], outputRange: [-alto, 0] }) }] }]}
       >
         <CieloDeMoss avance={avance} alto={alto} rotulo={vinculo.vinculada ? T.moss.vinculada : T.moss.vinculaTitulo} sinCentro={conDatos} />
-        {conDatos && seccion.datos && <SeccionMoss datos={seccion.datos} alDesvincular={() => void vinculo.desvincular()} alCambiar={() => void seccion.recargar()} alAbrirTutorial={() => setTutorial(true)} />}
+        {conDatos && seccion.datos && <SeccionMoss datos={seccion.datos} alDesvincular={() => void vinculo.desvincular()} alCambiar={() => void seccion.recargar()} alAbrirTutorial={() => setTutorial(true)} alIrASueno={() => void Linking.openURL(SUENO_DE_MOSS).catch(() => Linking.openURL(CONSEGUIR_MOSS).catch(() => undefined))} />}
         <TutorialMoss
           visible={tutorial}
           alTerminar={() => {
