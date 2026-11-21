@@ -16,6 +16,8 @@ registerHooks({
   resolve(especificador, contexto, siguiente) {
     if (DOBLES[especificador]) return { url: ACA + DOBLES[especificador], shortCircuit: true };
     const m = especificador.match(/^@(nucleo|compartido)\/(.+)$/);
+    // El catálogo de músculos (`@nucleo/catalogoMuscular.json`, lo importa la sesión desde el 21/11) va como JSON.
+    if (m?.[2].endsWith('.json')) return { url: `${RAIZ}${m[1]}/${m[2]}`, format: 'json', importAttributes: { type: 'json' }, shortCircuit: true };
     if (m) return { url: `${RAIZ}${m[1]}/${m[2]}${m[2].endsWith('.ts') ? '' : '.ts'}`, shortCircuit: true };
     // `compartido/descanso.ts` importa './enCurso', sin extensión.
     if (

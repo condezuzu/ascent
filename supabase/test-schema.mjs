@@ -14131,9 +14131,9 @@ console.log('\n182. Las hojas nacen de nuevo en cada apertura');
   const clases182 = Object.entries(nativa182).map(([ruta, t]) => [ruta, clasificar182(ruta, t)]);
   chequear('ninguna hoja con estado propio queda sin decidir', clases182.filter(([, c]) => c === 'SIN DECIDIR').map(([ruta]) => ruta), []);
   chequear(
-    'las seis que se abren con una prop nacen de nuevo en cada apertura',
+    'las siete que se abren con una prop nacen de nuevo en cada apertura',
     clases182.filter(([, c]) => c === 'nace-al-abrir').map(([ruta]) => ruta.split('/').pop()).sort(),
-    ['AccionesDeUsuario.tsx', 'CargarMarca.tsx', 'ListaDeBloques.tsx', 'RegistrarDia.tsx', 'SelectorEjercicio.tsx', 'TutorialMoss.tsx']
+    ['AccionesDeUsuario.tsx', 'CargarMarca.tsx', 'HojaDeRutina.tsx', 'ListaDeBloques.tsx', 'RegistrarDia.tsx', 'SelectorEjercicio.tsx', 'TutorialMoss.tsx']
   );
   // Lo anotado a mano se comprueba: si alguien pasa a dibujar siempre una de
   // las que "se montan al abrir", vuelve a ser una hoja montada con estado viejo.
@@ -20824,30 +20824,34 @@ console.log('\n308. Las vidas: se dibujan las tres, también la que falta ganar 
   const av308 = deBug('movil', 'src', 'RachaSalvada.tsx');
   chequear('el aviso también dibuja la que falta ganar', /length: Math\.max\(0, \(tope \?\? total\) - total\)[\s\S]{0,120}modo="porGanar"/.test(av308), true);
 }
-console.log('\n309. Subir el peso con la regla 2 por 2: dos sesiones seguidas con la última serie 2 por encima del objetivo (21/10)');
+console.log('\n309. Subir el peso: la regla de la sección de Moss también en el entrenamiento (21/10; desde el 21/11, subirHoy)');
 {
-  const DD = await import('../nucleo/dosPorDos.ts');
+  const SM = await import('../nucleo/semanaMuscular.ts');
   const RS = await import('../nucleo/rutinas.ts');
-  const ses = (fecha, reps, pesos = [60, 60, 60]) => ({ fecha, bloques: [{ ejercicio: 'press_banca', series: 3, pesos, reps }] });
+  const CAT309 = JSON.parse(deBug('nucleo', 'catalogoMuscular.json'));
+  const ses = (fecha, reps, rir, pesos = [60, 60, 60], ejercicio = 'press_banca') => ({ fecha, bloques: [{ ejercicio, series: 3, pesos, reps, rir }] });
   const hoy = '2026-10-21';
-  const dos = [ses('2026-10-16', [10, 10, 10]), ses('2026-10-19', [10, 9, 10])];
-  const s1 = DD.dosPorDos(dos, 'press_banca', 8, 'pecho', hoy);
-  chequear('avisa: la última serie con 2 o más sobre el objetivo, en las dos últimas sesiones; tren superior, de 2 a 5 %', s1, { peso: 60, desde: 61.2, hasta: 63, porcentaje: [2, 5] });
-  chequear('no avisa si una de las dos quedó por debajo, si no tiene repeticiones anotadas, sin objetivo, con una sola sesión', [
-    DD.dosPorDos([ses('2026-10-16', [10, 10, 10]), ses('2026-10-19', [10, 10, 9])], 'press_banca', 8, 'pecho', hoy),
-    DD.dosPorDos([ses('2026-10-16', [10, 10, 10]), ses('2026-10-19', undefined)], 'press_banca', 8, 'pecho', hoy),
-    DD.dosPorDos(dos, 'press_banca', undefined, 'pecho', hoy),
-    DD.dosPorDos([ses('2026-10-19', [12, 12, 12])], 'press_banca', 8, 'pecho', hoy),
-  ], [null, null, null, null]);
-  chequear('las de hoy no cuentan (es la sesión en curso), y mira las DOS ÚLTIMAS: una vieja que cumplía no alcanza', [
-    DD.dosPorDos([ses('2026-10-19', [10, 10, 10]), ses(hoy, [10, 10, 10])], 'press_banca', 8, 'pecho', hoy),
-    DD.dosPorDos([ses('2026-10-10', [10, 10, 10]), ses('2026-10-16', [8, 8, 8]), ses('2026-10-19', [10, 10, 10])], 'press_banca', 8, 'pecho', hoy),
+  const subir = (h, o = {}) => SM.subirHoy(h, o.id ?? 'press_banca', 'tope' in o ? o.tope : 8, o.grupo ?? 'pecho', hoy, !!o.noche, CAT309);
+  const dos = [ses('2026-10-15', [8, 8, 8], [2, 2, 3]), ses('2026-10-18', [8, 8, 8], [2, 2, 2])];
+  chequear('todas al tope con 2 de reserva, dos sesiones seguidas: sube al peso siguiente (+2,5 kg desde 20)', subir(dos), { peso: 60, siguiente: 62.5 });
+  chequear('no sube con una serie bajo el tope, una con 1 de reserva, sin tope en la rutina, una sola sesión o tras una noche corta', [
+    subir([dos[0], ses('2026-10-18', [8, 8, 7], [2, 2, 2])]),
+    subir([dos[0], ses('2026-10-18', [8, 8, 8], [2, 1, 2])]),
+    subir(dos, { tope: null }),
+    subir([dos[1]]),
+    subir(dos, { noche: true }),
+  ], [null, null, null, null, null]);
+  // Ayer, aperturas al fallo: el pecho vuelve recién mañana.
+  const conAperturas = [...dos, { fecha: '2026-10-20', bloques: [{ ejercicio: 'aperturas', series: 3, pesos: [14, 14, 14], reps: [12, 12, 12], rir: [0, 0, 0] }] }];
+  chequear('no sube con el pecho todavía recuperándose, y las de hoy no cuentan', [
+    subir(conAperturas),
+    subir([dos[1], ses(hoy, [8, 8, 8], [2, 2, 2])]),
   ], [null, null]);
-  chequear('tren inferior de 5 a 10 %; el rango se dice redondeado a lo que se carga, sin salirse', [
-    DD.porcentajesDeSubida('piernas'), DD.porcentajesDeSubida('espalda'),
-    DD.dosPorDos([ses('2026-10-16', [10, 10, 10], [100, 100, 100]), ses('2026-10-19', [10, 10, 10], [100, 100, 100])], 'press_banca', 8, 'piernas', hoy)?.porcentaje,
-    DD.rangoParaMostrar(s1, 'kg'),
-  ], [[5, 10], [2, 5], [5, 10], [61.5, 63]]);
+  chequear('con el peso del cuerpo no hay a cuánto subir; un propio toma su grupo; por debajo de 20 kg, de a 1', [
+    subir(dos.map((s) => ({ ...s, bloques: [{ ...s.bloques[0], pesos: [0, 0, 0] }] }))),
+    subir(dos.map((s) => ({ ...s, bloques: [{ ...s.bloques[0], ejercicio: 'propio_x' }] })), { id: 'propio_x' }),
+    subir(dos.map((s) => ({ ...s, bloques: [{ ...s.bloques[0], pesos: [12, 12, 12] }] }))),
+  ], [null, { peso: 60, siguiente: 62.5 }, { peso: 12, siguiente: 13 }]);
 
   // ---- EL OBJETIVO EN LA RUTINA ----
   let dias = RS.semanaVacia();
@@ -20866,13 +20870,32 @@ console.log('\n309. Subir el peso con la regla 2 por 2: dos sesiones seguidas co
   chequear('las repeticiones objetivo se limpian igual en el teléfono que en la base', [RS.diasLimpios(crudo)[0].ejercicios.map((e) => e.reps ?? null), enLaBase], [[8, null, 12, null], [8, null, 12, null]]);
 
   // ---- LA PANTALLA ----
-  const blo309 = deBug('movil', 'src', 'Bloque.tsx');
-  chequear('el globito usa la regla nueva y ya no la de "el mismo peso entero dos veces"', [
-    /const subirPeso = estado\.ejercicio && subirPesoDe \? subirPesoDe\(estado\.ejercicio, actual\?\.grupo \?\? null\) : null;/.test(blo309),
-    /r\.paraSubir/.test(blo309),
-  ], [true, false]);
-  const h309 = await escenarioDeSesion('dosPorDos');
-  chequear('con el hook de verdad: el objetivo sale de la rutina activa y el aviso de las dos sesiones anteriores', h309.fallo ?? h309.subir, { peso: 60, desde: 61.2, hasta: 63, porcentaje: [2, 5] });
+  const blo309 = sinComentarios(deBug('movil', 'src', 'Bloque.tsx'));
+  chequear('el peso parpadea con la regla de la sección hasta la primera serie, y el globito pone el peso siguiente', [
+    /const parpadea = !!subirPeso && anotarPeso && !esCorporal && estado\.hechas === 0 && \(estado\.peso \?\? 0\) <= subirPeso\.peso;/.test(blo309),
+    /<CampoPeso[^>]*parpadea=\{parpadea\}/.test(blo309),
+    /onPress=\{\(\) => alElegirPeso\(subirPeso\.siguiente\)\}/.test(blo309),
+    // Con el RIR abierto se corre: su globo cae en el mismo lugar y lo tapaba (probar-rir lo cazó).
+    /\{parpadea && subirPeso && !rirAbierto && \(/.test(blo309),
+    /setTimeout\(\(\) => setSubirVisible/.test(blo309),
+  ], [true, true, true, true, false]);
+  const cp309 = sinComentarios(deBug('movil', 'src', 'CampoPeso.tsx'));
+  chequear('late solo sin «Reducir movimiento»; quieto, queda la raya del color del rango', [/sinMovimiento\(\)\.then\(\(quieto\) => \{\n\s*if \(!vivo \|\| quieto\) return;/.test(cp309), /parpadea && estilos\.cajaParpadea/.test(cp309)], [true, true]);
+  chequear('la primera vez, el globo que lo explica, y se va con la primera serie', /<GloboPrimeraVez cual="subir" colaX=\{80\} subir=\{-30\} cerrarCuando=\{estado\.hechas > 0\}>/.test(blo309), true);
+  const h309 = await escenarioDeSesion('subirElPeso');
+  chequear('con el hook de verdad: el tope sale de la rutina activa y el peso siguiente, de las dos sesiones anteriores', h309.fallo ?? h309.subir, { peso: 60, siguiente: 62.5 });
+  chequear('y ya no queda la regla 2 por 2', (await import('node:fs')).existsSync(join(aca179, '..', 'nucleo', 'dosPorDos.ts')), false);
+
+  // ---- LA RUTINA EN MEDIO DEL ENTRENAMIENTO (21/11) ----
+  const ses309 = deBug('compartido', 'useSesion.ts');
+  chequear('«Editar la rutina» abre el editor encima de la sesión, y la sesión relee la rutina cuando cambia', [
+    /<Fantasma testID="editar-rutina" texto=\{T\.sesion\.editarRutina\} alTocar=\{\(\) => setRutinaAbierta\(true\)\} estilo=\{globoDelMasVisible \? estilos\.bajoElGlobo : undefined\} \/>/.test(blo309),
+    /eventos\.escuchar\(RUTINA_CAMBIO, \(\) => void releer\.current\?\.\(\)\)/.test(blo309),
+    /<MiRutina visible=\{visible\} abrirHoy alArrastrar=\{setArrastrando\} \/>/.test(deBug('movil', 'src', 'HojaDeRutina.tsx')),
+    /async function releerLaRutina\(\) \{[\s\S]{0,200}objetivosRef\.current = objetivosDeRepeticiones\(guardada\?\.dias\);/.test(ses309),
+  ], [true, true, true, true]);
+  const r309 = await escenarioDeSesion('rutinaEnElMedio');
+  chequear('con el hook de verdad: sin rutina para hoy se empieza; al cargarla en medio, el bloque en blanco propone su primero y el tope pasa a valer', r309.fallo ?? [r309.antes, r309.despues, r309.tope], [null, 'sentadilla', 10]);
 }
 console.log('\n310. El peso máximo de cada ejercicio, con las repeticiones con las que se hizo (21/10)');
 {
@@ -22082,7 +22105,6 @@ console.log('\n335. El RIR de cada serie, la última vez al tocar la fecha y el 
 {
   const B = await import('../nucleo/bloques.ts');
   const R = await import('../nucleo/rutina.ts');
-  const D = await import('../nucleo/dosPorDos.ts');
   chequear('el RIR va de 0 a 4 (el 4 es «4 o más»), entero', [0, 4, 5, 2.5, '3', -1, null].map(B.rirValido), [0, 4, null, null, 3, null, null]);
   // El + anota el RIR elegido en la serie, como las repeticiones, y el botón vuelve a «RIR».
   let b = B.cambiarPeso(B.bloquesVacios('press_banca', 3), 40);
@@ -22096,11 +22118,6 @@ console.log('\n335. El RIR de cada serie, la última vez al tocar la fecha y el 
   // La última vez lo trae alineado por serie, como las repeticiones.
   const ses = [{ fecha: '2026-11-08', bloques: [{ ejercicio: 'press_banca', series: 3, pesos: [40, 40, 40], reps: [10, 10, 9], rir: [3, 2, 2], carga: 'total' }] }];
   chequear('la última vez trae el RIR de cada serie', R.ultimaVezDe(ses, 'press_banca', '2026-11-12')?.rir, [3, 2, 2]);
-  // Subir con el RIR: todas al objetivo y a ninguna le quedaron menos de 2.
-  chequear('todas a 10 con RIR 2 o más: puedes subir, desde el peso de esas series', D.subirPorRir(ses.map((s) => ({ ...s, bloques: [{ ...s.bloques[0], reps: [10, 10, 10] }] })), 'press_banca', 10, 'pecho', '2026-11-12')?.peso, 40);
-  chequear('una serie que no llegó al objetivo: no avisa', D.subirPorRir(ses, 'press_banca', 10, 'pecho', '2026-11-12'), null);
-  chequear('una serie con RIR 1: no avisa', D.subirPorRir([{ ...ses[0], bloques: [{ ...ses[0].bloques[0], reps: [10, 10, 10], rir: [3, 1, 2] }] }], 'press_banca', 10, 'pecho', '2026-11-12'), null);
-  chequear('sin RIR anotado o sin objetivo: no avisa', [D.subirPorRir([{ ...ses[0], bloques: [{ ...ses[0].bloques[0], rir: undefined }] }], 'press_banca', 9, 'pecho', '2026-11-12'), D.subirPorRir(ses, 'press_banca', null, 'pecho', '2026-11-12')], [null, null]);
 
   // Lo de la pantalla lo prueba probar-rir, entrenando; acá, que el cableado no se pierda.
   const bl = sinComentarios(deBug('movil', 'src', 'Bloque.tsx'));
@@ -22108,15 +22125,14 @@ console.log('\n335. El RIR de cada serie, la última vez al tocar la fecha y el 
     /const conRir = registrarRir && !!alElegirRir && disponible\('rirPorSerie', version\)/.test(bl),
     /testID="boton-rir"/.test(bl) && /testID="rir-abierto"/.test(bl) && /T\.sesion\.rirTitulo/.test(bl),
     /testID="ultima-vez"[\s\S]{0,400}fechaCorta\(ultimaVez\.fecha\)/.test(bl) && /testID="ultima-vez-abierta"/.test(bl),
-    /setTimeout\(\(\) => setSubirVisible\(false\), 4000\)/.test(bl),
     (bl.match(/<View style=\{estilos\.ancla\}>/g) ?? []).length,
     /<Globito/.test(bl),
-  ], [true, true, true, true, 3, false]);
+  ], [true, true, true, 3, false]);
   chequear('el ajuste, apagado de entrada y solo con la 102; y la sesión elige con el núcleo', [
     /disponible\('rirPorSerie', version\) && \(/.test(deBug('movil', 'src', 'Ajustes.tsx')),
     /=== 'si'/.test(deBug('compartido', 'registrarRir.ts')),
     /const b = cambiarRir\(bloquesRef\.current, n\);/.test(deBug('compartido', 'useSesion.ts')),
-    /dosPorDos\(historialConPesosRef[\s\S]{0,120}\?\?\s*subirPorRir\(/.test(deBug('compartido', 'useSesion.ts')),
+    /subirHoy\(historialConPesosRef\.current, id, objetivosRef\.current\[id\], grupo, hoyISO\(\), nocheCortaRef\.current, CATALOGO_MUSCULAR\)/.test(deBug('compartido', 'useSesion.ts')),
   ], [true, true, true, true]);
   chequear('y está en test:real', /probar-rir\.mjs/.test(deBug('supabase', 'pruebas-reales.mjs')), true);
 }

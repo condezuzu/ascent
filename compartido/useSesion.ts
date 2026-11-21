@@ -11,7 +11,9 @@ import { eventos } from '@compartido/eventos';
 import { cantidadesDeHoy, ejerciciosDeHoy, metaDeRutina } from '@nucleo/rutinas';
 import { cargarMisRutinas, rutinaActivaDelTelefono } from '@compartido/rutinas';
 import { objetivosDeRepeticiones } from '@nucleo/rutinas';
-import { dosPorDos, subirPorRir } from '@nucleo/dosPorDos';
+import { subirHoy } from '@nucleo/semanaMuscular';
+import { NOCHE_CORTA } from '@nucleo/sugerenciasDeHoy';
+import CATALOGO_MUSCULAR from '@nucleo/catalogoMuscular.json';
 import { DIA_CAMBIO } from '@compartido/gimnasio';
 import {
   desfasajeDelReloj,
@@ -104,6 +106,7 @@ import {
   sesionesRutinaRef,
   historialConPesosRef,
   objetivosRef,
+  nocheCortaRef,
   marcasConRepsRef,
   setterDe,
   suscribirViva,
@@ -1249,9 +1252,53 @@ export function useSesion(
   }
 
   /** Lo que se hizo en las sesiones ya terminadas de hoy, en orden (el historial las trae). */
+  /**
+   * LA RUTINA SE EDITÓ EN MEDIO DEL ENTRENAMIENTO (21/11): se relee la guardada del teléfono. Las repeticiones
+   * objetivo (el aviso de subir) y lo que falta de hoy quedan al día y, si el bloque no tiene nada contado y está en
+   * blanco o con una sugerencia, se propone lo que sigue de la rutina nueva. Lo llama quien escucha `RUTINA_CAMBIO`
+   * durante la sesión (una sola pantalla: el bloque), no cada instancia del hook.
+   */
+  async function releerLaRutina() {
+    if (!leerViva().inicio) return;
+    const guardada = await rutinaActivaDelTelefono();
+    objetivosRef.current = objetivosDeRepeticiones(guardada?.dias);
+    const deHoy = ejerciciosDeHoy(guardada, new Date().getDay()).filter(seVe);
+    if (deHoy.length === 0) return;
+    const antes = hechoAntesHoy();
+    rutinaRef.current = pendientesDeHoy(deHoy, antes);
+    rutinaEsGuardada.current = true;
+    await actualizarSesionCache({ rutina: rutinaRef.current, rutinaGuardada: true }, yo);
+    const actual = bloquesRef.current;
+    if (actual.hechas > 0 || (actual.ejercicio && !leerViva().sugerido)) return;
+    // Como al cerrar un bloque: lo de esta sesión, sin lo repetido de una sesión anterior de hoy.
+    const hechos = ejerciciosEnOrden(actual.cerrados.map((x) => x.ejercicio)).filter((h) => !(deHoy.includes(h) && antes.includes(h)));
+    const siguiente = siguienteEnRutina(rutinaRef.current, hechos);
+    if (!siguiente || siguiente === actual.ejercicio) return;
+    // La sugerencia de la rutina vieja se saca: `proponerEjercicioSugerido` solo escribe sobre un bloque en blanco.
+    if (actual.ejercicio) {
+      const enBlanco = cambiarEjercicio(actual, null);
+      bloquesRef.current = enBlanco;
+      setBloques(enBlanco);
+    }
+    await proponerEjercicioSugerido(siguiente);
+  }
+
   function hechoAntesHoy(): string[] {
     const hoy = hoyISO();
     return sesionesRutinaRef.current.filter((x) => x.fecha === hoy).flatMap((x) => x.ejercicios);
+  }
+
+  // LA NOCHE DE HOY, DE MOSS si está vinculada (sin vínculo llega null): tras una corta no se sugiere subir (21/11).
+  // Sin esperar y aparte: un cliente sin `schema` no tiene que llevarse el historial.
+  function leerLaNocheDeMoss() {
+    try {
+      void supabase.schema('moss').rpc('moss_hoy', { p_fecha: hoyISO() }).then(({ data }) => {
+        const dormido = (data as { noche?: { dormido?: number | null } | null } | null)?.noche?.dormido;
+        nocheCortaRef.current = typeof dormido === 'number' && dormido <= NOCHE_CORTA;
+      }, () => undefined);
+    } catch {
+      nocheCortaRef.current = false;
+    }
   }
 
   // LAS MARCAS CON SUS REPETICIONES (20/10), para el ajuste de «las repeticiones de la
@@ -1304,6 +1351,7 @@ export function useSesion(
         })
         .filter((s) => s.fecha);
       void cargarMarcasConReps();
+      leerLaNocheDeMoss();
     } catch {
       sesionesRutinaRef.current = [];
       historialConPesosRef.current = [];
@@ -1770,11 +1818,13 @@ export function useSesion(
       const u = ultimaVezDe(historialConPesosRef.current, id, hoyISO());
       return u ? repsDeLaSesion(marcasConRepsRef.current, id, u.fecha) : null;
     },
-    /** El aviso de subir el peso, con la regla 2 por 2 (ver `nucleo/dosPorDos.ts`); `null` si no corresponde. */
-    // La 2 por 2, o el RIR de la última vez (12/11).
+    /**
+     * Si hoy conviene subir el peso de ese ejercicio y a cuánto (21/11): la regla de la sección de Moss
+     * (`subirHoy` en `nucleo/semanaMuscular.ts`), así el entrenamiento y la sección dicen lo mismo.
+     */
     subirPesoDe: (id: string, grupo: string | null) =>
-      dosPorDos(historialConPesosRef.current, id, objetivosRef.current[id], grupo, hoyISO()) ??
-      subirPorRir(historialConPesosRef.current, id, objetivosRef.current[id], grupo, hoyISO()),
+      subirHoy(historialConPesosRef.current, id, objetivosRef.current[id], grupo, hoyISO(), nocheCortaRef.current, CATALOGO_MUSCULAR),
+    releerLaRutina,
     /** La pista del cuadradito de repeticiones para la serie que viene de ese ejercicio: ver `pistaDeReps`. */
     pistaDeRepsDe: (id: string) => {
       const u = ultimaVezDe(historialConPesosRef.current, id, hoyISO());

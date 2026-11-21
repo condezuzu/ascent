@@ -466,6 +466,7 @@ export const EN: Textos = {
     amigos: 'Add friends to follow their progress.',
     album: 'Your progress photos show up here.',
     rutina: 'Create your routine',
+    subir: 'If the weight blinks, try a new one.',
   },
   entrar: {
     marca: 'Ascent',
@@ -967,6 +968,7 @@ export const EN: Textos = {
     proximaMasMarcada: (peso: string) => `Next time: ${peso} ✓`,
     subidaNota: (series: number, antes: string, ahora: string) => `Last time: ${series} × ${antes}. Today try ${ahora}.`,
     verLista: 'See list',
+    editarRutina: 'Edit the routine',
     listaTitulo: "What you've done today",
     listaVacia: "You haven't counted a set yet.",
     listaAhora: 'in progress',

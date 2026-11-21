@@ -4,7 +4,7 @@
 // Las reglas —la semana son los últimos 7 días, qué serie es de trabajo, el 1RM de referencia de los
 // últimos 126 días— son las de ese archivo, no las de Ascent: así las dos apps cuentan igual.
 
-import { DE_PIERNAS, DE_TRABAJO, DIAS_DEL_E1RM, dentroDeLaSemana, esDeTrabajo, mejorE1rm, type EjercicioHecho, type MusculoEnLaSesion } from './puntajeMuscular.ts';
+import { DE_PIERNAS, DE_TRABAJO, DIAS_DEL_E1RM, dentroDeLaSemana, diasHastaListo, esDeTrabajo, listoEl, mejorE1rm, pesoSiguiente, proximaSesion, type EjercicioHecho, type MusculoEnLaSesion } from './puntajeMuscular.ts';
 import { PESADA, REPS_PESADAS, type SemanaDeEntreno } from './progresoCompartido.ts';
 import { restarDias } from './fechas.ts';
 import { lunesDe } from './volumen.ts';
@@ -188,4 +188,41 @@ export function semanaDeEntreno(
     }
   }
   return { lunes, series, veces, pesadas, conReps };
+}
+
+/**
+ * SI HOY CONVIENE SUBIR EL PESO DE UN EJERCICIO (21/11), con la regla de la sección de Moss: la doble progresión de
+ * `proximaSesion` (todas las series de las dos últimas sesiones al tope con 2 de reserva), que no sube con un músculo
+ * suyo que todavía se recupera ni tras una noche corta, y el peso de `pesoSiguiente`. Así el peso que parpadea en el
+ * entrenamiento y el «sube a 82,5 kg» de la sección dicen lo mismo. Solo cuentan las sesiones de antes de hoy; los
+ * propios toman su grupo. Sin peso (el del cuerpo) o sin tope en la rutina, `null`.
+ */
+export function subirHoy(
+  historial: readonly { fecha: string; bloques: readonly { ejercicio?: string | null; series?: number | null; pesos?: readonly (number | null)[] | null; reps?: readonly (number | null)[] | null; rir?: readonly (number | null)[] | null }[] }[],
+  id: string,
+  tope: number | null | undefined,
+  grupo: string | null,
+  hoy: string,
+  nocheCortaHoy: boolean,
+  catalogo: Readonly<Record<string, DelCatalogo & { multiarticular?: boolean }>>
+): { peso: number; siguiente: number } | null {
+  if (!tope) return null;
+  const antes: SesionHecha[] = historial
+    .filter((s) => s.fecha < hoy)
+    .map((s) => ({
+      fecha: s.fecha,
+      bloques: s.bloques.map((b) => ({ ejercicio: b.ejercicio ?? null, series: Number(b.series) || 0, pesos: b.pesos ? [...b.pesos] : undefined, reps: b.reps ? [...b.reps] : undefined, rir: b.rir ? [...b.rir] : undefined })),
+    }));
+  const grupoDePropio: Record<string, string> = id.startsWith('propio_') && grupo ? { [id]: grupo } : {};
+  const recientes = ejerciciosRecientes(antes, hoy, catalogo, grupoDePropio, {});
+  const principal = recientes.find((e) => e.id === id)?.principal ?? [];
+  const fatiga = musculosEnSesiones(recientes, catalogo);
+  const fatigadoHoy = principal.some((m) => diasHastaListo(listoEl(fatiga.get(m) ?? []), hoy) > 0);
+  const p = proximaSesion({ sesiones: sesionesDelEjercicio(recientes, id), tope, nocheCortaHoy, fatigadoHoy });
+  if (p.decision !== 'subir') return null;
+  // El peso de la última vez: el más alto de esa sesión, como en la sección de Moss.
+  const ultima = antes.filter((s) => s.bloques.some((b) => b.ejercicio === id)).sort((a, b) => a.fecha.localeCompare(b.fecha)).at(-1);
+  const peso = Math.max(0, ...(ultima?.bloques.filter((b) => b.ejercicio === id).flatMap((b) => (b.pesos ?? []).map((x) => x ?? 0)) ?? []));
+  const siguiente = pesoSiguiente(peso);
+  return siguiente === null ? null : { peso, siguiente };
 }

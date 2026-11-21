@@ -3,7 +3,7 @@
 //
 // En la vista web de la nativa (:8090), con una cuenta descartable. Lo real: la cuenta, la rutina con
 // objetivo de 10, los ajustes, la serie que se anota y lo que llega a la base. Un doble: la sesión de
-// la vez anterior (3 × 10 a 40 kg con RIR 3, 2, 2), porque una sesión solo puede empezar hoy.
+// las dos veces anteriores (3 × 10 a 40 kg con RIR 3, 2, 2), porque una sesión solo puede empezar hoy.
 //
 //   node --env-file=.env.local supabase/probar-rir.mjs
 import { chromium } from 'playwright';
@@ -42,6 +42,8 @@ await s.from('logs').insert(filas);
 const d = { descanso: false, ejercicios: [{ ejercicio: 'press_banca', series: 3, reps: 10 }] };
 await s.rpc('guardar_rutina', { p_id: null, p_nombre: 'Pecho', p_dias: Array.from({ length: 7 }, () => d) });
 const anterior = { fecha: dia(3), bloques: [{ ejercicio: 'press_banca', series: 3, pesos: [40, 40, 40], reps: [10, 10, 10], rir: [3, 2, 2], carga: 'total' }] };
+// La regla de subir (la de la sección de Moss, 21/11) mira las dos últimas: otra igual, una semana antes.
+const antes = { ...anterior, fecha: dia(10) };
 
 console.log('El RIR, la última vez y el globo de subir');
 const nav = await chromium.launch();
@@ -52,7 +54,7 @@ await page.route((u) => u.pathname.endsWith('/rest/v1/sesiones') && decodeURICom
   const r = await route.fetch();
   const reales = await r.json().catch(() => []);
   if (!Array.isArray(reales)) return route.fulfill({ response: r });
-  await route.fulfill({ response: r, json: [...reales, { id: '00000000-0000-0000-0000-000000000001', bloques: anterior.bloques, logs: { fecha: anterior.fecha } }] });
+  await route.fulfill({ response: r, json: [...reales, { id: '00000000-0000-0000-0000-000000000002', bloques: antes.bloques, logs: { fecha: antes.fecha } }, { id: '00000000-0000-0000-0000-000000000001', bloques: anterior.bloques, logs: { fecha: anterior.fecha } }] });
 });
 const enviados = [];
 page.on('request', (q) => {
@@ -63,7 +65,7 @@ const yDelMas = async () => Math.round((await page.getByLabel('Sumar una serie')
 const foto = (n) => page.screenshot({ path: join(SALIDA, n) });
 try {
   await page.goto('http://localhost:8090', { waitUntil: 'domcontentloaded', timeout: 240000 });
-  await page.evaluate(([u]) => localStorage.setItem(`ascent:guia:${u}`, JSON.stringify({ uid: u, recorrido: true, paso: 0, globos: ['elegir', 'series', 'descanso', 'peso', 'terminar', 'carga', 'sugerido', 'mas', 'grupo', 'stats'] })), [uid]);
+  await page.evaluate(([u]) => localStorage.setItem(`ascent:guia:${u}`, JSON.stringify({ uid: u, recorrido: true, paso: 0, globos: ['elegir', 'series', 'descanso', 'peso', 'terminar', 'carga', 'sugerido', 'mas', 'grupo', 'stats', 'subir'] })), [uid]);
   await page.goto('http://localhost:8090', { waitUntil: 'domcontentloaded', timeout: 240000 });
   await pasarLaEntradaNativa(page);
   await page.locator('input[type=email], input[inputmode=email]').first().fill(correo, { timeout: 90000 });
@@ -94,14 +96,14 @@ try {
   await page.getByLabel('Sumar una serie').first().waitFor({ timeout: 90000 });
   await page.getByText(/^Press de banca/).first().waitFor({ timeout: 30000 });
 
-  // El globo de subir: aparece arriba del peso, no mueve el +, y se va solo a los cuatro segundos.
+  // El globo de subir: aparece arriba del peso, no mueve el +, y se queda hasta la primera serie (21/11).
   const globo = page.getByTestId('globito-subir').first();
   const aparecio = await globo.waitFor({ timeout: 4000 }).then(() => true).catch(() => false);
   const yConGlobo = await yDelMas();
   await foto('globo-subir.png');
-  chequear('con todas a 10 y RIR 2 o más, el globo dice cuánto subir', [aparecio, aparecio ? (await globo.innerText()).trim() : ''], [true, '↑ Puedes subir a 41 kg']);
+  chequear('con todas a 10 y RIR 2 o más dos veces, el globo dice cuánto subir', [aparecio, aparecio ? (await globo.innerText()).trim() : ''], [true, '↑ Puedes subir a 42,5 kg']);
   await page.waitForTimeout(4500);
-  chequear('a los cuatro segundos se fue, y el + no se movió', [await globo.count(), await yDelMas()], [0, yConGlobo]);
+  chequear('a los cuatro segundos sigue, y el + no se movió', [await globo.count(), await yDelMas()], [1, yConGlobo]);
 
   // La última vez: un botón con la fecha; al tocarlo, cada serie, y el + sigue en su lugar.
   const ultima = page.getByTestId('ultima-vez').first();
