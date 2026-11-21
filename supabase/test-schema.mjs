@@ -22081,6 +22081,18 @@ console.log('\n343b. Progreso compartido con Moss: tendencia, estancados, razone
   if (copias.every((x) => x !== null)) chequear('idénticos a los de Moss', copias, [true, true]);
 }
 
+console.log('\n343c. Para hoy, lo mismo que en Moss (sugerenciasDeHoy.ts y sus casos, 19/11)');
+{
+  const H = await import('../nucleo/sugerenciasDeHoy.ts');
+  const { casos } = JSON.parse(deBug('nucleo', 'sugerenciasDeHoy.casos.json'));
+  const orden = (v) => (Array.isArray(v) ? v.map(orden) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, orden(v[k])])) : v);
+  const mal = casos.filter((c) => JSON.stringify(orden(H[c.funcion](...c.entrada))) !== JSON.stringify(orden(c.salida))).map((c) => c.que);
+  chequear(`los ${casos.length} casos compartidos dan lo mismo que en Moss`, mal, []);
+  const moss = 'C:/Users/agusc/AppData/Local/Claude-Data/claude_pzs8sxrjxfjjc/scratch-workspaces/72da519d-471d-42a1-aeb2-6c67de217f9c/f9bedcb3-8ceb-4006-8d30-0989e937913e/scratch-2026-10-21-9f7792/src/dominio/';
+  const igual = (a) => { try { return leerBug(moss + a, 'utf8').replace(/\r\n/g, '\n') === deBug('nucleo', a); } catch { return null; } };
+  const copias = [igual('sugerenciasDeHoy.ts'), igual('sugerenciasDeHoy.casos.json')];
+  if (copias.every((x) => x !== null)) chequear('idénticos a los de Moss', copias, [true, true]);
+}
 console.log('\n344. Lo que Ascent le pasa a las cuentas de músculos: la semana con su RIR (19/11)');
 {
   const S = await import('../nucleo/semanaMuscular.ts');

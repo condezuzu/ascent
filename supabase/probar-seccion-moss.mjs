@@ -1,7 +1,8 @@
-// LA SECCIÓN DE MOSS EN ASCENT (19/11, spec/musculos-compartido.md de Moss): vinculada contra la base real, el
-// tutorial sale solo la primera vez y no deja seguir antes de 2 s; tus músculos con el cuerpo, la barra y el
-// detalle de un músculo con su RIR; los fatigados; tu año; un estancado con su porqué, y una meta que se guarda y
-// se borra en la base (guardar_meta_de_fuerza / borrar_meta_de_fuerza de la 0016).
+// LA SECCIÓN DE MOSS EN ASCENT (19/11, rehecha el mismo día; spec/musculos-compartido.md de Moss): vinculada contra
+// la base real, el tutorial sale solo la primera vez y no deja seguir antes de 2 s (con serie y repetición en el paso
+// 2 y el círculo en el 4); tus músculos de frente y de espalda con su lista, el detalle de un músculo con qué hacer,
+// sus partes y los kilos de la próxima vez; «Para hoy»; los fatigados; tu año; un estancado con su porqué, y una meta
+// que se guarda y se borra en la base (guardar_meta_de_fuerza / borrar_meta_de_fuerza de la 0016).
 //
 // La sesión de hoy es real (con su RIR). Las de las 19 semanas de antes son un doble: la base no deja anotar
 // sesiones viejas. La sentadilla tuvo su marca hace 13 semanas con 2 sesiones de 5 series por semana; después,
@@ -75,7 +76,7 @@ page.on('pageerror', (e) => errores.push(String(e).slice(0, 160)));
 await page.route((u) => u.pathname.endsWith('/rest/v1/sesiones') && decodeURIComponent(u.search).includes('logs!inner(fecha)'), async (route) => {
   const r = await route.fetch();
   const reales = await r.json().catch(() => []);
-  await route.fulfill({ response: r, json: [...reales, ...DOBLES.map((d) => ({ bloques: d.bloques, logs: { fecha: d.fecha } }))] });
+  await route.fulfill({ response: r, json: [...reales, ...DOBLES.map((d) => ({ bloques: d.bloques, estado: 'terminada', logs: { fecha: d.fecha } }))] });
 });
 const texto = (t) => page.getByText(t, { exact: true }).last();
 const visible = (id) => page.getByTestId(id).filter({ visible: true }).first();
@@ -99,22 +100,47 @@ try {
   await visible('moss-tutorial-siguiente').click({ force: true });
   chequear('el tutorial sale solo y, antes de 2 s, «Siguiente» no pasa', [primero.includes(TX.moss.sec.tutorial.titulos[0].toLowerCase()), (await paso()).includes(TX.moss.sec.tutorial.paso(1, 5).toLowerCase())], [true, true]);
   await page.screenshot({ path: join(SALIDA, '1-tutorial.png') });
+  const pasos = [];
   for (let i = 0; i < 5; i++) {
     await page.waitForTimeout(2150);
     await visible('moss-tutorial-siguiente').click();
+    if (i < 4) pasos.push(await paso());
   }
+  chequear('el paso 2 explica serie y repetición; el 4, el círculo que se llena', [
+    pasos[0].includes(TX.moss.sec.tutorial.titulos[1].toLowerCase()) && pasos[0].includes(TX.moss.sec.tutorial.serieDura.toLowerCase()),
+    pasos[2].includes(TX.moss.sec.fatigados.vuelve(TX.moss.sec.fatigados.manana).toLowerCase()),
+  ], [true, true]);
   await page.waitForTimeout(600);
   chequear('cinco pasos y se cierra', await page.getByTestId('moss-tutorial').filter({ visible: true }).count(), 0);
 
   // Tus músculos: el press de hoy (3 series duras de pecho) en el cuerpo y en su barra; tocarla abre el detalle.
   await visible('moss-tus-musculos').waitFor({ timeout: 60000 });
   chequear('el cuerpo y la barra del pecho', [await visible('cuerpo-de-moss').count(), await visible('moss-barra-pecho').count()], [1, 1]);
+  await page.getByTestId('cuerpo-de-moss').first().scrollIntoViewIfNeeded();
   await page.screenshot({ path: join(SALIDA, '2-tus-musculos.png') });
   await visible('moss-barra-pecho').click();
   await visible('moss-detalle').waitFor({ timeout: 20000 });
   const detalle = await visible('moss-detalle').innerText();
-  chequear('el detalle del pecho: el press de hoy con su RIR', [detalle.includes('Press'), detalle.includes(TX.moss.sec.tus.rir(1, 2))], [true, true]);
+  const U = TX.moss.sec.tus;
+  chequear('el detalle del pecho: sus series, qué hacer, que se recupera, sus partes y el press con sus kilos', [
+    detalle.includes(U.seriesCorto(3)),
+    detalle.includes(`${U.estados.poco}: ${U.acciones.poco}`),
+    detalle.includes(`${U.estados.fatigado} · ${TX.moss.sec.fatigados.vuelve(TX.moss.sec.fatigados.pasado)}`),
+    detalle.includes(U.parteLinea(U.partes.pechoResto, 3)),
+    detalle.includes('Press') && detalle.includes(U.proxima.sinObjetivo('80 kg')),
+  ], [true, true, true, true, true]);
   await page.screenshot({ path: join(SALIDA, '3-detalle.png') });
+
+  // De espalda, la lista cambia: el tríceps está, el pecho no.
+  await visible('moss-lado-espalda').click();
+  await page.screenshot({ path: join(SALIDA, '2b-de-espalda.png') });
+  chequear('de espalda, la lista de ese lado', [await visible('moss-barra-triceps').count(), await page.getByTestId('moss-barra-pecho').filter({ visible: true }).count()], [1, 0]);
+  await visible('moss-lado-frente').click();
+
+  // Para hoy: ya entrenó; sin noches ni comida de Moss, lo dice.
+  const P = TX.moss.sec.sugerencias;
+  const paraHoy = await visible('moss-para-hoy').innerText();
+  chequear('«Para hoy»: entrenamiento, comida y sueño, con «Más en Sueño»', [paraHoy.includes(P.entreno.hecha), paraHoy.includes(P.comida.sinDatos), paraHoy.includes(P.sueno.sinDatos), paraHoy.includes(P.masEnSueno)], [true, true, true, true]);
 
   // Fatigados: el pecho, con RIR 1, vuelve en 2 días.
   const fatigados = await visible('moss-fatigados').innerText();
