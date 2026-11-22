@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 // El tipo del cliente lo pone cada app: la web y la nativa traen cada una su
 // copia de supabase-js, y para TypeScript son dos clases distintas.
 import type { Cliente } from '@cliente';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { crearCliente } from '@cliente';
 import { plataforma } from '@plataforma';
 import { T } from '@nucleo/textos';
@@ -1293,8 +1292,9 @@ export function useSesion(
   // Sin esperar y aparte: un cliente sin `schema` no tiene que llevarse el historial.
   function leerLaNocheDeMoss() {
     try {
-      // El tipo del cliente de la web (@supabase/ssr) no conoce `schema`: el cliente sí lo tiene, en los dos lados.
-      void (supabase as unknown as SupabaseClient).schema('moss').rpc('moss_hoy', { p_fecha: hoyISO() }).then(({ data }) => {
+      // El tipo del cliente de la web (@supabase/ssr) no conoce `schema`; el cliente sí lo tiene, en los dos lados.
+      const moss = (supabase as unknown as { schema: (nombre: string) => Pick<Cliente, 'rpc'> }).schema('moss');
+      void moss.rpc('moss_hoy', { p_fecha: hoyISO() }).then(({ data }) => {
         const dormido = (data as { noche?: { dormido?: number | null } | null } | null)?.noche?.dormido;
         nocheCortaRef.current = typeof dormido === 'number' && dormido <= NOCHE_CORTA;
       }, () => undefined);
