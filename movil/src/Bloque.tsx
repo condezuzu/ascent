@@ -18,7 +18,6 @@ import { ponerNombres } from '@compartido/enCurso';
 import { useVersionDelEsquema } from '@compartido/esquema';
 import SelectorEjercicio from './SelectorEjercicio';
 import ListaDeBloques from './ListaDeBloques';
-import HojaDeRutina from './HojaDeRutina';
 import GloboPrimeraVez from './GloboPrimeraVez';
 import CampoPeso from './CampoPeso';
 import CampoReps from './CampoReps';
@@ -189,7 +188,6 @@ export default function Bloque({
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([]);
   const [eligiendo, setEligiendo] = useState(false);
   const [lista, setLista] = useState(false);
-  const [rutinaAbierta, setRutinaAbierta] = useState(false);
   // La rutina cambiada en medio del entrenamiento —en la hoja de acá o en Stats— la relee la sesión, una vez.
   const releer = useRef(alReleerRutina);
   releer.current = alReleerRutina;
@@ -766,12 +764,9 @@ export default function Bloque({
       {cumplida && !esTiempo && (
         <Fantasma texto={T.sesion.sumarOtra} alTocar={sumar} />
       )}
-      {(estado.cerrados.length > 0 || estado.hechas > 0) && (
-        <Fantasma texto={T.sesion.verLista} alTocar={() => setLista(true)} />
-      )}
-      {/* LA RUTINA EN MEDIO DEL ENTRENAMIENTO (21/11, a pedido): no hace falta armarla antes. */}
-      {alReleerRutina && <Fantasma testID="editar-rutina" texto={T.sesion.editarRutina} alTocar={() => setRutinaAbierta(true)} estilo={globoDelMasVisible ? estilos.bajoElGlobo : undefined} />}
-      <HojaDeRutina visible={rutinaAbierta} alCerrar={() => setRutinaAbierta(false)} />
+      {/* LA LISTA DE HOY (22/11, a pedido): siempre a mano, también antes de la primera serie; adentro está lo hecho, lo
+          que sigue y «Editar este día». */}
+      <Fantasma testID="lista-de-hoy" texto={T.sesion.verLista} alTocar={() => setLista(true)} estilo={globoDelMasVisible ? estilos.bajoElGlobo : undefined} />
 
       <SelectorEjercicio
         visible={eligiendo}
