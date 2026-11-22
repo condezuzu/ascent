@@ -22368,6 +22368,36 @@ console.log('\n344. Lo que Ascent le pasa a las cuentas de músculos: la semana 
   chequear('y las cuentas compartidas lo cuentan: pecho 2, tríceps 1, dorsales 2', [por344.pecho?.series, por344.triceps?.series, por344.dorsales?.series], [2, 1, 2]);
   chequear('las reglas son las del archivo compartido, no unas propias', /from '\.\/puntajeMuscular\.ts'/.test(deBug('nucleo', 'semanaMuscular.ts')) && !/export function dentroDeLaSemana/.test(deBug('nucleo', 'semanaMuscular.ts')), true);
 }
+console.log('\n345. La subida de rango que nadie vio: el día entró con la app cerrada (21/11, bug del dueño)');
+{
+  const R345 = await import('../nucleo/rangos.ts');
+  const F345 = await import('../compartido/rangoFestejado.ts');
+  const { memoria: memoria345 } = await import('./dobles/plataforma.mjs');
+  // El rango 2 arranca el día 6 y el 3, el 16 (DESDE_RANGO).
+  chequear('festejó el 1 y ahora se ve el 2 (el día entró con la app cerrada): hay subida; del 1 al 3 también, de una', [
+    R345.subidaSinVer(1, 6), R345.subidaSinVer(1, 16),
+  ], [{ antes: 1, despues: 2 }, { antes: 1, despues: 3 }]);
+  chequear('ya festejado, o el rango bajó (perdió 10): nada', [R345.subidaSinVer(2, 6), R345.subidaSinVer(2, 9), R345.subidaSinVer(3, 8)], [null, null, null]);
+  chequear('sin nada guardado (la primera vez con esta versión): solo un rango recién alcanzado, hasta 2 días después', [
+    R345.subidaSinVer(null, 6), R345.subidaSinVer(null, 8), R345.subidaSinVer(null, 9), R345.subidaSinVer(null, 3), R345.subidaSinVer(null, 0),
+  ], [{ antes: 1, despues: 2 }, { antes: 1, despues: 2 }, null, null, null]);
+  // Lo guardado es de cada cuenta, y lo recién guardado se lee aunque el teléfono todavía no lo haya escrito.
+  memoria345.clear();
+  const antes345 = await F345.leerRangoFestejado('cuenta-345-a');
+  await F345.guardarRangoFestejado('cuenta-345-a', 3);
+  chequear('se guarda por cuenta: la otra no lo ve', [antes345, await F345.leerRangoFestejado('cuenta-345-a'), await F345.leerRangoFestejado('cuenta-345-b'), memoria345.get('ascent:rango-festejado:cuenta-345-a')], [null, 3, null, '3']);
+  memoria345.set('ascent:rango-festejado:cuenta-345-c', 'basura');
+  chequear('basura en el teléfono es «nada guardado»', await F345.leerRangoFestejado('cuenta-345-c'), null);
+  // La pantalla: mira al tener el perfil, no pisa la ceremonia abierta, espera con la hoja de registrar, y anota al cerrar.
+  const in345 = sinComentarios(deBug('movil', 'src', 'Inicio.tsx'));
+  chequear('Inicio compara al tener el perfil y anota el rango visto al cerrar la ceremonia', [
+    /if \(!idDelPerfil \|\| rachaDelPerfil === null \|\| registrarAbierto\) return;/.test(in345),
+    /const s = subidaSinVer\(festejado, rachaDelPerfil\);\s*if \(s\) setSubida\(\(abierta\) => abierta \?\? s\);/.test(in345),
+    /else if \(festejado !== numeroDeRango\(rachaDelPerfil\)\) void guardarRangoFestejado\(idDelPerfil, numeroDeRango\(rachaDelPerfil\)\);/.test(in345),
+    /void guardarRangoFestejado\(perfil\.id, subida\.despues\);\s*setSubida\(null\);/.test(in345),
+  ], [true, true, true, true]);
+  chequear('y está en test:real', /probar-subida-sin-ver\.mjs/.test(deBug('supabase', 'pruebas-reales.mjs')), true);
+}
 console.log(`\n${ok} pasaron, ${fallos.length} fallaron`);
 if (rojos.length) console.log(`${rojos.length} rojos conocidos, esperando su arreglo: ${rojos.join(' | ')}`);
 if (fallos.length) {

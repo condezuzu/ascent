@@ -20,7 +20,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import sharp from 'sharp';
-import { pasarLaEntradaNativa, borrarCuentaDePrueba, limiteDeSonda } from './utiles.mjs';
+import { pasarLaEntradaNativa, borrarCuentaDePrueba, limiteDeSonda, sinCeremoniaDeRango } from './utiles.mjs';
 
 limiteDeSonda(20);
 
@@ -202,6 +202,7 @@ try {
 
   for (const r of RANGOS) {
     await llevarARango(r);
+    await sinCeremoniaDeRango(page, uid);
     await page.reload({ waitUntil: 'domcontentloaded' });
     const iniciar = page.getByText(TX.inicio.iniciarEntrenamiento, { exact: true }).first();
     await iniciar.waitFor({ timeout: 120000 });
@@ -212,6 +213,7 @@ try {
     if (r === 4) {
       for (let k = 1; k < 10; k++) {
         await sumarUnDia();
+        await sinCeremoniaDeRango(page, uid);
         await page.reload({ waitUntil: 'domcontentloaded' });
         await iniciar.waitFor({ timeout: 120000 });
         await esperarElMotor(page);

@@ -141,3 +141,25 @@ export function subidaDeRango(
   const despues = numeroDeRango(rachaNueva);
   return despues > antes ? { antes, despues } : null;
 }
+
+/** Sin rango festejado guardado, se festeja igual si el rango se alcanzó hace estos días o menos. */
+export const DIAS_PARA_FESTEJAR_TARDE = 2;
+
+/**
+ * LA SUBIDA QUE NADIE VIO (21/11, bug del dueño: «subí de rango y no me apareció nada»). `subidaDeRango` festeja en
+ * el momento del registro, con la pantalla abierta. Si el día entró con la app cerrada (la llegada al gimnasio), en
+ * otro aparato, o se perdió la respuesta, al abrir ya se ve el rango nuevo y no hay contra qué comparar. Acá se
+ * compara con el último rango que este teléfono FESTEJÓ o mostró para la cuenta, que queda guardado
+ * (`compartido/rangoFestejado.ts`): es «lo que se veía», pero recordado entre aperturas.
+ *
+ * Sin nada guardado (la primera vez con esta versión, o un teléfono nuevo) solo se festeja un rango recién alcanzado:
+ * si no, a quien lleva un mes en su rango le saldría la ceremonia al actualizar.
+ */
+export function subidaSinVer(festejado: number | null, racha: number): { antes: number; despues: number } | null {
+  if (!Number.isFinite(racha)) return null;
+  const despues = numeroDeRango(racha);
+  if (festejado === null) {
+    return despues > 1 && racha - DESDE_RANGO[despues - 1] <= DIAS_PARA_FESTEJAR_TARDE ? { antes: despues - 1, despues } : null;
+  }
+  return despues > festejado ? { antes: festejado, despues } : null;
+}

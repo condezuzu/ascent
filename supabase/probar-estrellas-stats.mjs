@@ -11,7 +11,7 @@ import { createClient } from '@supabase/supabase-js';
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { pasarLaEntradaNativa, borrarCuentaDePrueba, limiteDeSonda } from './utiles.mjs';
+import { pasarLaEntradaNativa, borrarCuentaDePrueba, limiteDeSonda, sinCeremoniaDeRango } from './utiles.mjs';
 
 limiteDeSonda(6);
 
@@ -45,6 +45,8 @@ const page = await (await nav.newContext({ viewport: { width: 390, height: 900 }
 const texto = (t) => page.getByText(t, { exact: true }).last();
 try {
   await page.goto('http://localhost:8090', { waitUntil: 'domcontentloaded', timeout: 240000 });
+  // Racha 6 es el primer día del rango 2: sin esto sale la ceremonia de la subida que nadie vio.
+  await sinCeremoniaDeRango(page, uid);
   await pasarLaEntradaNativa(page);
   await page.locator('input[type=email], input[inputmode=email]').first().fill(correo, { timeout: 90000 });
   await page.locator('input[type=password]').first().fill(clave);
