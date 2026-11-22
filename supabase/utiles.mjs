@@ -113,6 +113,14 @@ export function retrocesosEnTemplate(codigo) {
 // circulito, que deja pasar recién cargado (1,5 s); la cuarta, la del ranking,
 // termina en "Crear cuenta" / "Ya tengo cuenta" a los ~6 s. Se cae en "Ya tengo
 // cuenta", que abre el login en modo ENTRAR, donde las sondas esperan caer.
+/**
+ * PARA LAS SONDAS QUE LE SUBEN LA RACHA A LA CUENTA POR FUERA Y RECARGAN (21/11). Desde el arreglo de «la subida de
+ * rango que nadie vio», abrir la app con un rango más alto que el último festejado muestra la ceremonia, que tapa la
+ * pantalla. Esto deja anotado que el teléfono ya los festejó todos. Va antes de CADA recarga: sin subida pendiente, la
+ * app anota el rango que ve.
+ */
+export const sinCeremoniaDeRango = (page, uid) => page.evaluate((u) => localStorage.setItem(`ascent:rango-festejado:${u}`, '7'), uid);
+
 export async function pasarLaEntradaNativa(page, espera = 60000, textos = TEXTOS_ES) {
   void textos;
   const hayLogin = () => page.locator('input[type=email]').first().isVisible().catch(() => false);

@@ -18,7 +18,7 @@ import { createClient } from '@supabase/supabase-js';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import sharp from 'sharp';
-import { pasarLaEntradaNativa, borrarCuentaDePrueba, limiteDeSonda } from './utiles.mjs';
+import { pasarLaEntradaNativa, borrarCuentaDePrueba, limiteDeSonda, sinCeremoniaDeRango } from './utiles.mjs';
 
 limiteDeSonda(12);
 
@@ -158,6 +158,8 @@ try {
   for (const r of [2, 3, 4, 5, 6, 7]) {
     const racha = (DESDE_RANGO[r - 1] ?? 0) + 2;
     await llevarARacha(racha);
+    // La racha subió por fuera: sin esto sale la ceremonia de la subida que nadie vio (la prueba probar-subida-sin-ver).
+    await sinCeremoniaDeRango(page, uid);
     await page.reload({ waitUntil: 'domcontentloaded' });
     const leido = await leerInicio();
     chequear(`rango ${r}: el sólido, el chip y la pestaña son el claro de su paleta`, leido, esperada(racha));
