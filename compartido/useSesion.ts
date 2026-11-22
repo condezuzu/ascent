@@ -1293,8 +1293,7 @@ export function useSesion(
   function leerLaNocheDeMoss() {
     try {
       // El tipo del cliente de la web (@supabase/ssr) no conoce `schema`; el cliente sí lo tiene, en los dos lados.
-      const moss = (supabase as unknown as { schema: (nombre: string) => Pick<Cliente, 'rpc'> }).schema('moss');
-      void moss.rpc('moss_hoy', { p_fecha: hoyISO() }).then(({ data }) => {
+      void (supabase as unknown as { schema: (nombre: string) => Pick<Cliente, 'rpc'> }).schema('moss').rpc('moss_hoy', { p_fecha: hoyISO() }).then(({ data }) => {
         const dormido = (data as { noche?: { dormido?: number | null } | null } | null)?.noche?.dormido;
         nocheCortaRef.current = typeof dormido === 'number' && dormido <= NOCHE_CORTA;
       }, () => undefined);
