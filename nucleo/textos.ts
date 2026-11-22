@@ -1539,9 +1539,13 @@ const ES = {
 
     // LA LISTA DE LO HECHO. El − solo arregla el bloque en curso; si te
     // equivocaste hace veinte minutos no había forma de volver.
-    verLista: 'Ver lista',
-    editarRutina: 'Editar la rutina',
-    listaTitulo: 'Lo que llevas hoy',
+    verLista: 'Lista de hoy',
+    listaTitulo: 'Lista de hoy',
+    listaHecho: 'Hecho',
+    listaSigue: 'Lo que sigue',
+    listaEditarDia: 'Editar este día',
+    listaSinRutina: 'Hoy no hay nada en tu rutina.',
+    listaNadaMas: 'No queda nada por hoy.',
     listaVacia: 'Todavía no contaste ninguna serie.',
     listaAhora: 'en curso',
     listaQuitar: 'Quitar este bloque',

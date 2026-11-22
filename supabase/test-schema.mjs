@@ -14129,9 +14129,9 @@ console.log('\n182. Las hojas nacen de nuevo en cada apertura');
   const clases182 = Object.entries(nativa182).map(([ruta, t]) => [ruta, clasificar182(ruta, t)]);
   chequear('ninguna hoja con estado propio queda sin decidir', clases182.filter(([, c]) => c === 'SIN DECIDIR').map(([ruta]) => ruta), []);
   chequear(
-    'las siete que se abren con una prop nacen de nuevo en cada apertura',
+    'las seis que se abren con una prop nacen de nuevo en cada apertura',
     clases182.filter(([, c]) => c === 'nace-al-abrir').map(([ruta]) => ruta.split('/').pop()).sort(),
-    ['AccionesDeUsuario.tsx', 'CargarMarca.tsx', 'HojaDeRutina.tsx', 'ListaDeBloques.tsx', 'RegistrarDia.tsx', 'SelectorEjercicio.tsx', 'TutorialMoss.tsx']
+    ['AccionesDeUsuario.tsx', 'CargarMarca.tsx', 'ListaDeBloques.tsx', 'RegistrarDia.tsx', 'SelectorEjercicio.tsx', 'TutorialMoss.tsx']
   );
   // Lo anotado a mano se comprueba: si alguien pasa a dibujar siempre una de
   // las que "se montan al abrir", vuelve a ser una hoja montada con estado viejo.
@@ -20710,12 +20710,26 @@ console.log('\n309. Subir el peso: la regla de la sección de Moss también en e
 
   // ---- LA RUTINA EN MEDIO DEL ENTRENAMIENTO (21/11) ----
   const ses309 = deBug('compartido', 'useSesion.ts');
-  chequear('«Editar la rutina» abre el editor encima de la sesión, y la sesión relee la rutina cuando cambia', [
-    /<Fantasma testID="editar-rutina" texto=\{T\.sesion\.editarRutina\} alTocar=\{\(\) => setRutinaAbierta\(true\)\} estilo=\{globoDelMasVisible \? estilos\.bajoElGlobo : undefined\} \/>/.test(blo309),
-    /eventos\.escuchar\(RUTINA_CAMBIO, \(\) => void releer\.current\?\.\(\)\)/.test(blo309),
-    /<MiRutina visible=\{visible\} abrirHoy alArrastrar=\{setArrastrando\} \/>/.test(deBug('movil', 'src', 'HojaDeRutina.tsx')),
-    /async function releerLaRutina\(\) \{[\s\S]{0,200}objetivosRef\.current = objetivosDeRepeticiones\(guardada\?\.dias\);/.test(ses309),
+  // Desde el 22/11 se entra por la «Lista de hoy» (antes un enlace «Editar la rutina» con su hoja, que no gustó).
+  const lista309 = sinComentarios(deBug('movil', 'src', 'ListaDeBloques.tsx'));
+  const mr309 = sinComentarios(deBug('movil', 'src', 'MiRutina.tsx'));
+  chequear('la lista de hoy está siempre en la sesión; adentro, lo que sigue y «Editar este día», que es el editor de un día en la misma hoja', [
+    /<Fantasma testID="lista-de-hoy" texto=\{T\.sesion\.verLista\} alTocar=\{\(\) => setLista\(true\)\} estilo=\{globoDelMasVisible \? estilos\.bajoElGlobo : undefined\} \/>/.test(blo309),
+    /const loQueSigue = deHoy\.filter\(\(e\) => !yaHechos\.has\(e\.ejercicio\)\);/.test(lista309),
+    /<Fantasma testID="editar-este-dia-abrir" texto=\{T\.sesion\.listaEditarDia\} alTocar=\{\(\) => setEditando\(true\)\} \/>/.test(lista309),
+    /<Hoja visible=\{visible\} alCerrar=\{cerrar\} desplazable=\{!arrastrando\}>\s*<Text style=\{estilos\.titulo\}>\{T\.sesion\.listaEditarDia\}<\/Text>\s*<MiRutina visible soloElDia alArrastrar=\{setArrastrando\} \/>/.test(lista309),
+    (await import('node:fs')).existsSync(join(aca179, '..', 'movil', 'src', 'HojaDeRutina.tsx')),
+  ], [true, true, true, true, false]);
+  chequear('el editor de un día: los siete días arriba, el de siempre abajo, sin copiar y pegar', [
+    /ORDEN_SEMANA\.map\(\(d\) => \(\s*<Tocable\s+key=\{d\}\s+testID=\{.dia-solo-\$\{d\}.\}/.test(mr309),
+    /\{actual \? \(\s*editorDelDia\(diaSolo\)/.test(mr309),
+    /\{!soloElDia && accionesDeCopia\(d\)\}/.test(mr309),
+    /\{soloElDia \? \(\s*elDiaSolo\(\)\s*\) : actual \? \(/.test(mr309),
   ], [true, true, true, true]);
+  chequear('y la sesión relee la rutina cuando cambia', [
+    /eventos\.escuchar\(RUTINA_CAMBIO, \(\) => void releer\.current\?\.\(\)\)/.test(blo309),
+    /async function releerLaRutina\(\) \{[\s\S]{0,200}objetivosRef\.current = objetivosDeRepeticiones\(guardada\?\.dias\);/.test(ses309),
+  ], [true, true]);
   const r309 = await escenarioDeSesion('rutinaEnElMedio');
   chequear('con el hook de verdad: sin rutina para hoy se empieza; al cargarla en medio, el bloque en blanco propone su primero y el tope pasa a valer', r309.fallo ?? [r309.antes, r309.despues, r309.tope], [null, 'sentadilla', 10]);
 }

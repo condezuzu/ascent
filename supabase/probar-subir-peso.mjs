@@ -1,8 +1,11 @@
 // SUBIR EL PESO (21/10; desde el 21/11 con la regla de la sección de Moss, a pedido). Con 8 repeticiones objetivo en
 // la rutina y las dos sesiones anteriores de press de banca con todas las series en 8 o más (60 kg), al empezar a
 // entrenar el peso parpadea y arriba dice «↑ Puedes subir a 62,5 kg»; la primera vez, un globo explica qué quiere
-// decir. Tocarlo pone el peso y apaga el parpadeo. «Editar la rutina» abre el editor encima de la sesión. Con una
-// serie de la última sesión bajo el objetivo, no parpadea.
+// decir. Tocarlo pone el peso y apaga el parpadeo. Con una serie de la última sesión bajo el objetivo, no parpadea.
+//
+// Y LA LISTA DE HOY (22/11, a pedido): está siempre en la sesión; adentro, lo que sigue de la rutina de hoy y «Editar
+// este día», que abre en la misma hoja el editor de un día, con los siete días arriba para cambiar. Con una rutina de
+// verdad se quita el primer ejercicio de hoy en medio de la sesión: la lista, la sesión y la base quedan al día.
 //
 // En la vista web de la nativa (:8090), con una cuenta descartable. Las dos sesiones y la rutina se inyectan en las
 // respuestas (historial y `mis_rutinas`): las sesiones solo se escriben con la fecha de hoy.
@@ -104,14 +107,37 @@ try {
   await page.waitForTimeout(800);
   chequear('tocarlo pone 62,5 y el peso deja de parpadear', [await page.getByLabel(TX.sesion.pesoDelBloque).first().inputValue(), await page.getByTestId('peso-parpadea').count(), await globito()], ['62,5', 0, null]);
 
-  // «Editar la rutina»: el editor, encima de la sesión; se cierra y la sesión sigue.
-  await page.getByTestId('editar-rutina').first().click();
-  await page.getByTestId('hoja').filter({ visible: true }).first().waitFor({ timeout: 20000 });
-  await page.getByTestId('rutina-elegir').filter({ visible: true }).first().waitFor({ timeout: 20000 });
+  // LA LISTA DE HOY, antes de contar ninguna serie: nada hecho, y lo que sigue es el press de la rutina, 3 × 8.
+  await page.getByTestId('lista-de-hoy').first().click();
+  const hojaDeLista = page.getByTestId('hoja').filter({ visible: true }).first();
+  await hojaDeLista.waitFor({ timeout: 20000 });
+  await hojaDeLista.getByText(/^Press de banca/).first().waitFor({ timeout: 20000 });
   await page.waitForTimeout(800);
-  await page.screenshot({ path: join(SALIDA, '3-editar-rutina.png') });
-  chequear('«Editar la rutina» abre el editor con la rutina activa', (await page.getByTestId('hoja').filter({ visible: true }).first().innerText()).includes('Prueba'), true);
-  await page.getByLabel(TX.general.cerrar).last().click({ position: { x: 20, y: 20 } });
+  await page.screenshot({ path: join(SALIDA, '3-lista-de-hoy.png') });
+  const enLaLista = await hojaDeLista.innerText();
+  chequear('la lista de hoy: nada hecho todavía, y lo que sigue es el press con sus series', [
+    enLaLista.includes(TX.sesion.listaTitulo), enLaLista.includes(TX.sesion.listaVacia),
+    (await hojaDeLista.getByTestId('lo-que-sigue').innerText()).replace(/\s+/g, ' ').trim(),
+  ], [true, true, 'Press de banca 3 × 8']);
+  // «Editar este día»: el mismo lugar pasa a ser el editor de un día, con los siete días arriba y hoy elegido.
+  await hojaDeLista.getByTestId('editar-este-dia-abrir').click();
+  await hojaDeLista.getByTestId('editar-este-dia').waitFor({ timeout: 20000 });
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: join(SALIDA, '4-editar-este-dia.png') });
+  const HOY_N = await page.evaluate(() => new Date().getDay());
+  const OTRO = (HOY_N + 1) % 7;
+  const elegido = () => hojaDeLista.getByTestId('dia-solo-nombre').innerText();
+  const deHoy = await elegido();
+  await hojaDeLista.getByTestId(`dia-solo-${OTRO}`).click();
+  await page.waitForTimeout(400);
+  chequear('el editor abre en hoy, con los siete días para elegir, y tocar otro lo cambia', [
+    await hojaDeLista.locator('[data-testid^="dia-solo-"]:not([data-testid="dia-solo-nombre"])').count(),
+    deHoy.toLowerCase(), (await elegido()).toLowerCase(),
+  ], [7, TX.fechas.diasLargos[HOY_N].toLowerCase(), TX.fechas.diasLargos[OTRO].toLowerCase()]);
+  await hojaDeLista.getByTestId('editar-este-dia-listo').click();
+  await page.waitForTimeout(600);
+  chequear('«Listo» vuelve a la lista', [await hojaDeLista.getByTestId('editar-este-dia').count(), await hojaDeLista.getByTestId('lo-que-sigue').count()], [0, 1]);
+  await hojaDeLista.getByText(TX.sesion.listo, { exact: true }).first().click();
   await page.waitForTimeout(1200);
   chequear('se cierra y la sesión sigue ahí', [await page.getByTestId('hoja').filter({ visible: true }).count(), await page.getByLabel(TX.inicio.sumarSerie).first().isVisible()], [0, true]);
 
@@ -144,18 +170,26 @@ try {
   await limpia.getByLabel(TX.inicio.sumarSerie).first().waitFor({ timeout: 90000 });
   const propone = async (nombre) => limpia.getByText(new RegExp(`^${nombre}`)).filter({ visible: true }).first().waitFor({ timeout: 20000 }).then(() => true, () => false);
   const alEmpezar = await propone('Sentadilla');
-  await limpia.getByTestId('editar-rutina').first().click();
+  await limpia.getByTestId('lista-de-hoy').first().click();
   // Los de la hoja: la rutina de Stats queda montada atrás, con los mismos botones.
   const hoja = limpia.getByTestId('hoja').filter({ visible: true }).first();
-  await hoja.getByTestId('rutina-editar').first().click({ timeout: 20000 });
+  const sigue = async () => (await hoja.getByTestId('lo-que-sigue').innerText()).split('\n').map((x) => x.trim()).filter((x) => x && !/^\d/.test(x));
+  await hoja.getByText(/^Sentadilla/).first().waitFor({ timeout: 20000 });
+  const sigueAntes = await sigue();
+  await hoja.getByTestId('editar-este-dia-abrir').click();
   await hoja.getByLabel(TX.rutina.quitar).first().click({ timeout: 20000 });
   await limpia.waitForTimeout(2500);
-  await limpia.screenshot({ path: join(SALIDA, '4-editada.png') });
-  await limpia.getByLabel(TX.general.cerrar).last().click({ position: { x: 20, y: 20 } });
+  await limpia.screenshot({ path: join(SALIDA, '5-editada.png') });
+  await hoja.getByTestId('editar-este-dia-listo').click();
+  await limpia.waitForTimeout(800);
+  const sigueDespues = await sigue();
+  await limpia.screenshot({ path: join(SALIDA, '6-lista-despues.png') });
+  await hoja.getByText(TX.sesion.listo, { exact: true }).first().click();
   await limpia.waitForTimeout(1200);
   const despues = await propone('Press de banca');
-  await limpia.screenshot({ path: join(SALIDA, '5-la-sesion-la-tomo.png') });
+  await limpia.screenshot({ path: join(SALIDA, '7-la-sesion-la-tomo.png') });
   const enLaBase = ((await s.rpc('mis_rutinas')).data ?? []).find((r) => r.activa)?.dias.map((d) => d.ejercicios.map((e) => e.ejercicio).join('+')) ?? [];
+  chequear('lo que sigue en la lista: antes los dos, y después de quitar la sentadilla, solo el press', [sigueAntes, sigueDespues], [['Sentadilla', 'Press de banca'], ['Press de banca']]);
   chequear('con una rutina de verdad: se quita la sentadilla de hoy en medio de la sesión, y la sesión pasa a proponer el press', [!eRutina, alEmpezar, despues, await limpia.getByText(/^Sentadilla/).filter({ visible: true }).count()], [true, true, true, 0]);
   chequear('y la base quedó con ese día cambiado, y solo ese', [enLaBase.filter((d) => d === 'press_banca').length, enLaBase.filter((d) => d === 'sentadilla+press_banca').length], [1, 6]);
   chequear('sin errores de la página', errores, []);
