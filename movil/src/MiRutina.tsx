@@ -13,6 +13,7 @@ import {
   semanaVacia,
   moverEjercicio,
   siguienteObjetivo,
+  ORDEN_SEMANA,
   type DiaDeSemana,
   type Rutina,
 } from '@nucleo/rutinas';
@@ -66,11 +67,17 @@ export default function MiRutina({
   visible,
   alArrastrar,
   abrirHoy = false,
+  soloElDia = false,
 }: {
   visible: boolean;
   /** Para que la pantalla apague su scroll mientras se arrastra un ejercicio. */
   alArrastrar?: (si: boolean) => void;
   abrirHoy?: boolean;
+  /**
+   * UN DÍA SOLO, PARA EDITARLO EN MEDIO DEL ENTRENAMIENTO (22/11, a pedido): los siete días arriba para elegir (abre
+   * en hoy) y, abajo, los ejercicios de ese día de la rutina activa. Sin las otras rutinas, el nombre ni copiar y pegar.
+   */
+  soloElDia?: boolean;
 }) {
   useTema();
   // El chip de las repeticiones objetivo, con la migración 95.
@@ -86,6 +93,7 @@ export default function MiRutina({
     return (mias?.find((r) => r.activa) ?? mias?.[0])?.id ?? null;
   });
   const [editando, setEditando] = useState(false);
+  const [diaSolo, setDiaSolo] = useState(() => new Date().getDay());
   const [catalogo, setCatalogo] = useState<CatalogoDeRutina>(() => catalogoDe(rutinaPrecargada()?.ejercicios ?? []));
   const [lista, setLista] = useState<Ejercicio[]>(() => rutinaPrecargada()?.ejercicios ?? []);
   const [eligiendoPara, setEligiendoPara] = useState<number | null>(null);
@@ -334,7 +342,7 @@ export default function MiRutina({
             <Text style={estilos.chicoTexto}>{T.rutina.diaDeDescanso}</Text>
           </Tocable>
         </View>
-        {accionesDeCopia(d)}
+        {!soloElDia && accionesDeCopia(d)}
         {preguntaDescanso === d && (
           <Aparece>
           <View style={estilos.pregunta}>
@@ -361,6 +369,43 @@ export default function MiRutina({
     );
   }
 
+  // El día solo: las píldoras de la semana (el punto marca hoy) y el editor de siempre para el elegido.
+  function elDiaSolo() {
+    const hoy = new Date().getDay();
+    return (
+      <View testID="editar-este-dia">
+        <View style={estilos.acciones}>
+          {ORDEN_SEMANA.map((d) => (
+            <Tocable
+              key={d}
+              testID={`dia-solo-${d}`}
+              style={[estilos.chip, d === diaSolo && estilos.chipElegido]}
+              onPress={() => setDiaSolo(d)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: d === diaSolo }}
+              accessibilityLabel={T.fechas.diasLargos[d]}
+            >
+              {d === hoy && <View style={estilos.puntoActiva} />}
+              <Text style={[estilos.chipTexto, d === diaSolo && estilos.chipTextoElegido]}>{T.fechas.diasCortos[d]}</Text>
+            </Tocable>
+          ))}
+        </View>
+        <Text testID="dia-solo-nombre" style={estilos.diaSolo}>{T.fechas.diasLargos[diaSolo]}</Text>
+        {actual ? (
+          editorDelDia(diaSolo)
+        ) : guardadas ? (
+          <View style={estilos.acciones}>
+            <Tocable testID="rutina-armar" style={estilos.chico} onPress={() => void crear(semanaVacia())}>
+              <Text style={estilos.chicoTexto}>{T.rutina.armarNueva}</Text>
+            </Tocable>
+          </View>
+        ) : (
+          <Text style={estilos.nota}>{T.rutina.vacia}</Text>
+        )}
+      </View>
+    );
+  }
+
   if (guardadas === null) return null;
   if (noCargo) {
     return (
@@ -376,9 +421,9 @@ export default function MiRutina({
 
   return (
     <View testID="mi-rutina">
-      <TituloQueLlega />
+      {!soloElDia && <TituloQueLlega />}
 
-      {guardadas && rutinas.length > 0 && (
+      {!soloElDia && guardadas && rutinas.length > 0 && (
         <Surgir demora={90}>
         <View style={estilos.acciones}>
           {rutinas.map((r) => (
@@ -413,7 +458,9 @@ export default function MiRutina({
         </Surgir>
       )}
 
-      {actual ? (
+      {soloElDia ? (
+        elDiaSolo()
+      ) : actual ? (
         <>
           <Surgir demora={150}>
           <View style={estilos.barra}>
@@ -578,6 +625,7 @@ const estilos = conTema(() => StyleSheet.create({
   chicoActivo: { borderColor: C.tinta },
   chicoTexto: { color: C.tinta, fontSize: 13 },
   editor: { paddingBottom: 12 },
+  diaSolo: { ...R.etiqueta, marginTop: 10, marginBottom: 2 },
   filaEditable: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   ejercicio: { flex: 1, color: C.sub, fontSize: 14 },
   cantidad: { color: C.tinta, fontSize: 13, minWidth: 58, textAlign: 'center', fontFamily: L.dato },

@@ -100,9 +100,15 @@ las cuentas las pinea la sección 330 de `test:db`. **Nada de esto se vio en un 
   pone el peso. La primera vez, un globo lo explica. La regla es **la de la sección de Moss** (`subirHoy` en
   `nucleo/semanaMuscular.ts`: todas las series al tope con 2 de reserva, dos sesiones seguidas; no con un músculo que
   se recupera ni tras una noche corta de Moss) y reemplaza a la 2 por 2 y a la del RIR (`nucleo/dosPorDos.ts`,
-  borrado). «Editar la rutina», debajo del +, abre el editor de Stats encima de la sesión (`HojaDeRutina`); la sesión
-  relee la rutina cuando cambia (`releerLaRutina`): los topes y, con el bloque sin nada contado, lo que propone.
-  Sonda: `probar-subir-peso`. **Solo en la nativa**: la web no tiene ni el aviso ni el editor en la sesión.
+  borrado). La sesión relee la rutina cuando cambia (`releerLaRutina`): los topes y, con el bloque sin nada contado,
+  lo que propone. Sonda: `probar-subir-peso`. **Solo en la nativa**: la web no tiene ni el aviso ni el editor.
+- **La lista de hoy** (22/11, a pedido; el enlace «Editar la rutina» del 21/11 no gustó y se fue con su hoja). «Ver
+  lista» pasa a ser «Lista de hoy» y está siempre en la sesión, también antes de la primera serie. Adentro: **Hecho**
+  (lo de siempre, con sus correcciones) y **Lo que sigue** (lo de hoy en la rutina activa que falta), con una columna
+  de puntos: lleno lo hecho, prendido lo que se hace, en aro lo que sigue. «Editar este día» cambia el contenido de
+  la misma hoja por el editor de un día (`MiRutina` con `soloElDia`): los siete días arriba para elegir (abre en hoy)
+  y sus ejercicios para arrastrar, sumar y quitar; «Listo» vuelve a la lista. No es otra hoja encima: un tercer
+  modal apilado no se pudo probar en el iPhone. Sonda: `probar-subir-peso`. **Solo en la nativa.**
 - **La subida de rango que nadie vio** (21/11, bug del dueño: «subí de rango y no me apareció nada»). La ceremonia
   solo salía en el momento del registro con la app abierta; si el día entraba con la app cerrada (la llegada al
   gimnasio de fondo), en otro aparato o con la respuesta perdida, al abrir ya estaba el rango nuevo y no se festejaba.
