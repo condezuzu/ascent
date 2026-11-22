@@ -6,7 +6,8 @@ import { quienSoy } from '@compartido/quienSoy';
 import { DIAS_SEMANA, deISO, hoyISO, restarDias } from '@nucleo/fechas';
 import { esDiaDeDescanso, type ConfigDescanso } from '@nucleo/descansos';
 import { estaBloqueado, textoDeBloqueo } from '@nucleo/pendiente';
-import { numeroDeRango, perdidaSinVer, planetaDeDia, rangoDeRacha, subidaDeRango } from '@nucleo/rangos';
+import { numeroDeRango, perdidaSinVer, planetaDeDia, rangoDeRacha, subidaDeRango, subidaSinVer } from '@nucleo/rangos';
+import { guardarRangoFestejado, leerRangoFestejado } from '@compartido/rangoFestejado';
 import { hayPresagio } from '@nucleo/atmosfera';
 import { laCuentaYaNoExiste, mensajeDeAuth } from '@nucleo/errores';
 import { pedirInicio } from '@compartido/inicio';
@@ -228,6 +229,25 @@ export default function Inicio({
   // aca: el toque, el cronometro, y el dia que entra solo al llegar al
   // gimnasio. Antes no terminaban en ningun lado.
   const [subida, setSubida] = useState<{ antes: number; despues: number } | null>(null);
+  // LA SUBIDA QUE NADIE VIO (21/11, bug del dueño): el día entró con la app cerrada —la llegada al gimnasio— o en otro
+  // aparato, y al abrir ya se ve el rango nuevo: ninguno de los tres caminos de arriba pasa. Se compara con el último
+  // rango que este teléfono festejó (ver `subidaSinVer`). Con la hoja de registrar abierta espera, como la racha vista.
+  const idDelPerfil = estado.tipo === 'listo' ? estado.perfil.id : null;
+  const rachaDelPerfil = estado.tipo === 'listo' ? estado.perfil.racha_actual : null;
+  useEffect(() => {
+    if (!idDelPerfil || rachaDelPerfil === null || registrarAbierto) return;
+    let vivo = true;
+    void leerRangoFestejado(idDelPerfil).then((festejado) => {
+      if (!vivo) return;
+      const s = subidaSinVer(festejado, rachaDelPerfil);
+      // La ceremonia que ya abrió el registro de recién no se pisa. Sin subida, queda anotado el rango que se ve.
+      if (s) setSubida((abierta) => abierta ?? s);
+      else if (festejado !== numeroDeRango(rachaDelPerfil)) void guardarRangoFestejado(idDelPerfil, numeroDeRango(rachaDelPerfil));
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [idDelPerfil, rachaDelPerfil, registrarAbierto]);
   // REGISTRO OPTIMISTA, LA MITAD SEGURA (27/9). Al confirmar, el día se marca
   // como listo AL INSTANTE, sin esperar a que `cargar()` vuelva del servidor:
   // guardamos la FECHA marcada, no un booleano, así al pasar la medianoche no
@@ -1205,7 +1225,11 @@ export default function Inicio({
           rangoDespues={subida.despues}
           planeta={planeta}
           racha={perfil.racha_actual}
-          alCerrar={() => setSubida(null)}
+          alCerrar={() => {
+            // Vista: no vuelve a salir al abrir la app.
+            void guardarRangoFestejado(perfil.id, subida.despues);
+            setSubida(null);
+          }}
         />
       )}
 

@@ -103,6 +103,12 @@ las cuentas las pinea la sección 330 de `test:db`. **Nada de esto se vio en un 
   borrado). «Editar la rutina», debajo del +, abre el editor de Stats encima de la sesión (`HojaDeRutina`); la sesión
   relee la rutina cuando cambia (`releerLaRutina`): los topes y, con el bloque sin nada contado, lo que propone.
   Sonda: `probar-subir-peso`. **Solo en la nativa**: la web no tiene ni el aviso ni el editor en la sesión.
+- **La subida de rango que nadie vio** (21/11, bug del dueño: «subí de rango y no me apareció nada»). La ceremonia
+  solo salía en el momento del registro con la app abierta; si el día entraba con la app cerrada (la llegada al
+  gimnasio de fondo), en otro aparato o con la respuesta perdida, al abrir ya estaba el rango nuevo y no se festejaba.
+  Ahora el teléfono recuerda, por cuenta, el último rango que festejó (`compartido/rangoFestejado.ts`) y al tener el
+  perfil compara (`subidaSinVer` en `nucleo/rangos.ts`). Sin nada guardado —la primera vez con esta versión— festeja
+  solo un rango alcanzado hace 2 días o menos. `test:db` 345 y `probar-subida-sin-ver`. **Solo en la nativa.**
 
 En Moss, Ascent se muda de Hábitos a Progreso (subiendo desde abajo), pendiente de su aprobación en esa galería.
 
@@ -622,8 +628,8 @@ deja afuera; los que sí, se arreglaron ese día.
   servidor la niega al instante para cualquier pedido nuevo.
 - **Si la foto sube pero su fila no**, el archivo queda en el bucket sin usar.
   Al borrar la cuenta se borra igual (se lista la carpeta, no las filas).
-- **Si se pierde la respuesta de `iniciar_sesion`**, el reintento trae
-  `registro: null`: se pierde el festejo de subida de rango de ese día.
+- ~~**Si se pierde la respuesta de `iniciar_sesion`**, el reintento trae `registro: null`: se pierde el festejo de
+  subida de rango de ese día.~~ **Arreglado el 21/11** en la nativa: ver «La subida de rango que nadie vio».
 - **Sin mirar el error:** borrar una marca (`fuerza/page.tsx`), aceptar o
   rechazar un amigo y responder un reto (`social/page.tsx`,
   `perfil/[id]/page.tsx`). La pantalla recarga y muestra lo que quedó, pero
