@@ -140,6 +140,18 @@ try {
   await hojaDeLista.getByText(TX.sesion.listo, { exact: true }).first().click();
   await page.waitForTimeout(1200);
   chequear('se cierra y la sesión sigue ahí', [await page.getByTestId('hoja').filter({ visible: true }).count(), await page.getByLabel(TX.inicio.sumarSerie).first().isVisible()], [0, true]);
+  // Con una serie del press: pasa a lo hecho, y de la rutina de hoy no queda nada.
+  await page.getByLabel(TX.inicio.sumarSerie).first().click();
+  await page.waitForTimeout(1500);
+  await page.getByTestId('lista-de-hoy').first().click();
+  await hojaDeLista.getByTestId('lo-que-sigue').waitFor({ timeout: 20000 });
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: join(SALIDA, '3b-lista-con-una-serie.png') });
+  chequear('con una serie hecha: el press está en lo hecho, y no queda nada por hoy', [
+    (await hojaDeLista.innerText()).toLowerCase().includes(TX.sesion.listaAhora.toLowerCase()), (await hojaDeLista.getByTestId('lo-que-sigue').innerText()).trim(),
+  ], [true, TX.sesion.listaNadaMas]);
+  await hojaDeLista.getByText(TX.sesion.listo, { exact: true }).first().click();
+  await page.waitForTimeout(1000);
 
   // La última sesión con una serie de 7: no llega al objetivo. Se vuelve a entrar con el historial nuevo.
   await texto(TX.sesion.terminar).click({ timeout: 30000 });

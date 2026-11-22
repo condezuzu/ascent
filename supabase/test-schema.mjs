@@ -20716,7 +20716,7 @@ console.log('\n309. Subir el peso: la regla de la sección de Moss también en e
   chequear('la lista de hoy está siempre en la sesión; adentro, lo que sigue y «Editar este día», que es el editor de un día en la misma hoja', [
     /<Fantasma testID="lista-de-hoy" texto=\{T\.sesion\.verLista\} alTocar=\{\(\) => setLista\(true\)\} estilo=\{globoDelMasVisible \? estilos\.bajoElGlobo : undefined\} \/>/.test(blo309),
     /const loQueSigue = deHoy\.filter\(\(e\) => !yaHechos\.has\(e\.ejercicio\)\);/.test(lista309),
-    /<Fantasma testID="editar-este-dia-abrir" texto=\{T\.sesion\.listaEditarDia\} alTocar=\{\(\) => setEditando\(true\)\} \/>/.test(lista309),
+    /<Fantasma testID="editar-este-dia-abrir" texto=\{T\.sesion\.listaEditarDia\} alTocar=\{\(\) => setEditando\(true\)\} enHoja alinear="center" \/>/.test(lista309),
     /<Hoja visible=\{visible\} alCerrar=\{cerrar\} desplazable=\{!arrastrando\}>\s*<Text style=\{estilos\.titulo\}>\{T\.sesion\.listaEditarDia\}<\/Text>\s*<MiRutina visible soloElDia alArrastrar=\{setArrastrando\} \/>/.test(lista309),
     (await import('node:fs')).existsSync(join(aca179, '..', 'movil', 'src', 'HojaDeRutina.tsx')),
   ], [true, true, true, true, false]);

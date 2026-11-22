@@ -243,8 +243,8 @@ function ListaDeBloques({
 
       {/* LO QUE SIGUE, en línea: todavía no pasó. El que ya está cargado en el bloque lleva el punto prendido. */}
       <View style={estilos.sigueCabecera}>
-        <Text style={estilos.seccion}>{T.sesion.listaSigue}</Text>
-        <Fantasma testID="editar-este-dia-abrir" texto={T.sesion.listaEditarDia} alTocar={() => setEditando(true)} />
+        <Text style={[estilos.seccion, estilos.seccionEnFila]}>{T.sesion.listaSigue}</Text>
+        <Fantasma testID="editar-este-dia-abrir" texto={T.sesion.listaEditarDia} alTocar={() => setEditando(true)} enHoja alinear="center" />
       </View>
       <View testID="lo-que-sigue">
         {loQueSigue.length === 0 ? (
@@ -290,7 +290,9 @@ const estilos = conTema(() => StyleSheet.create({
   tocable: { textDecorationLine: 'underline', textDecorationStyle: 'dotted', textDecorationColor: C.sub },
   titulo: { color: C.tinta, fontSize: 20, fontWeight: '500', marginBottom: 4 },
   seccion: { ...R.etiqueta, marginTop: 18, marginBottom: 2 },
-  sigueCabecera: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 },
+  // La etiqueta y «Editar este día» en la misma línea: el enlace es alto para el dedo, la etiqueta se centra con él.
+  sigueCabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 6 },
+  seccionEnFila: { marginTop: 0, marginBottom: 0 },
   // LA COLUMNA DE PUNTOS: lleno lo hecho, prendido lo que se está haciendo, en aro lo que sigue (el cargado en el
   // bloque, con el aro del color del rango).
   izquierda: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
