@@ -78,7 +78,7 @@ const ES = {
         semanaTexto: 'Series duras de cada músculo en los últimos 7 días. Lo ideal: de 10 a 20.',
         frente: 'De frente',
         espalda: 'De espalda',
-        estados: { sinEntrenar: 'Sin entrenar', poco: 'Le faltan', enSuPunto: 'Va bien', mucho: 'De más', fatigado: 'Recuperándose' },
+        estados: { sinEntrenar: 'Sin entrenar', poco: 'Le faltan', enSuPunto: 'Al día', mucho: 'De más', fatigado: 'Recuperándose' },
         acciones: {
           sinEntrenar: 'No lo entrenaste en los últimos 7 días: súmale series esta semana.',
           poco: 'súmale series esta semana.',
@@ -123,18 +123,16 @@ const ES = {
       },
       fatigados: {
         titulo: 'Músculos fatigados',
-        texto: 'Lo que todavía se recupera de tu último entrenamiento.',
+        texto: 'Estado de los músculos trabajados.',
         ninguno: 'Ningún músculo fatigado.',
-        vuelve: (cuando: string) => `listo ${cuando}`,
-        manana: 'mañana',
-        pasado: 'pasado mañana',
-        vuelveEl: (dia: string) => `listo el ${dia}`,
+        // Lo que le falta para recuperarse (23/11, como en Moss): antes «listo mañana», «listo el sábado».
+        faltan: (n: number) => (n === 1 ? 'falta 1 día' : `faltan ${n} días`),
         estimado: 'estimado',
         // En Moss es una sola frase; partida en dos para no pasar de dos renglones.
         comoSeCalcula: ['Es un estimado según qué tan cerca del fallo llegaste (cuando ya no sale otra repetición).', 'Puede variar un día.'],
       },
       sugerencias: {
-        titulo: 'Para hoy',
+        titulo: 'Sugerencias para hoy',
         tipos: { entreno: 'Entrenamiento', comida: 'Comida', sueno: 'Sueño' },
         masEnSueno: 'Más en Sueño',
         y: 'y',
@@ -142,28 +140,26 @@ const ES = {
         toca: (musculos: string) => `Hoy toca ${musculos}.`,
         entreno: {
           descanso: 'Hoy descansas. Caminar o moverte suave está bien: no le quita a tu recuperación.',
-          hecha: 'Ya entrenaste hoy. Lo que sigue: comer bien y dormir a tu hora.',
-          entrenar: (reps: string, reserva: string) => `Series de ${reps} repeticiones; para cuando sientas que podrías ${reserva} más.`,
+          // De cuántas a cuántas repeticiones (r1, r2) y cuántas en reserva (q1, q2): nombres cortos por la regla de los dos renglones.
+          entrenar: (r1: number, r2: number, q1: number, q2: number) => `Series de ${r1} a ${r2} repeticiones; para cuando sientas que podrías ${q1} o ${q2} más.`,
           nocheCorta: 'Dormiste poco: mantén el peso y no vayas al fallo.',
           conFatiga: (f: string) => `${f} todavía se recupera: hoy, una serie menos y sin llegar al fallo.`,
           conFatigaVarios: (f: string) => `${f} todavía se recuperan: hoy, una serie menos y sin llegar al fallo.`,
         },
         comida: {
           cuidado: 'Come lo de siempre, a tus horas.',
-          faltoProteina: (g: number) => `Ayer faltó proteína. No hace falta recuperarla: hoy, unos ${g} g en cada comida.`,
-          comioMenos: 'Ayer comiste menos. Hoy, lo de siempre: no hace falta compensar.',
-          carbos: 'Como entrenas más de 45 minutos, comer carbohidratos antes (pan, fruta, arroz) puede ayudar.',
-          ayerBien: 'Ayer llegaste a tus metas. Hoy, lo mismo: proteína en cada comida.',
-          normal: 'Hoy, tus comidas de siempre, con proteína en cada una.',
-          sinDatos: 'Anota lo que comes y aquí te digo qué priorizar.',
-        } as Record<string, string | ((g: number) => string)>,
+          faltaron: (macros: string) => `Ayer quedaste bajo en ${macros}: hoy, enfócate en eso.`,
+          recuperar: (macros: string) => `Para recuperarte mejor, enfócate en ${macros}.`,
+        } as Record<string, string | ((macros: string) => string)>,
+        macros: { proteina: 'proteína', carbohidratos: 'carbohidratos', grasas: 'grasas' } as Record<string, string>,
         // Ascent no sabe a qué hora te conviene acostarte (es de Moss): van las que no la dicen.
+        // Desde el 23/11 dicen cuántas horas dormir (`horas`: «8 h 30 min»).
         sueno: {
-          dormistePocoSinHora: 'Dormiste poco. Si puedes, una siesta de 30 minutos antes de las 16.',
-          deudaSinHora: 'Vienes durmiendo de menos: lo baja dormir varias noches seguidas a la misma hora.',
-          bienSinHora: 'Dormiste bien. Sigue acostándote a la misma hora.',
-          sinDatos: 'Cuando Moss tenga tus noches, aquí te dice a qué hora acostarte.',
-        } as Record<string, string>,
+          dormistePocoSinHora: (horas: string) => `Dormiste poco. Esta noche, unas ${horas}; si puedes, una siesta de 30 minutos antes de las 16.`,
+          deudaSinHora: (horas: string) => `Para bajar tu deuda, unas ${horas} por noche, varias noches seguidas.`,
+          bienSinHora: (horas: string) => `Dormiste bien. Esta noche, unas ${horas}, a tu hora de siempre.`,
+          sinDatos: (horas: string) => `Esta noche, unas ${horas}. Cuando Moss tenga tus noches, te dice a qué hora acostarte.`,
+        } as Record<string, (horas: string) => string>,
       },
       anio: {
         titulo: 'Tu año',

@@ -1,837 +1,1327 @@
 {
-  "nota": "Los casos de sugerenciasDeHoy.ts, iguales en Moss y en Ascent. Salen de correr la función con días de ejemplo.",
-  "casos": [
+ "nota": "Los casos de sugerenciasDeHoy.ts, iguales en Moss y en Ascent. Salen de correr la función con días de ejemplo (rehechos el 23/11/2026, con la necesidad de sueño y los tres macros).",
+ "casos": [
+  {
+   "que": "día de pecho, todo bien: series de 8 a 12, proteína y carbohidratos, y las horas de siempre",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
     {
-      "que": "día de pecho, todo bien: series de 8 a 12",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": {
-            "musculos": [
-              "pecho",
-              "triceps"
-            ],
-            "minutos": 60,
-            "hecha": false
-          },
-          "sinRecuperar": [],
-          "objetivo": "musculo",
-          "noche": {
-            "dormido": 450,
-            "despertoAntes": null
-          },
-          "deuda": "baja",
-          "acostarse": 1395,
-          "ayer": {
-            "kcal": 2100,
-            "proteina": 150,
-            "metaKcal": 2200,
-            "metaProteina": 160
-          },
-          "cuidadoConLaComida": false
-        }
+     "sesion": {
+      "musculos": [
+       "pecho",
+       "triceps"
       ],
-      "salida": {
-        "entreno": {
-          "clave": "entrenar",
-          "musculos": [
-            "pecho",
-            "triceps"
-          ],
-          "reps": "8 a 12",
-          "reserva": "1 o 2"
-        },
-        "comida": {
-          "clave": "carbos"
-        },
-        "sueno": {
-          "clave": "bien",
-          "hora": 1395
-        }
-      }
-    },
-    {
-      "que": "objetivo fuerza: series de 3 a 6",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": {
-            "musculos": [
-              "pecho",
-              "triceps"
-            ],
-            "minutos": 60,
-            "hecha": false
-          },
-          "sinRecuperar": [],
-          "objetivo": "fuerza",
-          "noche": {
-            "dormido": 450,
-            "despertoAntes": null
-          },
-          "deuda": "baja",
-          "acostarse": 1395,
-          "ayer": {
-            "kcal": 2100,
-            "proteina": 150,
-            "metaKcal": 2200,
-            "metaProteina": 160
-          },
-          "cuidadoConLaComida": false
-        }
-      ],
-      "salida": {
-        "entreno": {
-          "clave": "entrenar",
-          "musculos": [
-            "pecho",
-            "triceps"
-          ],
-          "reps": "3 a 6",
-          "reserva": "2 o 3"
-        },
-        "comida": {
-          "clave": "carbos"
-        },
-        "sueno": {
-          "clave": "bien",
-          "hora": 1395
-        }
-      }
-    },
-    {
-      "que": "noche de 5 h 30: mantén el peso; y el sueño lo dice",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": {
-            "musculos": [
-              "pecho",
-              "triceps"
-            ],
-            "minutos": 60,
-            "hecha": false
-          },
-          "sinRecuperar": [],
-          "objetivo": "musculo",
-          "noche": {
-            "dormido": 330,
-            "despertoAntes": null
-          },
-          "deuda": "baja",
-          "acostarse": 1395,
-          "ayer": {
-            "kcal": 2100,
-            "proteina": 150,
-            "metaKcal": 2200,
-            "metaProteina": 160
-          },
-          "cuidadoConLaComida": false
-        }
-      ],
-      "salida": {
-        "entreno": {
-          "clave": "nocheCorta",
-          "musculos": [
-            "pecho",
-            "triceps"
-          ]
-        },
-        "comida": {
-          "clave": "carbos"
-        },
-        "sueno": {
-          "clave": "dormistePoco",
-          "hora": 1395
-        }
-      }
-    },
-    {
-      "que": "despertó 80 minutos antes: noche corta",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": {
-            "musculos": [
-              "pecho",
-              "triceps"
-            ],
-            "minutos": 60,
-            "hecha": false
-          },
-          "sinRecuperar": [],
-          "objetivo": "musculo",
-          "noche": {
-            "dormido": 420,
-            "despertoAntes": 80
-          },
-          "deuda": "baja",
-          "acostarse": 1395,
-          "ayer": {
-            "kcal": 2100,
-            "proteina": 150,
-            "metaKcal": 2200,
-            "metaProteina": 160
-          },
-          "cuidadoConLaComida": false
-        }
-      ],
-      "salida": {
-        "entreno": {
-          "clave": "nocheCorta",
-          "musculos": [
-            "pecho",
-            "triceps"
-          ]
-        },
-        "comida": {
-          "clave": "carbos"
-        },
-        "sueno": {
-          "clave": "dormistePoco",
-          "hora": 1395
-        }
-      }
-    },
-    {
-      "que": "el tríceps todavía se recupera",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": {
-            "musculos": [
-              "pecho",
-              "triceps"
-            ],
-            "minutos": 60,
-            "hecha": false
-          },
-          "sinRecuperar": [
-            "triceps"
-          ],
-          "objetivo": "musculo",
-          "noche": {
-            "dormido": 450,
-            "despertoAntes": null
-          },
-          "deuda": "baja",
-          "acostarse": 1395,
-          "ayer": {
-            "kcal": 2100,
-            "proteina": 150,
-            "metaKcal": 2200,
-            "metaProteina": 160
-          },
-          "cuidadoConLaComida": false
-        }
-      ],
-      "salida": {
-        "entreno": {
-          "clave": "conFatiga",
-          "musculos": [
-            "pecho",
-            "triceps"
-          ],
-          "fatigados": [
-            "triceps"
-          ]
-        },
-        "comida": {
-          "clave": "carbos"
-        },
-        "sueno": {
-          "clave": "bien",
-          "hora": 1395
-        }
-      }
-    },
-    {
-      "que": "día de descanso",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": null,
-          "sinRecuperar": [],
-          "objetivo": "musculo",
-          "noche": {
-            "dormido": 450,
-            "despertoAntes": null
-          },
-          "deuda": "baja",
-          "acostarse": 1395,
-          "ayer": {
-            "kcal": 2100,
-            "proteina": 150,
-            "metaKcal": 2200,
-            "metaProteina": 160
-          },
-          "cuidadoConLaComida": false
-        }
-      ],
-      "salida": {
-        "entreno": {
-          "clave": "descanso"
-        },
-        "comida": {
-          "clave": "ayerBien"
-        },
-        "sueno": {
-          "clave": "bien",
-          "hora": 1395
-        }
-      }
-    },
-    {
-      "que": "ya entrenó hoy",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": {
-            "musculos": [
-              "pecho"
-            ],
-            "minutos": 60,
-            "hecha": true
-          },
-          "sinRecuperar": [],
-          "objetivo": "musculo",
-          "noche": {
-            "dormido": 450,
-            "despertoAntes": null
-          },
-          "deuda": "baja",
-          "acostarse": 1395,
-          "ayer": {
-            "kcal": 2100,
-            "proteina": 150,
-            "metaKcal": 2200,
-            "metaProteina": 160
-          },
-          "cuidadoConLaComida": false
-        }
-      ],
-      "salida": {
-        "entreno": {
-          "clave": "hecha"
-        },
-        "comida": {
-          "clave": "ayerBien"
-        },
-        "sueno": {
-          "clave": "bien",
-          "hora": 1395
-        }
-      }
-    },
-    {
-      "que": "ayer faltó proteína: 30 g por comida, sin compensar",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": {
-            "musculos": [
-              "pecho",
-              "triceps"
-            ],
-            "minutos": 60,
-            "hecha": false
-          },
-          "sinRecuperar": [],
-          "objetivo": "musculo",
-          "noche": {
-            "dormido": 450,
-            "despertoAntes": null
-          },
-          "deuda": "baja",
-          "acostarse": 1395,
-          "ayer": {
-            "kcal": 2100,
-            "proteina": 110,
-            "metaKcal": 2200,
-            "metaProteina": 160
-          },
-          "cuidadoConLaComida": false
-        }
-      ],
-      "salida": {
-        "entreno": {
-          "clave": "entrenar",
-          "musculos": [
-            "pecho",
-            "triceps"
-          ],
-          "reps": "8 a 12",
-          "reserva": "1 o 2"
-        },
-        "comida": {
-          "clave": "faltoProteina",
-          "gramos": 30
-        },
-        "sueno": {
-          "clave": "bien",
-          "hora": 1395
-        }
-      }
-    },
-    {
-      "que": "ayer comió de menos: no compensar",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": {
-            "musculos": [
-              "pecho",
-              "triceps"
-            ],
-            "minutos": 60,
-            "hecha": false
-          },
-          "sinRecuperar": [],
-          "objetivo": "musculo",
-          "noche": {
-            "dormido": 450,
-            "despertoAntes": null
-          },
-          "deuda": "baja",
-          "acostarse": 1395,
-          "ayer": {
-            "kcal": 1500,
-            "proteina": 140,
-            "metaKcal": 2200,
-            "metaProteina": 160
-          },
-          "cuidadoConLaComida": false
-        }
-      ],
-      "salida": {
-        "entreno": {
-          "clave": "entrenar",
-          "musculos": [
-            "pecho",
-            "triceps"
-          ],
-          "reps": "8 a 12",
-          "reserva": "1 o 2"
-        },
-        "comida": {
-          "clave": "comioMenos"
-        },
-        "sueno": {
-          "clave": "bien",
-          "hora": 1395
-        }
-      }
-    },
-    {
-      "que": "sesión corta y ayer a medias: lo de siempre",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": {
-            "musculos": [
-              "biceps"
-            ],
-            "minutos": 30,
-            "hecha": false
-          },
-          "sinRecuperar": [],
-          "objetivo": "musculo",
-          "noche": {
-            "dormido": 450,
-            "despertoAntes": null
-          },
-          "deuda": "baja",
-          "acostarse": 1395,
-          "ayer": {
-            "kcal": 1900,
-            "proteina": 135,
-            "metaKcal": 2200,
-            "metaProteina": 160
-          },
-          "cuidadoConLaComida": false
-        }
-      ],
-      "salida": {
-        "entreno": {
-          "clave": "entrenar",
-          "musculos": [
-            "biceps"
-          ],
-          "reps": "8 a 12",
-          "reserva": "1 o 2"
-        },
-        "comida": {
-          "clave": "normal"
-        },
-        "sueno": {
-          "clave": "bien",
-          "hora": 1395
-        }
-      }
-    },
-    {
-      "que": "sesión larga y ayer a medias: carbohidratos antes",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": {
-            "musculos": [
-              "pecho",
-              "triceps"
-            ],
-            "minutos": 60,
-            "hecha": false
-          },
-          "sinRecuperar": [],
-          "objetivo": "musculo",
-          "noche": {
-            "dormido": 450,
-            "despertoAntes": null
-          },
-          "deuda": "baja",
-          "acostarse": 1395,
-          "ayer": {
-            "kcal": 1900,
-            "proteina": 135,
-            "metaKcal": 2200,
-            "metaProteina": 160
-          },
-          "cuidadoConLaComida": false
-        }
-      ],
-      "salida": {
-        "entreno": {
-          "clave": "entrenar",
-          "musculos": [
-            "pecho",
-            "triceps"
-          ],
-          "reps": "8 a 12",
-          "reserva": "1 o 2"
-        },
-        "comida": {
-          "clave": "carbos"
-        },
-        "sueno": {
-          "clave": "bien",
-          "hora": 1395
-        }
-      }
-    },
-    {
-      "que": "sesión corta y ayer bien: ayer llegaste",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": {
-            "musculos": [
-              "biceps"
-            ],
-            "minutos": 30,
-            "hecha": false
-          },
-          "sinRecuperar": [],
-          "objetivo": "musculo",
-          "noche": {
-            "dormido": 450,
-            "despertoAntes": null
-          },
-          "deuda": "baja",
-          "acostarse": 1395,
-          "ayer": {
-            "kcal": 2100,
-            "proteina": 150,
-            "metaKcal": 2200,
-            "metaProteina": 160
-          },
-          "cuidadoConLaComida": false
-        }
-      ],
-      "salida": {
-        "entreno": {
-          "clave": "entrenar",
-          "musculos": [
-            "biceps"
-          ],
-          "reps": "8 a 12",
-          "reserva": "1 o 2"
-        },
-        "comida": {
-          "clave": "ayerBien"
-        },
-        "sueno": {
-          "clave": "bien",
-          "hora": 1395
-        }
-      }
-    },
-    {
-      "que": "sin comida de ayer y descanso: anota",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": null,
-          "sinRecuperar": [],
-          "objetivo": "musculo",
-          "noche": {
-            "dormido": 450,
-            "despertoAntes": null
-          },
-          "deuda": "baja",
-          "acostarse": 1395,
-          "ayer": null,
-          "cuidadoConLaComida": false
-        }
-      ],
-      "salida": {
-        "entreno": {
-          "clave": "descanso"
-        },
-        "comida": {
-          "clave": "sinDatos"
-        },
-        "sueno": {
-          "clave": "bien",
-          "hora": 1395
-        }
-      }
-    },
-    {
-      "que": "con un trastorno de la alimentación: nada de calorías",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": {
-            "musculos": [
-              "pecho",
-              "triceps"
-            ],
-            "minutos": 60,
-            "hecha": false
-          },
-          "sinRecuperar": [],
-          "objetivo": "musculo",
-          "noche": {
-            "dormido": 450,
-            "despertoAntes": null
-          },
-          "deuda": "baja",
-          "acostarse": 1395,
-          "ayer": {
-            "kcal": 900,
-            "proteina": 40,
-            "metaKcal": 2200,
-            "metaProteina": 160
-          },
-          "cuidadoConLaComida": true
-        }
-      ],
-      "salida": {
-        "entreno": {
-          "clave": "entrenar",
-          "musculos": [
-            "pecho",
-            "triceps"
-          ],
-          "reps": "8 a 12",
-          "reserva": "1 o 2"
-        },
-        "comida": {
-          "clave": "cuidado"
-        },
-        "sueno": {
-          "clave": "bien",
-          "hora": 1395
-        }
-      }
-    },
-    {
-      "que": "con deuda media: varias noches a tu hora",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": {
-            "musculos": [
-              "pecho",
-              "triceps"
-            ],
-            "minutos": 60,
-            "hecha": false
-          },
-          "sinRecuperar": [],
-          "objetivo": "musculo",
-          "noche": {
-            "dormido": 450,
-            "despertoAntes": null
-          },
-          "deuda": "media",
-          "acostarse": 1395,
-          "ayer": {
-            "kcal": 2100,
-            "proteina": 150,
-            "metaKcal": 2200,
-            "metaProteina": 160
-          },
-          "cuidadoConLaComida": false
-        }
-      ],
-      "salida": {
-        "entreno": {
-          "clave": "entrenar",
-          "musculos": [
-            "pecho",
-            "triceps"
-          ],
-          "reps": "8 a 12",
-          "reserva": "1 o 2"
-        },
-        "comida": {
-          "clave": "carbos"
-        },
-        "sueno": {
-          "clave": "deuda",
-          "hora": 1395
-        }
-      }
-    },
-    {
-      "que": "sin hora de acostarse",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": {
-            "musculos": [
-              "pecho",
-              "triceps"
-            ],
-            "minutos": 60,
-            "hecha": false
-          },
-          "sinRecuperar": [],
-          "objetivo": "musculo",
-          "noche": {
-            "dormido": 450,
-            "despertoAntes": null
-          },
-          "deuda": "baja",
-          "acostarse": null,
-          "ayer": {
-            "kcal": 2100,
-            "proteina": 150,
-            "metaKcal": 2200,
-            "metaProteina": 160
-          },
-          "cuidadoConLaComida": false
-        }
-      ],
-      "salida": {
-        "entreno": {
-          "clave": "entrenar",
-          "musculos": [
-            "pecho",
-            "triceps"
-          ],
-          "reps": "8 a 12",
-          "reserva": "1 o 2"
-        },
-        "comida": {
-          "clave": "carbos"
-        },
-        "sueno": {
-          "clave": "bienSinHora"
-        }
-      }
-    },
-    {
-      "que": "sin la noche",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": {
-            "musculos": [
-              "pecho",
-              "triceps"
-            ],
-            "minutos": 60,
-            "hecha": false
-          },
-          "sinRecuperar": [],
-          "objetivo": "musculo",
-          "noche": null,
-          "deuda": "baja",
-          "acostarse": 1395,
-          "ayer": {
-            "kcal": 2100,
-            "proteina": 150,
-            "metaKcal": 2200,
-            "metaProteina": 160
-          },
-          "cuidadoConLaComida": false
-        }
-      ],
-      "salida": {
-        "entreno": {
-          "clave": "entrenar",
-          "musculos": [
-            "pecho",
-            "triceps"
-          ],
-          "reps": "8 a 12",
-          "reserva": "1 o 2"
-        },
-        "comida": {
-          "clave": "carbos"
-        },
-        "sueno": {
-          "clave": "soloHora",
-          "hora": 1395
-        }
-      }
-    },
-    {
-      "que": "sin la noche ni la hora",
-      "funcion": "sugerenciasDeHoy",
-      "entrada": [
-        {
-          "sesion": {
-            "musculos": [
-              "pecho",
-              "triceps"
-            ],
-            "minutos": 60,
-            "hecha": false
-          },
-          "sinRecuperar": [],
-          "objetivo": "musculo",
-          "noche": null,
-          "deuda": "baja",
-          "acostarse": null,
-          "ayer": {
-            "kcal": 2100,
-            "proteina": 150,
-            "metaKcal": 2200,
-            "metaProteina": 160
-          },
-          "cuidadoConLaComida": false
-        }
-      ],
-      "salida": {
-        "entreno": {
-          "clave": "entrenar",
-          "musculos": [
-            "pecho",
-            "triceps"
-          ],
-          "reps": "8 a 12",
-          "reserva": "1 o 2"
-        },
-        "comida": {
-          "clave": "carbos"
-        },
-        "sueno": {
-          "clave": "sinDatos"
-        }
-      }
+      "minutos": 60,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 450,
+      "despertoAntes": null
+     },
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 150,
+      "carbohidratos": 239,
+      "grasas": 67,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
     }
-  ]
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "entrenar",
+     "musculos": [
+      "pecho",
+      "triceps"
+     ],
+     "reps": [
+      8,
+      12
+     ],
+     "reserva": [
+      1,
+      2
+     ]
+    },
+    "comida": {
+     "clave": "recuperar",
+     "macros": [
+      "proteina",
+      "carbohidratos"
+     ]
+    },
+    "sueno": {
+     "clave": "bien",
+     "hora": 1395,
+     "minutos": 480
+    }
+   }
+  },
+  {
+   "que": "objetivo fuerza: series de 3 a 6",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "pecho",
+       "triceps"
+      ],
+      "minutos": 60,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "fuerza",
+     "noche": {
+      "dormido": 450,
+      "despertoAntes": null
+     },
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 150,
+      "carbohidratos": 239,
+      "grasas": 67,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "entrenar",
+     "musculos": [
+      "pecho",
+      "triceps"
+     ],
+     "reps": [
+      3,
+      6
+     ],
+     "reserva": [
+      2,
+      3
+     ]
+    },
+    "comida": {
+     "clave": "recuperar",
+     "macros": [
+      "proteina",
+      "carbohidratos"
+     ]
+    },
+    "sueno": {
+     "clave": "bien",
+     "hora": 1395,
+     "minutos": 480
+    }
+   }
+  },
+  {
+   "que": "noche de 5 h 30: mantén el peso, y media hora más esta noche",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "pecho",
+       "triceps"
+      ],
+      "minutos": 60,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 330,
+      "despertoAntes": null
+     },
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 150,
+      "carbohidratos": 239,
+      "grasas": 67,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "nocheCorta",
+     "musculos": [
+      "pecho",
+      "triceps"
+     ]
+    },
+    "comida": {
+     "clave": "recuperar",
+     "macros": [
+      "proteina",
+      "carbohidratos"
+     ]
+    },
+    "sueno": {
+     "clave": "dormistePoco",
+     "hora": 1395,
+     "minutos": 510
+    }
+   }
+  },
+  {
+   "que": "despertó 80 minutos antes: noche corta",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "pecho",
+       "triceps"
+      ],
+      "minutos": 60,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 420,
+      "despertoAntes": 80
+     },
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 150,
+      "carbohidratos": 239,
+      "grasas": 67,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "nocheCorta",
+     "musculos": [
+      "pecho",
+      "triceps"
+     ]
+    },
+    "comida": {
+     "clave": "recuperar",
+     "macros": [
+      "proteina",
+      "carbohidratos"
+     ]
+    },
+    "sueno": {
+     "clave": "dormistePoco",
+     "hora": 1395,
+     "minutos": 510
+    }
+   }
+  },
+  {
+   "que": "el tríceps todavía se recupera",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "pecho",
+       "triceps"
+      ],
+      "minutos": 60,
+      "hecha": false
+     },
+     "sinRecuperar": [
+      "triceps"
+     ],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 450,
+      "despertoAntes": null
+     },
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 150,
+      "carbohidratos": 239,
+      "grasas": 67,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "conFatiga",
+     "musculos": [
+      "pecho",
+      "triceps"
+     ],
+     "fatigados": [
+      "triceps"
+     ]
+    },
+    "comida": {
+     "clave": "recuperar",
+     "macros": [
+      "proteina",
+      "carbohidratos"
+     ]
+    },
+    "sueno": {
+     "clave": "bien",
+     "hora": 1395,
+     "minutos": 480
+    }
+   }
+  },
+  {
+   "que": "día de descanso: proteína",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": null,
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 450,
+      "despertoAntes": null
+     },
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 150,
+      "carbohidratos": 239,
+      "grasas": 67,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "descanso"
+    },
+    "comida": {
+     "clave": "recuperar",
+     "macros": [
+      "proteina"
+     ]
+    },
+    "sueno": {
+     "clave": "bien",
+     "hora": 1395,
+     "minutos": 480
+    }
+   }
+  },
+  {
+   "que": "ya entrenó hoy: no va el entrenamiento, quedan la comida y el sueño",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "pecho"
+      ],
+      "minutos": 60,
+      "hecha": true
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 450,
+      "despertoAntes": null
+     },
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 150,
+      "carbohidratos": 239,
+      "grasas": 67,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": null,
+    "comida": {
+     "clave": "recuperar",
+     "macros": [
+      "proteina",
+      "carbohidratos"
+     ]
+    },
+    "sueno": {
+     "clave": "bien",
+     "hora": 1395,
+     "minutos": 480
+    }
+   }
+  },
+  {
+   "que": "ayer faltó proteína: enfocarse en la proteína",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "pecho",
+       "triceps"
+      ],
+      "minutos": 60,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 450,
+      "despertoAntes": null
+     },
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 110,
+      "carbohidratos": 239,
+      "grasas": 67,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "entrenar",
+     "musculos": [
+      "pecho",
+      "triceps"
+     ],
+     "reps": [
+      8,
+      12
+     ],
+     "reserva": [
+      1,
+      2
+     ]
+    },
+    "comida": {
+     "clave": "faltaron",
+     "macros": [
+      "proteina"
+     ]
+    },
+    "sueno": {
+     "clave": "bien",
+     "hora": 1395,
+     "minutos": 480
+    }
+   }
+  },
+  {
+   "que": "ayer comió de menos en todo: los dos macros que más faltaron",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "pecho",
+       "triceps"
+      ],
+      "minutos": 60,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 450,
+      "despertoAntes": null
+     },
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 1500,
+      "proteina": 140,
+      "carbohidratos": 170,
+      "grasas": 48,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "entrenar",
+     "musculos": [
+      "pecho",
+      "triceps"
+     ],
+     "reps": [
+      8,
+      12
+     ],
+     "reserva": [
+      1,
+      2
+     ]
+    },
+    "comida": {
+     "clave": "faltaron",
+     "macros": [
+      "carbohidratos",
+      "grasas"
+     ]
+    },
+    "sueno": {
+     "clave": "bien",
+     "hora": 1395,
+     "minutos": 480
+    }
+   }
+  },
+  {
+   "que": "ayer cerca de sus metas y día de entreno: proteína y carbohidratos",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "biceps"
+      ],
+      "minutos": 30,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 450,
+      "despertoAntes": null
+     },
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 1900,
+      "proteina": 135,
+      "carbohidratos": 216,
+      "grasas": 60,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "entrenar",
+     "musculos": [
+      "biceps"
+     ],
+     "reps": [
+      8,
+      12
+     ],
+     "reserva": [
+      1,
+      2
+     ]
+    },
+    "comida": {
+     "clave": "recuperar",
+     "macros": [
+      "proteina",
+      "carbohidratos"
+     ]
+    },
+    "sueno": {
+     "clave": "bien",
+     "hora": 1395,
+     "minutos": 480
+    }
+   }
+  },
+  {
+   "que": "ayer llegó a sus metas y día de entreno: proteína y carbohidratos",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "biceps"
+      ],
+      "minutos": 30,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 450,
+      "despertoAntes": null
+     },
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 150,
+      "carbohidratos": 239,
+      "grasas": 67,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "entrenar",
+     "musculos": [
+      "biceps"
+     ],
+     "reps": [
+      8,
+      12
+     ],
+     "reserva": [
+      1,
+      2
+     ]
+    },
+    "comida": {
+     "clave": "recuperar",
+     "macros": [
+      "proteina",
+      "carbohidratos"
+     ]
+    },
+    "sueno": {
+     "clave": "bien",
+     "hora": 1395,
+     "minutos": 480
+    }
+   }
+  },
+  {
+   "que": "sin comida de ayer y descanso: proteína para recuperarse",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": null,
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 450,
+      "despertoAntes": null
+     },
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": null,
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "descanso"
+    },
+    "comida": {
+     "clave": "recuperar",
+     "macros": [
+      "proteina"
+     ]
+    },
+    "sueno": {
+     "clave": "bien",
+     "hora": 1395,
+     "minutos": 480
+    }
+   }
+  },
+  {
+   "que": "con un trastorno de la alimentación: nada de calorías",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "pecho",
+       "triceps"
+      ],
+      "minutos": 60,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 450,
+      "despertoAntes": null
+     },
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 900,
+      "proteina": 40,
+      "carbohidratos": 102,
+      "grasas": 29,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": true
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "entrenar",
+     "musculos": [
+      "pecho",
+      "triceps"
+     ],
+     "reps": [
+      8,
+      12
+     ],
+     "reserva": [
+      1,
+      2
+     ]
+    },
+    "comida": {
+     "clave": "cuidado"
+    },
+    "sueno": {
+     "clave": "bien",
+     "hora": 1395,
+     "minutos": 480
+    }
+   }
+  },
+  {
+   "que": "con deuda media: media hora más",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "pecho",
+       "triceps"
+      ],
+      "minutos": 60,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 450,
+      "despertoAntes": null
+     },
+     "deuda": "media",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 150,
+      "carbohidratos": 239,
+      "grasas": 67,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "entrenar",
+     "musculos": [
+      "pecho",
+      "triceps"
+     ],
+     "reps": [
+      8,
+      12
+     ],
+     "reserva": [
+      1,
+      2
+     ]
+    },
+    "comida": {
+     "clave": "recuperar",
+     "macros": [
+      "proteina",
+      "carbohidratos"
+     ]
+    },
+    "sueno": {
+     "clave": "deuda",
+     "hora": 1395,
+     "minutos": 510
+    }
+   }
+  },
+  {
+   "que": "sin hora de acostarse",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "pecho",
+       "triceps"
+      ],
+      "minutos": 60,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 450,
+      "despertoAntes": null
+     },
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": null,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 150,
+      "carbohidratos": 239,
+      "grasas": 67,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "entrenar",
+     "musculos": [
+      "pecho",
+      "triceps"
+     ],
+     "reps": [
+      8,
+      12
+     ],
+     "reserva": [
+      1,
+      2
+     ]
+    },
+    "comida": {
+     "clave": "recuperar",
+     "macros": [
+      "proteina",
+      "carbohidratos"
+     ]
+    },
+    "sueno": {
+     "clave": "bienSinHora",
+     "minutos": 480
+    }
+   }
+  },
+  {
+   "que": "sin la noche",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "pecho",
+       "triceps"
+      ],
+      "minutos": 60,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": null,
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 150,
+      "carbohidratos": 239,
+      "grasas": 67,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "entrenar",
+     "musculos": [
+      "pecho",
+      "triceps"
+     ],
+     "reps": [
+      8,
+      12
+     ],
+     "reserva": [
+      1,
+      2
+     ]
+    },
+    "comida": {
+     "clave": "recuperar",
+     "macros": [
+      "proteina",
+      "carbohidratos"
+     ]
+    },
+    "sueno": {
+     "clave": "soloHora",
+     "hora": 1395,
+     "minutos": 480
+    }
+   }
+  },
+  {
+   "que": "sin la noche ni la hora",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "pecho",
+       "triceps"
+      ],
+      "minutos": 60,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": null,
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": null,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 150,
+      "carbohidratos": 239,
+      "grasas": 67,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "entrenar",
+     "musculos": [
+      "pecho",
+      "triceps"
+     ],
+     "reps": [
+      8,
+      12
+     ],
+     "reserva": [
+      1,
+      2
+     ]
+    },
+    "comida": {
+     "clave": "recuperar",
+     "macros": [
+      "proteina",
+      "carbohidratos"
+     ]
+    },
+    "sueno": {
+     "clave": "sinDatos",
+     "minutos": 480
+    }
+   }
+  },
+  {
+   "que": "ayer faltaron carbohidratos y grasas: los dos, del que más faltó",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "pecho",
+       "triceps"
+      ],
+      "minutos": 60,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 450,
+      "despertoAntes": null
+     },
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 150,
+      "carbohidratos": 180,
+      "grasas": 40,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "entrenar",
+     "musculos": [
+      "pecho",
+      "triceps"
+     ],
+     "reps": [
+      8,
+      12
+     ],
+     "reserva": [
+      1,
+      2
+     ]
+    },
+    "comida": {
+     "clave": "faltaron",
+     "macros": [
+      "grasas",
+      "carbohidratos"
+     ]
+    },
+    "sueno": {
+     "clave": "bien",
+     "hora": 1395,
+     "minutos": 480
+    }
+   }
+  },
+  {
+   "que": "ayer faltaron los tres: solo los dos que más faltaron",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "pecho",
+       "triceps"
+      ],
+      "minutos": 60,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 450,
+      "despertoAntes": null
+     },
+     "deuda": "baja",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 120,
+      "carbohidratos": 150,
+      "grasas": 30,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "entrenar",
+     "musculos": [
+      "pecho",
+      "triceps"
+     ],
+     "reps": [
+      8,
+      12
+     ],
+     "reserva": [
+      1,
+      2
+     ]
+    },
+    "comida": {
+     "clave": "faltaron",
+     "macros": [
+      "grasas",
+      "carbohidratos"
+     ]
+    },
+    "sueno": {
+     "clave": "bien",
+     "hora": 1395,
+     "minutos": 480
+    }
+   }
+  },
+  {
+   "que": "con deuda alta: una hora más",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "pecho",
+       "triceps"
+      ],
+      "minutos": 60,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 450,
+      "despertoAntes": null
+     },
+     "deuda": "alta",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 150,
+      "carbohidratos": 239,
+      "grasas": 67,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "entrenar",
+     "musculos": [
+      "pecho",
+      "triceps"
+     ],
+     "reps": [
+      8,
+      12
+     ],
+     "reserva": [
+      1,
+      2
+     ]
+    },
+    "comida": {
+     "clave": "recuperar",
+     "macros": [
+      "proteina",
+      "carbohidratos"
+     ]
+    },
+    "sueno": {
+     "clave": "deuda",
+     "hora": 1395,
+     "minutos": 540
+    }
+   }
+  },
+  {
+   "que": "noche corta y deuda alta: la hora más, no las dos",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "pecho",
+       "triceps"
+      ],
+      "minutos": 60,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 330,
+      "despertoAntes": null
+     },
+     "deuda": "alta",
+     "necesidad": 480,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 150,
+      "carbohidratos": 239,
+      "grasas": 67,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "nocheCorta",
+     "musculos": [
+      "pecho",
+      "triceps"
+     ]
+    },
+    "comida": {
+     "clave": "recuperar",
+     "macros": [
+      "proteina",
+      "carbohidratos"
+     ]
+    },
+    "sueno": {
+     "clave": "dormistePoco",
+     "hora": 1395,
+     "minutos": 540
+    }
+   }
+  },
+  {
+   "que": "necesita 7 h 30: las horas salen de su necesidad",
+   "funcion": "sugerenciasDeHoy",
+   "entrada": [
+    {
+     "sesion": {
+      "musculos": [
+       "pecho",
+       "triceps"
+      ],
+      "minutos": 60,
+      "hecha": false
+     },
+     "sinRecuperar": [],
+     "objetivo": "musculo",
+     "noche": {
+      "dormido": 450,
+      "despertoAntes": null
+     },
+     "deuda": "media",
+     "necesidad": 450,
+     "acostarse": 1395,
+     "ayer": {
+      "kcal": 2100,
+      "proteina": 150,
+      "carbohidratos": 239,
+      "grasas": 67,
+      "metaKcal": 2200,
+      "metaProteina": 160,
+      "metaCarbohidratos": 250,
+      "metaGrasas": 70
+     },
+     "cuidadoConLaComida": false
+    }
+   ],
+   "salida": {
+    "entreno": {
+     "clave": "entrenar",
+     "musculos": [
+      "pecho",
+      "triceps"
+     ],
+     "reps": [
+      8,
+      12
+     ],
+     "reserva": [
+      1,
+      2
+     ]
+    },
+    "comida": {
+     "clave": "recuperar",
+     "macros": [
+      "proteina",
+      "carbohidratos"
+     ]
+    },
+    "sueno": {
+     "clave": "deuda",
+     "hora": 1395,
+     "minutos": 480
+    }
+   }
+  }
+ ]
 }

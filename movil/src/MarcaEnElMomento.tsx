@@ -23,6 +23,7 @@ export default function MarcaEnElMomento({
   unidad,
   principal,
   alAparecer,
+  alIrse,
 }: {
   /** El hook vive en Inicio: lo comparte con el cajón de la marca nueva (`CajonDeMarca`). */
   marca: ReturnType<typeof useMarcaEnElMomento>;
@@ -36,6 +37,8 @@ export default function MarcaEnElMomento({
    * (foto del 18/9). Acá no hay `scrollIntoView`: el scroll es de quien la usa.
    */
   alAparecer?: (vista: View) => void;
+  /** Contestada o ida: la pantalla vuelve a donde estaba, con el + debajo del dedo. */
+  alIrse?: () => void;
 }) {
   useTema();
   const { actual, guardar, descartar } = marca;
@@ -52,13 +55,18 @@ export default function MarcaEnElMomento({
   if (actualVisible) ultimo.current = { s: actualVisible, huella };
   const fantasma = !actualVisible && ultimo.current?.huella === huella;
   const s = actualVisible ?? (fantasma ? ultimo.current!.s : null);
-  const clave = actualVisible ? `${actualVisible.ejercicio}:${actualVisible.peso}` : null;
+  // Solo se trae a la vista mientras pregunta (23/11): con las repes ya sabidas solo avisa, y correr la pantalla
+  // por un aviso movía el + debajo del dedo.
+  const pregunta = actualVisible?.estado === 'preguntando' ? `${actualVisible.ejercicio}:${actualVisible.peso}` : null;
   useEffect(() => {
     // Un cuadro después: recién ahí la vista tiene su lugar medido.
-    if (!clave) return;
+    if (!pregunta) return;
     const t = setTimeout(() => vista.current && alAparecer?.(vista.current), 60);
-    return () => clearTimeout(t);
-  }, [clave, alAparecer]);
+    return () => {
+      clearTimeout(t);
+      alIrse?.();
+    };
+  }, [pregunta, alAparecer, alIrse]);
   if (!s) return null;
   return (
     <View

@@ -109,6 +109,16 @@ las cuentas las pinea la sección 330 de `test:db`. **Nada de esto se vio en un 
   la misma hoja por el editor de un día (`MiRutina` con `soloElDia`): los siete días arriba para elegir (abre en hoy)
   y sus ejercicios para arrastrar, sumar y quitar; «Listo» vuelve a la lista. No es otra hoja encima: un tercer
   modal apilado no se pudo probar en el iPhone. Sonda: `probar-subir-peso`. **Solo en la nativa.**
+- **El + en un teléfono chico** (23/11, «tocan el + y se les pone para escribir»). En un SE (medido en la vista web) el
+  teclado del peso y las repes tapaba el + entero, y la pregunta de la marca subía la pantalla 173 puntos: en el lugar
+  del + quedaban sus botones (5 de 6 series sin contar en la sonda). Ahora, con el teclado arriba, el + sube encima y
+  cuenta al primer toque con el peso a medio escribir (`keyboardShouldPersistTaps="handled"` en Inicio); la pantalla
+  vuelve donde estaba al irse el teclado o la pregunta, que corre hasta 24 puntos. Sonda: `probar-mas-quieto`.
+- **Moss, de una** (23/11): el tirón desde el tope de Stats entra con 72 (o 36 si el dedo venía rápido; `entraAMoss`,
+  sin medir en un iPhone). El vínculo y la sección se piden al entrar a Stats y lo del día queda en el teléfono
+  (`compartido/mossGuardada.ts`, se borra al salir de la cuenta): al tirar ya está, sin el «Vincula» de un segundo.
+  La sección con los cambios de Moss del 23/11 (su f1b1f7a): «Sugerencias para hoy» arriba de «Esta semana», «Al
+  día», «faltan N días». Sonda: `probar-seccion-moss`.
 - **La subida de rango que nadie vio** (21/11, bug del dueño: «subí de rango y no me apareció nada»). La ceremonia
   solo salía en el momento del registro con la app abierta; si el día entraba con la app cerrada (la llegada al
   gimnasio de fondo), en otro aparato o con la respuesta perdida, al abrir ya estaba el rango nuevo y no se festejaba.

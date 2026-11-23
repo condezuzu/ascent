@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
 import { eventos, EJERCICIOS_CAMBIO, RUTINA_CAMBIO } from '@compartido/eventos';
-import { Animated, StyleSheet, View, type GestureResponderEvent, Pressable } from 'react-native';
+import { Animated, Keyboard, Platform, StyleSheet, View, type GestureResponderEvent, Pressable } from 'react-native';
 import { supabase } from './supabase';
 import { metaAMano, metaCumplida, pildorasDeMeta, type EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
@@ -116,6 +116,7 @@ export default function Bloque({
   alReleerRutina,
   globoDelMasVisible = false,
   alSumar,
+  alTeclado,
   debajoDelMas,
   globoDelMas,
   alRestar,
@@ -162,6 +163,8 @@ export default function Bloque({
   /** El globo de la primera vez del + está a la vista: flota sin correr nada, y lo de abajo le deja lugar. */
   globoDelMasVisible?: boolean;
   alSumar: (opciones?: { sinDescanso?: boolean }) => void;
+  /** Con el teclado arriba, la pantalla trae el + encima (`mostrar`) y al irse vuelve (`devolver`). */
+  alTeclado?: { mostrar: (vista: View, techo: number) => void; devolver: () => void };
   /** La pregunta de marca de la serie recién confirmada: pegada al `+` (ver la web). */
   debajoDelMas?: ReactNode;
   /** El globito de la primera vez, saliendo del + (15/10): recibe dónde está el centro del +. */
@@ -193,6 +196,23 @@ export default function Bloque({
   releer.current = alReleerRutina;
   useEffect(() => eventos.escuchar(RUTINA_CAMBIO, () => void releer.current?.()), []);
   const [pausa, setPausa] = useState(false);
+  // EL + ARRIBA DEL TECLADO (23/11): en un teléfono chico el teclado del peso lo tapaba entero y el dedo que iba al +
+  // tocaba el teclado. iOS avisa antes de mostrarlo, con dónde empieza.
+  const pesoSinConfirmar = useRef<(() => void) | null>(null);
+  const filaDelMas = useRef<View>(null);
+  const teclado = useRef(alTeclado);
+  teclado.current = alTeclado;
+  useEffect(() => {
+    const ios = Platform.OS === 'ios';
+    const sale = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', (e) => {
+      if (filaDelMas.current) teclado.current?.mostrar(filaDelMas.current, e.endCoordinates.screenY - 12);
+    });
+    const entra = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () => teclado.current?.devolver());
+    return () => {
+      sale.remove();
+      entra.remove();
+    };
+  }, []);
   const [aDonde, setADonde] = useState<string | null | undefined>(undefined);
   const [prefierePeso, setPrefierePeso] = useState(true);
   const [verUltimaVez, setVerUltimaVez] = useState(false);
@@ -265,7 +285,13 @@ export default function Bloque({
   const cumplida = esTiempo ? estado.hechas >= 1 : metaCumplida(estado);
   const sumar = (e?: GestureResponderEvent) => {
     if (!cuentaLaSerie(horaDelToque(e))) return;
-    if (!esTiempo) return alSumar();
+    if (!esTiempo) {
+      // El + ya no espera a que se cierre el teclado: el peso a medio escribir se confirma antes de contar.
+      pesoSinConfirmar.current?.();
+      alSumar();
+      Keyboard.dismiss();
+      return;
+    }
     if (estado.minutos === undefined) alElegirMinutos?.(minutos);
     alSumar({ sinDescanso: true });
   };
@@ -569,7 +595,7 @@ export default function Bloque({
           {/* PESO CORPORAL (6.2): el peso es tu cuerpo, no hay número que anotar.
               Se esconde el campo pero se DEJA la etiqueta, para poder volver a un
               peso si algún día lo hacés con lastre. */}
-          {anotarPeso && !esCorporal && <CampoPeso kg={estado.peso} unidad={unidad} alCambiar={alElegirPeso} parpadea={parpadea} />}
+          {anotarPeso && !esCorporal && <CampoPeso kg={estado.peso} unidad={unidad} alCambiar={alElegirPeso} parpadea={parpadea} alTeclear={(c) => (pesoSinConfirmar.current = c)} />}
           {conReps && alElegirReps && <CampoReps reps={estado.repsAhora} pista={pistaDeReps} alCambiar={alElegirReps} />}
           {conCarga && !preguntar && (
             <EtiquetaDeCarga carga={cargaVista} ejercicio={estado.ejercicio} alElegir={alElegirCarga} />
@@ -674,7 +700,7 @@ export default function Bloque({
           se va mueve el + de lugar justo cuando se está tocando. */}
       {/* El cardio no tiene meta: su botón es el del cronómetro (Arrancar, Listo, Otra vuelta). */}
       {cumplida && !esTiempo ? (
-        <View style={estilos.filaBotones}>
+        <View ref={filaDelMas} style={estilos.filaBotones}>
           <Tocable
             style={[estilos.mas, estilos.menos, menosApagado && estilos.menosApagado]}
             onPress={alRestar}
@@ -689,6 +715,8 @@ export default function Bloque({
             style={[estilos.mas, estilos.masCerrar]}
             onPress={(e) => {
               if (!cierraElBloque(horaDelToque(e))) return;
+              pesoSinConfirmar.current?.();
+              Keyboard.dismiss();
               alSiguiente();
               setLista(true);
               // El + del bloque que sigue queda apagado ese segundo: es el que cae debajo del dedo.
@@ -701,7 +729,7 @@ export default function Bloque({
           </Tocable>
         </View>
       ) : (
-        <View style={estilos.filaBotones} onLayout={(e) => setAnchoBotones(e.nativeEvent.layout.width)}>
+        <View ref={filaDelMas} style={estilos.filaBotones} onLayout={(e) => setAnchoBotones(e.nativeEvent.layout.width)}>
           <Tocable
             style={[estilos.mas, estilos.menos, menosApagado && estilos.menosApagado]}
             onPress={alRestar}

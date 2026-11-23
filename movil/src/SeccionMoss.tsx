@@ -50,13 +50,8 @@ function Bloque({ titulo, derecha, children, base, testID }: { titulo: string; d
   );
 }
 
-function cuandoVuelve(dias: number, hoy: string): string {
-  if (dias <= 1) return S().fatigados.vuelve(S().fatigados.manana);
-  if (dias === 2) return S().fatigados.vuelve(S().fatigados.pasado);
-  const d = new Date(`${hoy}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + dias);
-  return S().fatigados.vuelveEl(T.fechas.diasLargos[d.getUTCDay()].toLowerCase());
-}
+/** «falta 1 día» o «faltan 3 días»: lo que le falta para recuperarse (23/11, como en Moss). */
+const cuandoVuelve = (dias: number) => S().fatigados.faltan(Math.max(1, Math.ceil(dias)));
 
 /** Qué hacer la próxima vez con un ejercicio, con los kilos (como en Moss); `null` sin sesiones suficientes si `soloSiSeSabe`. */
 function proximaDe(datos: Datos, id: string, soloSiSeSabe = false): { sube: boolean; texto: string } | null {
@@ -297,7 +292,7 @@ function Fatigados({ datos }: { datos: Datos }) {
             <View key={m} style={e.fila}>
               <Reloj tam={24} hecho={1 - x.vuelveEn / Math.max(1, x.total)} />
               <Text style={[e.linea, e.crece]}>{nombre(m)}</Text>
-              <Text style={e.chico}>{cuandoVuelve(x.vuelveEn, datos.hoy)}</Text>
+              <Text style={e.chico}>{cuandoVuelve(x.vuelveEn)}</Text>
             </View>
           ))}
           <Text style={e.chico}>{S().fatigados.comoSeCalcula.join(' ')}</Text>
@@ -387,7 +382,7 @@ function Detalle({ m, datos, alCerrar }: { m: string; datos: Datos; alCerrar: ()
         <View style={e.fila}>
           <Reloj tam={22} hecho={1 - x.vuelveEn / Math.max(1, x.total)} />
           <Text style={[e.fatiga, e.crece]}>
-            {`${S().tus.estados.fatigado} · ${cuandoVuelve(x.vuelveEn, datos.hoy)}`}
+            {`${S().tus.estados.fatigado} · ${cuandoVuelve(x.vuelveEn)}`}
             <Text style={e.chico}>{` · ${S().fatigados.estimado}`}</Text>
           </Text>
         </View>
@@ -439,16 +434,19 @@ function ParaHoy({ datos, alIrASueno }: { datos: Datos; alIrASueno: () => void }
   const lista = (ms: readonly string[] | undefined) => enLista((ms ?? []).map((m) => nombre(m).toLowerCase()));
   const entreno = (x: Sugerencia): string[] => {
     const toca = x.musculos?.length ? [P.toca(lista(x.musculos))] : [];
-    if (x.clave === 'entrenar') return [...toca, P.entreno.entrenar(x.reps ?? '', x.reserva ?? '')];
+    if (x.clave === 'entrenar' && x.reps && x.reserva) return [...toca, P.entreno.entrenar(x.reps[0], x.reps[1], x.reserva[0], x.reserva[1])];
     if (x.clave === 'nocheCorta') return [...toca, P.entreno.nocheCorta];
     if (x.clave === 'conFatiga') return [...toca, ((x.fatigados?.length ?? 0) > 1 ? P.entreno.conFatigaVarios : P.entreno.conFatiga)(conMayuscula(lista(x.fatigados)))];
-    return [x.clave === 'hecha' ? P.entreno.hecha : P.entreno.descanso];
+    return [P.entreno.descanso];
   };
-  const comida = P.comida[s.comida.clave] ?? P.comida.sinDatos;
+  const comida = P.comida[s.comida.clave] ?? P.comida.cuidado;
+  const macros = enLista((s.comida.macros ?? []).map((m) => P.macros[m]));
+  const horas = s.sueno.minutos === undefined ? '' : S().porQue.horas(Math.floor(s.sueno.minutos / 60), s.sueno.minutos % 60);
+  // Si ya entrenaste hoy, el entrenamiento no va: quedan la comida y el sueño.
   const filas: [keyof typeof P.tipos, string[]][] = [
-    ['entreno', entreno(s.entreno)],
-    ['comida', [typeof comida === 'function' ? comida(s.comida.gramos ?? 0) : comida]],
-    ['sueno', [P.sueno[s.sueno.clave] ?? P.sueno.sinDatos]],
+    ...(s.entreno ? [['entreno', entreno(s.entreno)] as [keyof typeof P.tipos, string[]]] : []),
+    ['comida', [typeof comida === 'function' ? comida(macros) : comida]],
+    ['sueno', [(P.sueno[s.sueno.clave] ?? P.sueno.sinDatos)(horas)]],
   ];
   return (
     <View style={e.paraHoy} testID="moss-para-hoy">
@@ -477,6 +475,7 @@ function TusMusculos({ datos, alIrASueno }: { datos: Datos; alIrASueno: () => vo
   return (
     <View style={e.tus} testID="moss-tus-musculos">
       <Text style={e.linea}>{S().tus.paraQue}</Text>
+      <ParaHoy datos={datos} alIrASueno={alIrASueno} />
       {!conDatos ? (
         <Text style={e.linea}>{S().tus.sinDatos}</Text>
       ) : (
@@ -499,7 +498,6 @@ function TusMusculos({ datos, alIrASueno }: { datos: Datos; alIrASueno: () => vo
           {elegido ? <Detalle m={elegido} datos={datos} alCerrar={() => setElegido(null)} /> : <Leyenda />}
         </>
       )}
-      <ParaHoy datos={datos} alIrASueno={alIrASueno} />
       <Text style={e.chico}>{S().tus.anotas}</Text>
       <EnQueSeBasa base={S().baseDe.musculos} />
     </View>
@@ -509,7 +507,7 @@ function TusMusculos({ datos, alIrASueno }: { datos: Datos; alIrASueno: () => vo
 /**
  * LA SECCIÓN DE MOSS EN ASCENT (19/11, rehecha el mismo día después de verla en el iPhone; spec/musculos-compartido.md):
  * igual que la de Ascent en Moss —la misma información, el mismo orden, los mismos textos— con la cara de Moss. Se llega
- * abajo de todo, a «Tus músculos» con «Para hoy», y se sube: los fatigados, tu rutina, tu año, los estancados, por qué
+ * abajo de todo, a «Tus músculos» con «Sugerencias para hoy» arriba de «Esta semana» (23/11), y se sube: los fatigados, tu rutina, tu año, los estancados, por qué
  * (solo con alguno) y las metas.
  */
 export default function SeccionMoss({ datos, alDesvincular, alCambiar, alAbrirTutorial, alIrASueno }: { datos: Datos; alDesvincular: () => void; alCambiar: () => void; alAbrirTutorial: () => void; alIrASueno: () => void }) {
