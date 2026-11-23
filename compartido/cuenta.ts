@@ -44,7 +44,8 @@ import { olvidarFirmas } from '@compartido/firmas';
 // Las claves son de cada módulo y acá van repetidas: la sección 193 de `test:db`
 // escribe por los módulos de verdad y mira qué queda, así que si una cambia de
 // nombre, falla.
-const DE_LA_SESION = ['ascent:llegada'];
+// Lo de Moss (sueño, comida) tampoco queda para quien entra después.
+const DE_LA_SESION = ['ascent:llegada', 'ascent:moss-ultima'];
 const DE_LA_PERSONA = [
   'ascent:cargas-elegidas',
   'ascent:objetivo-peso',

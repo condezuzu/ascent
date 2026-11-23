@@ -39,7 +39,7 @@ function TutorialMoss({ visible, alTerminar }: { visible: boolean; alTerminar: (
           {n === 3 && (
             <View style={e.reloj}>
               <Reloj tam={34} hecho={0.6} />
-              <Text style={e.texto}>{T.moss.sec.fatigados.vuelve(T.moss.sec.fatigados.manana)}</Text>
+              <Text style={e.texto}>{T.moss.sec.fatigados.faltan(1)}</Text>
             </View>
           )}
           <View style={e.puntos}>

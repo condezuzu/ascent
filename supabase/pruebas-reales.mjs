@@ -109,6 +109,8 @@
 //      de un músculo, fatigados, tu año, estancados, metas y el tutorial (19/11).
 //  49. probar-subida-sin-ver — el día entra con la app cerrada y sube de rango: al abrirla la ceremonia
 //      sale sola, una vez; y sin nada anotado, un rango recién alcanzado también (21/11).
+//  50. probar-mas-quieto — en un SE y en un 15, tocando siempre en el mismo punto: el + no se va de debajo
+//      del dedo cuando la marca pregunta, y cuenta con el peso a medio escribir (23/11).
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -178,6 +180,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'vincular desde Moss', archivo: 'probar-vincular-moss.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la sección de Moss en Ascent', archivo: 'probar-seccion-moss.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la subida de rango que nadie vio', archivo: 'probar-subida-sin-ver.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'el + no se va de debajo del dedo', archivo: 'probar-mas-quieto.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

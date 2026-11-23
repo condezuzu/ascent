@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { supabase } from './supabase';
@@ -177,17 +177,31 @@ export default function Inicio({
   const scroll = useRef<ScrollView>(null);
   const desplazado = useRef(0);
   const { height: altoVentana } = useWindowDimensions();
+  // LO QUE SE CORRE PARA MOSTRAR ALGO, VUELVE (23/11). En un teléfono chico la pregunta de la marca y el teclado
+  // corrían el + y lo dejaban corrido: el dedo que volvía a su lugar no lo encontraba (en el SE, 5 de 6 series sin
+  // contar). Se anota de dónde se salió y se vuelve ahí, salvo que la persona haya movido la pantalla.
+  const corrida = useRef<number | null>(null);
   const traerALaVista = useCallback(
-    (v: View) => {
+    // Por omisión, lo que tapa abajo: la barra de pestañas y un margen para respirar.
+    (v: View, techo = altoVentana - 90, tope = Infinity) => {
       v.measureInWindow((_x, y, _w, alto) => {
-        // Lo que tapa abajo: la barra de pestañas y un margen para respirar.
-        const borde = altoVentana - 90;
-        const sobra = y + alto - borde;
-        if (sobra > 0) scroll.current?.scrollTo({ y: desplazado.current + sobra, animated: true });
+        const sobra = Math.min(y + alto - techo, tope);
+        if (sobra <= 0) return;
+        corrida.current ??= desplazado.current;
+        scroll.current?.scrollTo({ y: desplazado.current + sobra, animated: true });
       });
     },
     [altoVentana]
   );
+  // La pregunta de la marca sale debajo del +: en el SE, mostrarla entera subía el + 173 puntos y en su lugar quedaban
+  // los botones de las repes. Sube hasta 24, lo que el + se puede correr sin salir de debajo del dedo; el resto asoma.
+  const traerLaPregunta = useCallback((v: View) => traerALaVista(v, undefined, 24), [traerALaVista]);
+  const devolver = useCallback(() => {
+    const desde = corrida.current;
+    corrida.current = null;
+    if (desde !== null) scroll.current?.scrollTo({ y: desde, animated: true });
+  }, []);
+  const teclado = useMemo(() => ({ mostrar: traerALaVista, devolver }), [traerALaVista, devolver]);
   // La hoja de registrar el día (con foto): la misma que la web.
   const [registrarAbierto, setRegistrarAbierto] = useState(false);
   // Con la hoja abierta la racha vista NO se mueve: el día pudo entrar ahí y
@@ -703,6 +717,11 @@ export default function Inicio({
       alwaysBounceVertical={false}
       scrollEventThrottle={32}
       onScroll={(e) => (desplazado.current = e.nativeEvent.contentOffset.y)}
+      onScrollBeginDrag={() => (corrida.current = null)}
+      // Con el teclado del peso arriba, el + cuenta al primer toque (antes ese toque solo cerraba el teclado), y la
+      // pantalla puede subir lo que haga falta para que el + no quede debajo.
+      keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets
     >
       <Entra><View style={estilos.cabecera} onLayout={(e) => setAnchoCabecera(e.nativeEvent.layout.width)}>
         {/* LA CABECERA ES LA PUERTA AL PERFIL, igual que en la web: el avatar
@@ -974,6 +993,7 @@ export default function Inicio({
             alReleerRutina={sesion.releerLaRutina}
             globoDelMasVisible={globoDelMas}
             alSumar={sesion.serieHecha}
+            alTeclado={teclado}
             alRestar={sesion.deshacerSerie}
             alSiguiente={sesion.bloqueSiguiente}
             alElegirEjercicio={sesion.elegirEjercicio}
@@ -1005,7 +1025,8 @@ export default function Inicio({
                 bloques={sesion.estado.bloques}
                 unidad={perfil.unidad_peso === 'lb' ? 'lb' : 'kg'}
                 principal={C.principal}
-                alAparecer={traerALaVista}
+                alAparecer={traerLaPregunta}
+                alIrse={devolver}
               />
             }
           />
