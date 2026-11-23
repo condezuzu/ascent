@@ -5,6 +5,8 @@ import * as Linking from 'expo-linking';
 import { plataforma } from '@plataforma';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { estaVinculada, resultadoDelCodigo } from '@nucleo/vinculoConMoss';
+import { anotarVinculo, leerMossGuardada } from '@compartido/mossGuardada';
+import { miId } from '@compartido/quienSoy';
 import { supabase } from './supabase';
 import SeccionMoss from './SeccionMoss';
 import TutorialMoss from './TutorialMoss';
@@ -18,8 +20,6 @@ import { LLEGA, SE_VA, sinMovimiento } from './movimiento';
 import { Text } from './Texto';
 import Tocable from './Tocable';
 
-/** Cuánto hay que tirar para abajo, desde el tope de Stats, para entrar. */
-export const TIRON_PARA_ENTRAR = 96;
 const ENTRA_MS = 720;
 const SALE_MS = 420;
 
@@ -133,11 +133,15 @@ function CieloDeMoss({ avance, alto, rotulo = T.moss.vinculaTitulo, sinCentro = 
 /**
  * LA ENTRADA A MOSS, ARRIBA DE STATS (2/11, a pedido). Dos cosas la hacen obvia: la flecha que sube y
  * el renglón con las letras de Moss, y que al tirar para abajo su cielo ya asoma siguiendo al dedo. Pasado
- * `TIRON_PARA_ENTRAR` entra sola; tocarla también, y es lo que usa VoiceOver.
+ * lo que pide `entraAMoss` entra sola; tocarla también, y es lo que usa VoiceOver.
  *
  * `tiron` es cuánto se tiró, atado al desplazamiento de Stats por el motor nativo, sin pasar por JS.
  */
 export default function PuertaDeMoss({ abierta, codigo = null, desde = 0, alAbrir, alCerrar }: { abierta: boolean; /** Llegó desde Moss con un código de un uso: «Vincular» lo canjea. */ codigo?: string | null; /** Cuánto se tiró antes de soltar: de ahí sigue bajando. */ desde?: number; alAbrir: () => void; alCerrar: () => void }) {
+  // DESDE QUE SE ENTRA A STATS (23/11): el vínculo y la sección se piden acá y no al tirar, y quedan entre una entrada y
+  // otra. Al tirar ya está todo.
+  const vinculo = useVinculoConMoss(abierta);
+  const seccion = useSeccionMoss(vinculo.vinculada === true, abierta);
   const flecha = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     void cargarFuentesDeMoss();
@@ -170,7 +174,7 @@ export default function PuertaDeMoss({ abierta, codigo = null, desde = 0, alAbri
         <LogoDeMoss tam={26} />
         <Text style={estilos.entradaNombre}>{T.moss.nombre}</Text>
       </Tocable>
-      <PantallaDeMoss visible={abierta} codigo={codigo} desde={desde} alCerrar={alCerrar} />
+      <PantallaDeMoss visible={abierta} codigo={codigo} desde={desde} alCerrar={alCerrar} vinculo={vinculo} seccion={seccion} />
     </>
   );
 }
@@ -187,7 +191,8 @@ export function MossAsomando({ tiron }: { tiron: Animated.Value }) {
       importantForAccessibility="no-hide-descendants"
       style={[StyleSheet.absoluteFill, { transform: [{ translateY: tiron.interpolate({ inputRange: [0, alto], outputRange: [-alto, 0], extrapolate: 'clamp' }) }] }]}
     >
-      <CieloDeMoss avance={avance} alto={alto} />
+      {/* Sin rótulo: acá todavía no se sabe si está vinculada, y a quien lo estaba le decía «Vincula Ascent con Moss». */}
+      <CieloDeMoss avance={avance} alto={alto} rotulo="" />
     </Animated.View>
   );
 }
@@ -214,14 +219,29 @@ function useVinculoConMoss(abierta: boolean) {
   // null mientras se pregunta: sin eso el botón salta de «Vincular» a «Desvincular».
   const [vinculada, setVinculada] = useState<boolean | null>(null);
   const [aviso, setAviso] = useState('');
+  const anotar = (si: boolean) => void miId(supabase).then((uid) => (uid ? anotarVinculo(uid, si) : undefined));
+  // Lo anotado en el teléfono, mientras se pregunta: sin esto salía un segundo «Vincula Ascent con Moss».
+  useEffect(() => {
+    void miId(supabase)
+      .then((uid) => (uid ? leerMossGuardada(uid) : null))
+      .then((g) => g && setVinculada((v) => v ?? g.vinculada));
+  }, []);
   const mirar = useCallback(async () => {
     try {
       const { data, error } = await supabase.schema('moss').rpc('estado_del_vinculo');
-      setVinculada((antes) => (error ? (antes ?? false) : estaVinculada(data)));
+      if (error) return setVinculada((antes) => antes ?? false);
+      const si = estaVinculada(data);
+      setVinculada(si);
+      // Desvinculada desde Moss también: lo guardado se corrige acá.
+      anotar(si);
     } catch {
       setVinculada((antes) => antes ?? false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  useEffect(() => {
+    void mirar();
+  }, [mirar]);
   useEffect(() => {
     if (!abierta) return;
     void mirar();
@@ -242,6 +262,7 @@ function useVinculoConMoss(abierta: boolean) {
       const r = resultadoDelCodigo(error ? null : data);
       if (r.ok) {
         setCanjeado(true);
+        anotar(true);
         return setVinculada(true);
       }
       setAviso(r.motivo === 'vencido' || r.motivo === 'usado' || r.motivo === 'no_existe' ? T.moss.codigoViejo : T.moss.noSeVinculo);
@@ -255,6 +276,7 @@ function useVinculoConMoss(abierta: boolean) {
       const { error } = await supabase.schema('moss').rpc('desvincular');
       if (error) return setAviso(T.moss.sigueVinculada);
       setVinculada(false);
+      anotar(false);
     } catch {
       setAviso(T.moss.sigueVinculada);
     }
@@ -262,10 +284,8 @@ function useVinculoConMoss(abierta: boolean) {
   return { vinculada, aviso, vincular, conCodigo, canjeado, desvincular };
 }
 
-function PantallaDeMoss({ visible, codigo, desde, alCerrar }: { visible: boolean; codigo: string | null; desde: number; alCerrar: () => void }) {
+function PantallaDeMoss({ visible, codigo, desde, alCerrar, vinculo, seccion }: { visible: boolean; codigo: string | null; desde: number; alCerrar: () => void; vinculo: ReturnType<typeof useVinculoConMoss>; seccion: ReturnType<typeof useSeccionMoss> }) {
   const { height: alto } = useWindowDimensions();
-  const vinculo = useVinculoConMoss(visible);
-  const seccion = useSeccionMoss(visible && vinculo.vinculada === true);
   const conDatos = vinculo.vinculada === true && !!seccion.datos;
   // El tutorial sale solo la primera vez que se ve la sección vinculada; después, desde el «!».
   const [tutorial, setTutorial] = useState(false);
@@ -330,7 +350,7 @@ function PantallaDeMoss({ visible, codigo, desde, alCerrar }: { visible: boolean
         {...(conDatos ? {} : gesto.panHandlers)}
         style={[StyleSheet.absoluteFill, { transform: [{ translateY: avance.interpolate({ inputRange: [0, 1], outputRange: [-alto, 0] }) }] }]}
       >
-        <CieloDeMoss avance={avance} alto={alto} rotulo={vinculo.vinculada ? T.moss.vinculada : T.moss.vinculaTitulo} sinCentro={conDatos} />
+        <CieloDeMoss avance={avance} alto={alto} rotulo={vinculo.vinculada === null ? '' : vinculo.vinculada ? T.moss.vinculada : T.moss.vinculaTitulo} sinCentro={conDatos} />
         {conDatos && seccion.datos && <SeccionMoss datos={seccion.datos} alDesvincular={() => void vinculo.desvincular()} alCambiar={() => void seccion.recargar()} alAbrirTutorial={() => setTutorial(true)} alIrASueno={() => void Linking.openURL(SUENO_DE_MOSS).catch(() => Linking.openURL(CONSEGUIR_MOSS).catch(() => undefined))} />}
         <TutorialMoss
           visible={tutorial}
@@ -339,7 +359,7 @@ function PantallaDeMoss({ visible, codigo, desde, alCerrar }: { visible: boolean
             void plataforma.almacenamiento.guardar(TUTORIAL_VISTO, '1');
           }}
         />
-        {vinculo.vinculada !== null && !conDatos && (
+        {(vinculo.vinculada === false || (vinculo.vinculada === true && seccion.intentada && !conDatos)) && (
           <View style={estilos.vinculo}>
             {vinculo.vinculada ? (
               <Tocable testID="moss-desvincular" style={estilos.botonTenue} onPress={() => void vinculo.desvincular()} accessibilityRole="button">

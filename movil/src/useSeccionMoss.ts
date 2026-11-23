@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { plataforma } from '@plataforma';
 import { miId } from '@compartido/quienSoy';
 import { cargarMisRutinas } from '@compartido/rutinas';
-import { restarDias } from '@nucleo/fechas';
+import { hoyISO, restarDias } from '@nucleo/fechas';
+import { anotarSeccion, leerMossGuardada } from '@compartido/mossGuardada';
 import CATALOGO from '@nucleo/catalogoMuscular.json';
 import { DIAS_DEL_E1RM, diasHastaListo, e1rm, estadoDeFatiga, listoEl, mejorE1rm, notaDeLaRutina, puntaje, estadoDelPuntaje, seriesPorMusculo, type EstadoDeFatiga, type EstadoDelPuntaje, type NotaDeLaRutina } from '@nucleo/puntajeMuscular';
 import { estaEstancado, grupoDelAnio, proyeccionDeMeta, razonesDeEstancamiento, tendenciaDeFuerza, type GrupoDelAnio, type ProyeccionDeMeta, type RazonesDeEstancamiento, type SemanaDeEntreno, type TendenciaDeFuerza } from '@nucleo/progresoCompartido';
@@ -72,9 +73,29 @@ async function sesionesDesde(uid: string, desde: string, hasta?: string): Promis
   });
 }
 
-export function useSeccionMoss(abierta: boolean) {
+/**
+ * `activa`: la cuenta está vinculada. Desde el 23/11 carga apenas se entra a Stats, no al tirar, y lo de hoy guardado en
+ * el teléfono sale al instante mientras se pregunta de nuevo; `abierta` vuelve a preguntar al entrar a Moss.
+ */
+export function useSeccionMoss(activa: boolean, abierta: boolean) {
   const [datos, setDatos] = useState<SeccionMoss | null>(null);
+  // Ya se intentó una vez: recién ahí, sin datos, tiene sentido mostrar «Desvincular» sola.
+  const [intentada, setIntentada] = useState(false);
+  useEffect(() => {
+    void (async () => {
+      const uid = await miId(supabase);
+      const g = uid ? await leerMossGuardada(uid) : null;
+      if (g?.vinculada && g.hoy === hoyISO() && g.seccion) setDatos((d) => d ?? (g.seccion as SeccionMoss));
+    })();
+  }, []);
   const cargar = useCallback(async () => {
+    try {
+      await cargarYa();
+    } finally {
+      setIntentada(true);
+    }
+  }, []);
+  const cargarYa = async () => {
     const uid = await miId(supabase);
     const { data: hoyDeLaBase } = await supabase.rpc('mi_hoy');
     if (!uid || typeof hoyDeLaBase !== 'string') return;
@@ -210,8 +231,11 @@ export function useSeccionMoss(abierta: boolean) {
     const pesos: Record<string, number> = {};
     for (const s of sesiones) for (const b of s.bloques) if (b.ejercicio) pesos[b.ejercicio] = Math.max(0, ...(b.pesos ?? []).map((x) => x ?? 0));
 
-    const noche = (mossHoy.data as { noche?: { dormido?: number | null; deuda_palabra?: EntradaDeHoy['deuda'] } | null } | null)?.noche;
-    const comidaDeAyer = (mossAyer.data as { comida?: { total?: { kcal?: number; proteina?: number }; meta?: { kcal?: number; proteina?: number } | null } } | null)?.comida;
+    const noche = (mossHoy.data as { noche?: { dormido?: number | null; necesidad?: number | null; deuda_palabra?: EntradaDeHoy['deuda'] } | null } | null)?.noche;
+    type Macros = { kcal?: number; proteina?: number; carbohidratos?: number; grasas?: number };
+    const comidaDeAyer = (mossAyer.data as { comida?: { total?: Macros; meta?: Macros | null } } | null)?.comida;
+    const t = comidaDeAyer?.total;
+    const m = comidaDeAyer?.meta;
     const sugerencias = sugerenciasDeHoy({
       sesion: idsDeHoy ? { musculos: musculosDeHoy, minutos: (hechasHoy.length ? hechasHoy.reduce((t, s) => t + (s.minutos ?? 0), 0) : referencia?.minutos) || 60, hecha: hechasHoy.length > 0 } : null,
       sinRecuperar: musculosDeHoy.filter((m) => (musculos.get(m)?.vuelveEn ?? 0) > 0),
@@ -219,16 +243,21 @@ export function useSeccionMoss(abierta: boolean) {
       // Moss no sube a qué hora te despertaste: solo cuenta lo dormido.
       noche: typeof noche?.dormido === 'number' ? { dormido: noche.dormido, despertoAntes: null } : null,
       deuda: noche?.deuda_palabra ?? null,
+      // Lo que Moss calculó para esa noche; sin ella, lo de fábrica de Moss para un adulto (8 h).
+      necesidad: noche?.necesidad ?? 480,
       // La hora de acostarse es de Moss (su periodo de melatonina) y no la sube: sin ella, el texto no la dice.
       acostarse: null,
-      ayer: comidaDeAyer?.meta && (comidaDeAyer.total?.kcal ?? 0) > 0
-        ? { kcal: comidaDeAyer.total?.kcal ?? 0, proteina: comidaDeAyer.total?.proteina ?? 0, metaKcal: comidaDeAyer.meta.kcal ?? 0, metaProteina: comidaDeAyer.meta.proteina ?? 0 }
+      ayer: m && (t?.kcal ?? 0) > 0
+        ? {
+          kcal: t?.kcal ?? 0, proteina: t?.proteina ?? 0, carbohidratos: t?.carbohidratos ?? 0, grasas: t?.grasas ?? 0,
+          metaKcal: m.kcal ?? 0, metaProteina: m.proteina ?? 0, metaCarbohidratos: m.carbohidratos ?? 0, metaGrasas: m.grasas ?? 0,
+        }
         : null,
       // Moss no sube si hay un trastorno de la alimentación marcado.
       cuidadoConLaComida: false,
     });
     const filasMetas = metas.error || !Array.isArray(metas.data) ? null : (metas.data as { id: string; ejercicio: string; kilos: number; reps: number }[]);
-    setDatos({
+    const nueva: SeccionMoss = {
       hoy,
       musculos,
       recientes,
@@ -245,14 +274,17 @@ export function useSeccionMoss(abierta: boolean) {
         const t = tendenciaDe(m.ejercicio);
         return { ...m, nombre: nombres[m.ejercicio] ?? m.ejercicio, nivel: t.nivel, proyeccion: proyeccionDeMeta(t, e1rm(m.kilos, m.reps) ?? m.kilos) };
       }) ?? null,
-    });
-  }, []);
+    };
+    setDatos(nueva);
+    void anotarSeccion(uid, hoy, nueva);
+  };
   useEffect(() => {
-    if (!abierta) return;
+    if (!activa) return;
     void cargar();
+    if (!abierta) return;
     return plataforma.ciclo.alCambiar((visible) => {
       if (visible) void cargar();
     });
-  }, [abierta, cargar]);
-  return { datos, recargar: cargar };
+  }, [activa, abierta, cargar]);
+  return { datos, intentada, recargar: cargar };
 }

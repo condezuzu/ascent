@@ -189,3 +189,14 @@ export function resultadoDelCodigo(datos: unknown): ResultadoDelCodigo {
   if (d.error === 'vencido' || d.error === 'usado' || d.error === 'sin_ascent') return { ok: false, motivo: d.error };
   return { ok: false, motivo: 'no_existe' };
 }
+
+/**
+ * ENTRAR A MOSS TIRANDO DESDE EL TOPE DE STATS (23/11, «a veces falla»). Se mira al soltar: `y` es el desplazamiento
+ * (negativo, tirado para abajo) y `velocidad` cómo venía cambiando, en puntos por milisegundo. Antes hacían falta 96:
+ * con el elástico del iPhone el dedo recorre bastante más, y un tirón rápido se soltaba antes. Ahora 72, o la mitad de
+ * eso si al soltar todavía bajaba rápido. Los números no se midieron en un iPhone: se ajustan con lo que se sienta.
+ */
+export const TIRON_PARA_ENTRAR = 72;
+export function entraAMoss(y: number, velocidad: number): boolean {
+  return y <= -TIRON_PARA_ENTRAR || (y <= -TIRON_PARA_ENTRAR / 2 && velocidad <= -0.4);
+}

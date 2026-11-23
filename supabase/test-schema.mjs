@@ -14848,6 +14848,7 @@ console.log('\n193. Salir de la cuenta: nada queda para la que entra después, y
   const C193 = await import('../compartido/cache.ts');
   const PO193 = await import('../nucleo/pesoObjetivo.ts');
   const D193 = await import('../compartido/descanso.ts');
+  const MG193 = await import('../compartido/mossGuardada.ts');
   const { memoria: memoria193 } = await import('./dobles/plataforma.mjs');
   const sinRed193 = { rpc: async () => ({ data: null, error: { message: 'Network request failed' } }) };
 
@@ -14862,6 +14863,7 @@ console.log('\n193. Salir de la cuenta: nada queda para la que entra después, y
     await SC193.guardarVigilancia({ desde: 1, ultimoAdentro: 2, arranco: true });
     await memoria193.set(PO193.CLAVE_OBJETIVO_PESO, '85');
     D193.guardarDescanso(120, { ejercicio: 'remo', serie: 1, meta: 3 });
+    await MG193.anotarSeccion('cuenta-a', '2026-11-23', { musculos: new Map([['pecho', { series: 4 }]]) });
     await new Promise((r) => setTimeout(r, 20));
   };
   const loQueQueda = async () => ({
@@ -14873,8 +14875,9 @@ console.log('\n193. Salir de la cuenta: nada queda para la que entra después, y
     descanso: await D193.leerDescanso(),
     perfil: await C193.leerPerfilCache(),
     metaDelAparato: memoria193.get('ascent:meta-bloque') ?? null,
+    moss: (await MG193.leerMossGuardada('cuenta-a'))?.seccion?.musculos?.get('pecho')?.series ?? null,
   });
-  const NADA = { pendientes: 0, sesion: null, modos: {}, llegada: null, objetivo: null, descanso: null, perfil: null, metaDelAparato: '4' };
+  const NADA = { pendientes: 0, sesion: null, modos: {}, llegada: null, objetivo: null, descanso: null, perfil: null, metaDelAparato: '4', moss: null };
 
   // Una base de mentira con la sesión de Auth: lo que contesta `signOut` es lo
   // que decide si se borra o no.
@@ -14885,11 +14888,11 @@ console.log('\n193. Salir de la cuenta: nada queda para la que entra después, y
   const pausa193 = (ms) => new Promise((r) => setTimeout(r, ms));
   // Lo de la sesión se va; lo que es de la persona (modos, objetivo) queda para
   // cuando vuelva a entrar.
-  const sinLaSesion = (antes) => ({ ...antes, pendientes: 0, sesion: null, llegada: null, descanso: null, perfil: null });
+  const sinLaSesion = (antes) => ({ ...antes, pendientes: 0, sesion: null, llegada: null, descanso: null, perfil: null, moss: null });
 
   await dejarLoDeLaCuentaA();
   const conTodo = await loQueQueda();
-  chequear('antes de salir, lo de la cuenta está en el aparato', [conTodo.pendientes, conTodo.objetivo, conTodo.metaDelAparato], [2, '85', '4']);
+  chequear('antes de salir, lo de la cuenta está en el aparato (también lo de Moss, con su Map)', [conTodo.pendientes, conTodo.objetivo, conTodo.metaDelAparato, conTodo.moss], [2, '85', '4', 4]);
 
   // Con señal: lo pendiente sube ANTES de salir, con el token de quien lo hizo.
   const subieron = [];
@@ -19748,7 +19751,8 @@ console.log('\n265. Un toque repetido en el + no es otra serie, y «Terminar ser
   const des = deBug('movil', 'src', 'Descanso.tsx');
   chequear('el + del bloque, «Terminar serie» y los dos «Serie hecha» del descanso pasan por la regla, con la hora del toque', [
     /const sumar = \(e\?: GestureResponderEvent\) => \{\s*if \(!cuentaLaSerie\(horaDelToque\(e\)\)\) return;/.test(blo),
-    /if \(!cierraElBloque\(horaDelToque\(e\)\)\) return;\s*alSiguiente\(\);/.test(blo),
+    // Desde el 23/11 confirma el peso a medio escribir y cierra el teclado antes de cerrar el bloque.
+    /if \(!cierraElBloque\(horaDelToque\(e\)\)\) return;\s*pesoSinConfirmar\.current\?\.\(\);\s*Keyboard\.dismiss\(\);\s*alSiguiente\(\);/.test(blo),
     /onPress=\{\(e\) => \{\s*if \(pulsa\) \{[\s\S]*?onPress\(e\);/.test(blo),
     (des.match(/onPress=\{\(e\) => cuentaLaSerie\(horaDelToque\(e\)\) && alSumar\(\)\}/g) ?? []).length,
   ], [true, true, true, 2]);
@@ -21942,7 +21946,9 @@ console.log('\n330. La vuelta grande: cielo, horizonte, cifras, barra, rutina, m
 
   // ---- MOSS ----
   const mo330 = app330('PuertaDeMoss.tsx');
-  chequear('se entra tirando desde el tope o tocando, y se vuelve', [/onScrollEndDrag/.test(app330('Stats.tsx')), /TIRON_PARA_ENTRAR/.test(app330('Stats.tsx')), /entrada-a-moss/.test(mo330), /moss-volver/.test(mo330), /T\.moss\.vinculaTitulo/.test(mo330)], [true, true, true, true, true]);
+  chequear('se entra tirando desde el tope o tocando, y se vuelve', [/onScrollEndDrag/.test(app330('Stats.tsx')), /if \(!entraAMoss\(e\.nativeEvent\.contentOffset\.y, velocidad\)\) return;/.test(app330('Stats.tsx')), /entrada-a-moss/.test(mo330), /moss-volver/.test(mo330), /T\.moss\.vinculaTitulo/.test(mo330)], [true, true, true, true, true]);
+  const { entraAMoss: entra330 } = await import('../nucleo/vinculoConMoss.ts');
+  chequear('el tirón entra con 72, o con 36 si al soltar el dedo todavía bajaba rápido (23/11)', [entra330(-72, 0), entra330(-71, 0), entra330(-40, -0.5), entra330(-40, -0.2), entra330(-30, -2), entra330(10, -3)], [true, false, true, false, false, false]);
   chequear('con las letras de Moss, cargadas aparte', [/cargarFuentesDeMoss\(\)/.test(mo330), ['CormorantGaramond_400Regular_Italic', 'Jost_400Regular'].every((f) => hay330(join(raiz330, 'movil', 'assets', 'fuentes', f + '.ttf')))], [true, true]);
   chequear('los colores de Moss no se tiñen, y el rango no los toca', [/from '\.\/colores'/.test(mo330), /C\.claro/.test(mo330)], [false, false]);
 }

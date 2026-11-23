@@ -108,7 +108,7 @@ try {
   }
   chequear('el paso 2 explica serie y repetición; el 4, el círculo que se llena', [
     pasos[0].includes(TX.moss.sec.tutorial.titulos[1].toLowerCase()) && pasos[0].includes(TX.moss.sec.tutorial.serieDura.toLowerCase()),
-    pasos[2].includes(TX.moss.sec.fatigados.vuelve(TX.moss.sec.fatigados.manana).toLowerCase()),
+    pasos[2].includes(TX.moss.sec.fatigados.faltan(1).toLowerCase()),
   ], [true, true]);
   await page.waitForTimeout(600);
   chequear('cinco pasos y se cierra', await page.getByTestId('moss-tutorial').filter({ visible: true }).count(), 0);
@@ -125,7 +125,7 @@ try {
   chequear('el detalle del pecho: sus series, qué hacer, que se recupera, sus partes y el press con sus kilos', [
     detalle.includes(U.seriesCorto(3)),
     detalle.includes(`${U.estados.poco}: ${U.acciones.poco}`),
-    detalle.includes(`${U.estados.fatigado} · ${TX.moss.sec.fatigados.vuelve(TX.moss.sec.fatigados.pasado)}`),
+    detalle.includes(`${U.estados.fatigado} · ${TX.moss.sec.fatigados.faltan(2)}`),
     detalle.includes(U.parteLinea(U.partes.pechoResto, 3)),
     detalle.includes('Press') && detalle.includes(U.proxima.sinObjetivo('80 kg')),
   ], [true, true, true, true, true]);
@@ -137,14 +137,25 @@ try {
   chequear('de espalda, la lista de ese lado', [await visible('moss-barra-triceps').count(), await page.getByTestId('moss-barra-pecho').filter({ visible: true }).count()], [1, 0]);
   await visible('moss-lado-frente').click();
 
-  // Para hoy: ya entrenó; sin noches ni comida de Moss, lo dice.
+  // Sugerencias para hoy (23/11, como en Moss), arriba de «Esta semana»: ya entrenó, así que sin el entrenamiento; la
+  // comida, para recuperarse (proteína y carbohidratos, porque entrenó); el sueño, sin noches de Moss, las 8 h de fábrica.
   const P = TX.moss.sec.sugerencias;
   const paraHoy = await visible('moss-para-hoy').innerText();
-  chequear('«Para hoy»: entrenamiento, comida y sueño, con «Más en Sueño»', [paraHoy.includes(P.entreno.hecha), paraHoy.includes(P.comida.sinDatos), paraHoy.includes(P.sueno.sinDatos), paraHoy.includes(P.masEnSueno)], [true, true, true, true]);
+  await page.getByTestId('moss-para-hoy').first().scrollIntoViewIfNeeded();
+  await page.screenshot({ path: join(SALIDA, '2c-sugerencias.png') });
+  const yDe =async (l) => (await l.boundingBox())?.y ?? -1;
+  chequear('«Sugerencias para hoy», arriba de «Esta semana»: sin entrenamiento (ya entrenó), la comida para recuperarse y cuántas horas dormir', [
+    paraHoy.includes(P.titulo.toUpperCase()) || paraHoy.includes(P.titulo),
+    paraHoy.toLowerCase().includes(P.tipos.entreno.toLowerCase()),
+    paraHoy.includes(P.comida.recuperar(`${P.macros.proteina} ${P.y} ${P.macros.carbohidratos}`)),
+    paraHoy.includes(P.sueno.sinDatos('8 h')),
+    paraHoy.includes(P.masEnSueno),
+    (await yDe(visible('moss-para-hoy'))) < (await yDe(page.getByText(TX.moss.sec.tus.semana, { exact: true }).filter({ visible: true }).first())),
+  ], [true, false, true, true, true, true]);
 
   // Fatigados: el pecho, con RIR 1, vuelve en 2 días.
   const fatigados = await visible('moss-fatigados').innerText();
-  chequear('el pecho, fatigado, vuelve pasado mañana', fatigados.includes(TX.moss.sec.fatigados.vuelve(TX.moss.sec.fatigados.pasado)), true);
+  chequear('el pecho, fatigado: faltan 2 días', fatigados.includes(TX.moss.sec.fatigados.faltan(2)), true);
 
   // Tu año: un día por sesión de este año, y el estancado con su porqué.
   chequear('tu año tiene días', (await page.getByTestId('moss-anio').locator('[data-testid^="moss-dia-"]').count()) > 0, true);
@@ -174,6 +185,30 @@ try {
   await page.getByTestId('moss-metas').getByText(TX.moss.sec.metas.borrar, { exact: true }).first().click();
   await page.waitForTimeout(2500);
   chequear('«Borrar» la saca de la base', await metasEnLaBase(), []);
+
+  // CARGA DE UNA (23/11): lo guardado en el teléfono sale al instante. Para que se note, al volver a abrir la app la
+  // pregunta del vínculo no llega y lo de Ascent tarda 4 s: sin lo guardado saldría «Vincula…» y después, nada.
+  await page.route('**/rest/v1/rpc/estado_del_vinculo', (r) => r.abort());
+  await page.route('**/rest/v1/rpc/mi_hoy', async (r) => {
+    await new Promise((ok) => setTimeout(ok, 4000));
+    await r.continue().catch(() => {});
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await texto(TX.nav.stats).click({ timeout: 120000 });
+  await page.waitForTimeout(800);
+  await page.getByTestId('entrada-a-moss').first().click({ timeout: 120000 });
+  const rotulos = new Set();
+  const t0 = Date.now();
+  let llego = null;
+  while (Date.now() - t0 < 2500) {
+    for (const r of await page.evaluate(() => [...document.querySelectorAll('[data-testid="moss-rotulo"]')].map((x) => x.textContent))) rotulos.add(r);
+    if (llego === null && (await page.getByTestId('moss-tus-musculos').filter({ visible: true }).count())) llego = Date.now() - t0;
+    await page.waitForTimeout(60);
+  }
+  await page.screenshot({ path: join(SALIDA, '6-de-una.png') });
+  chequear('al volver, la sección sale enseguida de lo guardado (sin la base), y nunca dice «Vincula Ascent con Moss»', [llego !== null && llego < 1500, rotulos.has(TX.moss.vinculaTitulo)], [true, false]);
+  await page.unroute('**/rest/v1/rpc/estado_del_vinculo');
+  await page.unroute('**/rest/v1/rpc/mi_hoy');
 
   // Otra vez: el tutorial ya no sale solo; el «!» lo abre.
   await page.reload({ waitUntil: 'domcontentloaded' });

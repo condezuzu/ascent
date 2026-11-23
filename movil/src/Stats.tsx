@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { nombreDeGrupo } from '@nucleo/ejercicios';
-import { ActivityIndicator, ScrollView, StyleSheet, View, Animated } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View, Animated, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from './supabase';
 import { quienSoy } from '@compartido/quienSoy';
@@ -51,7 +51,8 @@ import { R, Seccion } from './roles';
 import { LLEGA, MS, sinMovimiento } from './movimiento';
 import CifrasDelAno from './CifrasDelAno';
 import Entra from './Entra';
-import PuertaDeMoss, { MossAsomando, TIRON_PARA_ENTRAR } from './PuertaDeMoss';
+import PuertaDeMoss, { MossAsomando } from './PuertaDeMoss';
+import { entraAMoss } from '@nucleo/vinculoConMoss';
 import { RECIBIR_MOSS, tomarRecibirMoss } from './recibirMoss';
 import { YA_SE_ABRIO_EL_DIA_MS } from './RutinaPlegada';
 import Surgir from './Surgir';
@@ -123,6 +124,8 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     return eventos.escuchar(RECIBIR_MOSS, abrir);
   }, []);
   const tironAlSoltar = useRef(0);
+  // Las dos últimas lecturas del tirón: al soltar dicen si el dedo todavía bajaba.
+  const lecturas = useRef<{ y: number; t: number }[]>([]);
   const desplazado = useRef(new Animated.Value(0)).current;
   const tiron = useRef(Animated.multiply(desplazado, -1)).current;
   // Al cambiar General y Entrenamiento, lo nuevo llega de su lado.
@@ -321,9 +324,16 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
       scrollEnabled={!arrastrando}
       keyboardShouldPersistTaps="handled"
       scrollEventThrottle={16}
-      onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: desplazado } } }], { useNativeDriver: true })}
+      onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: desplazado } } }], {
+        useNativeDriver: true,
+        listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+          lecturas.current = [...lecturas.current.slice(-1), { y: e.nativeEvent.contentOffset.y, t: Date.now() }];
+        },
+      })}
       onScrollEndDrag={(e) => {
-        if (e.nativeEvent.contentOffset.y >= -TIRON_PARA_ENTRAR) return;
+        const [a, b] = lecturas.current;
+        const velocidad = a && b && b.t > a.t ? (b.y - a.y) / (b.t - a.t) : 0;
+        if (!entraAMoss(e.nativeEvent.contentOffset.y, velocidad)) return;
         tironAlSoltar.current = -e.nativeEvent.contentOffset.y;
         setEnMoss(true);
       }}
