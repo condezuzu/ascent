@@ -120,6 +120,11 @@ las cuentas las pinea la sección 330 de `test:db`. **Nada de esto se vio en un 
   Acordado con Moss (que lo mismo hace en su 0019): la copiada tampoco cuenta para «la última vez», el globo de subir
   ni «Próxima vez» (sus kilos y su historial, `paraProgresar`). Y en las sugerencias, «sin recuperar» es solo lo
   `cargado` (faltan 2 días o más), como en Moss. Sonda: `probar-rir` (una copiada ayer no cambia la última vez).
+- **La lista de hoy, al día y donde estás** (27/11, dos cosas del dueño; publicado el mismo día). (1) Después de «Editar
+  este día» la lista y el editor volvían a mostrar la rutina de antes, y tocar algo ahí la guardaba encima: ver
+  `trampas.md`, «Una lectura que salió antes llega después del guardado». (2) Al abrirse sola con «Terminar serie»,
+  lo recién hecho queda en el medio (`alMedio` de `Hoja`, mientras la hoja llega) y «Listo» va fijo abajo (`pie`),
+  en la lista y en el editor del día. Sonda: `probar-lista-de-hoy`; `test:db` 348.
 - **El + en un teléfono chico** (23/11, «tocan el + y se les pone para escribir»). En un SE (medido en la vista web) el
   teclado del peso y las repes tapaba el + entero, y la pregunta de la marca subía la pantalla 173 puntos: en el lugar
   del + quedaban sus botones (5 de 6 series sin contar en la sonda). Ahora, con el teclado arriba, el + sube encima y
