@@ -20404,19 +20404,21 @@ console.log('\n300. Las repeticiones de cada serie, con «Registrar repeticiones
   const trasLaPrimera = [e.repsAhora ?? null, e.reps];
   e = B.sumar(e);
   e = B.sumar(B.cambiarReps(e, '8'));
-  chequear('lo tecleado se anota con el + y el cuadradito queda vacío; una serie sin teclear va sin repeticiones', [tecleado, trasLaPrimera, e.reps, e.repsAhora ?? null], [12, [null, [12]], [12, null, 8], null]);
+  // Desde el 26/11 quedan escritas para la que sigue, como el peso.
+  chequear('lo tecleado se anota con el + y queda escrito: la serie siguiente sin teclear lleva las mismas', [tecleado, trasLaPrimera, e.reps, e.repsAhora ?? null], [12, [12, [12]], [12, 12, 8], 8]);
   const cerrado = B.siguiente(B.cambiarReps(e, 5));
-  chequear('el − se lleva las de la última; «Siguiente» las cierra con el bloque y el que sigue arranca vacío', [
+  chequear('el − se lleva las de la última; «Siguiente» las cierra con el bloque y el que sigue arranca con las escritas; otro ejercicio o «Terminar» las borran, como el peso', [
     B.restar(e).reps, cerrado.cerrados[0].reps, cerrado.reps ?? null, cerrado.repsAhora ?? null,
-  ], [[12, null], [12, null, 8], null, null]);
-  chequear('viajan a la base con su bloque', B.paraGuardar(e), [{ ejercicio: 'press_banca', series: 3, pesos: [60, 60, 60], reps: [12, null, 8] }]);
+    B.cambiarEjercicio(e, 'remo').repsAhora ?? null, B.terminarBloque(e).repsAhora ?? null,
+  ], [[12, 12], [12, 12, 8], null, 5, null, null]);
+  chequear('viajan a la base con su bloque', B.paraGuardar(e), [{ ejercicio: 'press_banca', series: 3, pesos: [60, 60, 60], reps: [12, 12, 8] }]);
   const sin = B.siguiente(B.sumar(B.sumar(B.cambiarPeso(B.bloquesVacios('press_banca'), 60))));
   chequear('sin teclear nunca, ni una llave nueva: el estado y lo que se guarda son los de antes', [
     'reps' in sin, 'repsAhora' in sin, 'reps' in sin.cerrados[0], B.paraGuardar(sin),
   ], [false, false, false, [{ ejercicio: 'press_banca', series: 2, pesos: [60, 60] }]]);
   const vuelta = B.unirConGuardados([{ ejercicio: 'press_banca', series: 2, reps: [10, 9] }, { ejercicio: 'remo', series: 2, pesos: [50, 50], reps: [8, 'x'] }], B.bloquesVacios());
   chequear('vuelven de la base: las del cerrado y las del que queda en curso', [vuelta.cerrados[0].reps, vuelta.reps, vuelta.hechas], [[10, 9], [8, null], 2]);
-  chequear('una serie agregada desde la lista va sin repeticiones', B.corregirBloque(cerrado, 0, 1).estado.cerrados[0].reps, [12, null, 8, null]);
+  chequear('una serie agregada desde la lista va sin repeticiones', B.corregirBloque(cerrado, 0, 1).estado.cerrados[0].reps, [12, 12, 8, null]);
   chequear('solo enteros de 1 a 999', [B.repsValidas(0), B.repsValidas(8.5), B.repsValidas(1000), B.repsValidas('12'), B.repsValidas(999), B.repsValidas('')], [null, null, null, 12, 999, null]);
 
   // ---- LA PISTA: LA ÚLTIMA VEZ, SERIE POR SERIE ----
@@ -20433,9 +20435,9 @@ console.log('\n300. Las repeticiones de cada serie, con «Registrar repeticiones
   chequear('alineadas por serie: un bloque sin repeticiones ocupa sus lugares', hueco.reps, [10, 9, null, null, 6]);
   // ---- CON EL HOOK DE VERDAD ----
   const h = await escenarioDeSesion('repsPorSerie', 'con');
-  chequear('el ajuste viene apagado; con el hook: la pista serie por serie, el cuadradito vacío después de cada +, y a la base llegan las de cada serie',
+  chequear('el ajuste viene apagado; con el hook: la pista serie por serie, lo escrito se queda después de cada +, y a la base llegan las de cada serie',
     h.fallo ?? [h.ajuste, h.pistas, h.cuadradito, h.enCurso, h.enLaBase],
-    [[false, true], [10, 9, 8, 8, 8], [null, null, null, null], [12, null, 7, 6], [[12, null, 7, 6]]]);
+    [[false, true], [10, 9, 8, 8, 8], [12, 12, 7, 6], [12, 12, 7, 6], [[12, 12, 7, 6]]]);
   const h0 = await escenarioDeSesion('repsPorSerie', 'sin');
   chequear('sin teclear nada, a la base no llega la llave', h0.fallo ?? [h0.enCurso, h0.enLaBase], [null, ['sin llave']]);
 
@@ -21798,6 +21800,79 @@ console.log('\n331. Corregir un día del pasado no te deja la racha en cero (mig
   const dos = [(await db.query('select recalcular_desde_cero() as v')).rows[0].v.racha, (await db.query('select recalcular_desde_cero() as v')).rows[0].v.racha];
   chequear('y «Recalcular» da lo mismo, dos veces', dos, [14, 14]);
 }
+console.log('\n346. «Registrar el día» se lleva lo del último entrenamiento de esa rutina (migración 103, 26/11)');
+{
+  // EL PEDIDO: «si solo registras el día, tendría que tomar la info del último entrenamiento que hubo en esa rutina»,
+  // sin preguntar. El teléfono elige; la base lo guarda como sesión terminada y `copiada`.
+  const R346 = await import('../nucleo/rutinas.ts');
+  const ses346 = [
+    { fecha: '2026-11-18', bloques: [{ ejercicio: 'press_banca', series: 3 }, { ejercicio: 'fondos', series: 2 }], minutos: 50 },
+    { fecha: '2026-11-20', bloques: [{ ejercicio: 'sentadilla', series: 4 }], minutos: 60 },
+    { fecha: '2026-11-11', bloques: [{ ejercicio: 'press_banca', series: 3 }], minutos: 40 },
+    { fecha: '2026-11-26', bloques: [{ ejercicio: 'press_banca', series: 1 }], minutos: 5 },
+    { fecha: '2026-11-19', bloques: [{ ejercicio: 'press_banca', series: 1 }, { ejercicio: 'curl', series: 3 }, { ejercicio: 'remo', series: 3 }], minutos: 45 },
+  ];
+  chequear('la última de antes de hoy con la mitad o más de sus ejercicios en ese día; ni la de hoy ni una de otro día', [
+    R346.entrenamientoParaCopiar(ses346, ['press_banca', 'fondos', 'press_inclinado'], '2026-11-26')?.fecha,
+    R346.entrenamientoParaCopiar(ses346, ['sentadilla'], '2026-11-26')?.fecha,
+    R346.entrenamientoParaCopiar(ses346, ['otro'], '2026-11-26'),
+    R346.entrenamientoParaCopiar(ses346, [], '2026-11-26'),
+  ], ['2026-11-18', '2026-11-20', null, null]);
+
+  // La base: por el mismo camino que el teléfono, con la sesión de la persona.
+  const copiar346 = async (bloques, minutos = 45) => (await db.query('select anotar_entrenamiento_copiado($1::jsonb, $2) as id', [JSON.stringify(bloques), minutos])).rows[0].id;
+  const u = await nuevoUsuario();
+  await comoUsuario(u);
+  const sinDia = await copiar346([{ ejercicio: 'press_banca', series: 3 }]);
+  await db.query("select registrar_dia('manual')");
+  const id = await copiar346([{ ejercicio: 'press_banca', series: 3, pesos: [60, 60, 60], reps: [10, 9, 8] }, { ejercicio: 'no_existe', series: 2 }], 50);
+  const fila = id && (await db.query('select estado, copiada, series, bloques, extract(epoch from fin - inicio) / 60 as min, (select fecha from logs where id = log_id) = mi_hoy() as hoy from sesiones where id = $1', [id])).rows[0];
+  const otra = await copiar346([{ ejercicio: 'press_banca', series: 3 }]);
+  chequear('sin el día registrado no anota; con él, una sesión de hoy terminada y copiada, limpia como en fijar_bloques; una segunda vez, nada', [
+    sinDia, fila?.estado, fila?.copiada, fila?.series, (fila?.bloques ?? []).map((b) => [b.ejercicio, b.series, b.pesos, b.reps]), Math.round(Number(fila?.min)), fila?.hoy, otra,
+  ], [null, 'terminada', true, 3, [['press_banca', 3, [60, 60, 60], [10, 9, 8]]], 50, true, null]);
+  const v = await nuevoUsuario();
+  await comoUsuario(v);
+  await db.query("select registrar_dia('manual')");
+  const nada = await copiar346([{ ejercicio: 'no_existe', series: 2 }]);
+  chequear('sin ninguna serie válida no queda sesión', [nada, (await db.query('select count(*)::int as n from sesiones where user_id = $1', [v])).rows[0].n], [null, 0]);
+
+  // Lo copiado no cuenta para el progreso de fuerza: los mismos kilos más tarde aplanarían la línea.
+  const P346 = await import('../nucleo/progreso.ts');
+  const V346 = await import('../nucleo/volumen.ts');
+  const filas346 = [
+    { id: 'a', bloques: [{ ejercicio: 'press_banca', series: 1, pesos: [60], carga: 'total' }], logs: { fecha: '2026-11-18' } },
+    { id: 'b', bloques: [{ ejercicio: 'press_banca', series: 1, pesos: [60], carga: 'total' }], copiada: true, logs: { fecha: '2026-11-26' } },
+  ];
+  chequear('el progreso de un ejercicio no cuenta la copiada', P346.progresoPorEjercicio(V346.sesionesConFecha(filas346), []).get('press_banca')?.sesiones.map((s) => s.fecha), ['2026-11-18']);
+  const sm346 = sinComentarios(deBug('movil', 'src', 'useSeccionMoss.ts'));
+  chequear('ni la tendencia de la sección de Moss; y la hoja de registrar la pide sin esperarla', [
+    /const puntos = sesiones\.flatMap\(\(s\) => \{\s*if \(s\.copiada\) return \[\];/.test(sm346),
+    /void copiarElUltimoEntrenamiento\(supabase\)\.then\(\(si\) => si && eventos\.emitir\(DIA_CAMBIO\)\);/.test(sinComentarios(deBug('movil', 'src', 'RegistrarDia.tsx'))),
+  ], [true, true]);
+
+  // Lo acordado con Moss (26/11): la copiada tampoco cuenta para «la última vez», el globo de subir ni «Próxima vez» (sus
+  // kilos y su historial); sí para la fatiga. Y «sin recuperar» de las sugerencias es solo lo cargado, no lo de un día.
+  const us346 = sinComentarios(deBug('compartido', 'useSesion.ts'));
+  chequear('la sesión: «la última vez» y el globo de subir salen de un historial sin las copiadas', [
+    /\.select\('bloques, copiada, logs!inner\(fecha\)'\)/.test(us346),
+    /historialConPesosRef\.current = filas\s*\.filter\(\(s\) => !s\.copiada\)/.test(us346),
+    /sesionesRutinaRef\.current = filas\s*\.map/.test(us346),
+  ], [true, true, true]);
+  chequear('la sección de Moss: los kilos y el historial de «Próxima vez» sin las copiadas; la fatiga, con todas', [
+    /const reales = sesiones\.filter\(\(s\) => !s\.copiada\);/.test(sm346),
+    /for \(const s of reales\) for \(const b of s\.bloques\) if \(b\.ejercicio\) pesos\[/.test(sm346),
+    /paraProgresar: ejerciciosRecientes\(reales, hoy,/.test(sm346),
+    /const recientes = ejerciciosRecientes\(sesiones, hoy,/.test(sm346),
+    /sesionesDelEjercicio\(datos\.paraProgresar \?\? datos\.recientes, id\)/.test(sinComentarios(deBug('movil', 'src', 'SeccionMoss.tsx'))),
+  ], [true, true, true, true, true]);
+  const F346 = await import('../nucleo/puntajeMuscular.ts');
+  chequear('«sin recuperar» es lo cargado: con 1 día no, con 2 sí', [
+    /sinRecuperar: musculosDeHoy\.filter\(\(m\) => musculos\.get\(m\)\?\.fatiga === 'cargado'\)/.test(sm346),
+    [0, 1, 2, 3].map((d) => F346.estadoDeFatiga(d) === 'cargado'),
+  ], [true, [false, false, true, true]]);
+}
+
 console.log('\n332. «Crear rutina nueva» guarda el día como se entrenó: orden, series y sin lo que no se hizo (6/11, bug del gimnasio)');
 {
   // Lo que contó el dueño: el viernes era pecho, espalda, hombros y brazos; hizo solo pecho y

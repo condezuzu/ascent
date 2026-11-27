@@ -116,7 +116,8 @@ try {
   chequear('100 × 1 no supera los 100 × 5 de recién: ni pregunta ni guarda', [await pregunta().count(), await marcas()], [0, ['100×1', '100×5']]);
 
   await ponerPeso(105);
-  await serie(null);
+  // Las repes quedan escritas de la serie anterior (26/11): para que vaya sin repeticiones hay que borrarlas.
+  await serie('');
   await pregunta().first().waitFor({ timeout: 10000 }).catch(() => {});
   await page.screenshot({ path: join(SALIDA, 'pregunta.png') });
   chequear('sin repeticiones anotadas, pregunta como siempre', await pregunta().count(), 1);

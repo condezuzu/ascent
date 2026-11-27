@@ -27,6 +27,8 @@ const porFecha = (a: PuntoDeProgreso, b: PuntoDeProgreso) => (a.fecha < b.fecha 
 export function progresoPorEjercicio(sesiones: SesionConBloques[], marcas: MarcaParaMaximo[]): Map<string, Progreso> {
   const dias = new Map<string, Map<string, PuntoDeProgreso>>();
   for (const s of sesiones) {
+    // Los mismos kilos repetidos más tarde aplanarían la línea (26/11).
+    if (s.copiada) continue;
     for (const b of leerBloques(s.bloques)) {
       if (!llevaNumero(b.carga)) continue;
       b.pesos.forEach((peso, j) => {

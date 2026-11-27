@@ -544,6 +544,9 @@ create table public.sesiones (
   ultima_actividad timestamptz not null default now(),
   -- Si la cerró el automático y no la persona: el teléfono lo avisa una vez.
   cerro_sola boolean not null default false,
+  -- COPIADA (migración 103): la anotó «Registrar el día» con lo del último entrenamiento de esa rutina, sin
+  -- entrenar con la app. Cuenta para los músculos y la fatiga, no para la tendencia de fuerza.
+  copiada boolean not null default false,
   constraint sesiones_bloques_es_lista check (jsonb_typeof(bloques) = 'array'),
   constraint sesiones_origen_valido check (origen in ('manual', 'ubicacion')),
   constraint sesiones_fin_solo_si_termino check ((estado = 'terminada') = (fin is not null))
@@ -2478,6 +2481,35 @@ begin
    returning bloques into guardado;
 
   return jsonb_build_object('bloques', coalesce(guardado, '[]'::jsonb), 'total_series', total);
+end;
+$$;
+
+-- Solo sobre el día de hoy ya registrado y sin ningún entrenamiento: uno hecho con la app (o ya copiado) no se pisa.
+-- Los bloques pasan por `fijar_bloques`, con sus mismas limpiezas; sin ninguna serie válida no queda nada.
+create or replace function public.anotar_entrenamiento_copiado(p_bloques jsonb, p_minutos int)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  v_log uuid;
+  v_id uuid;
+  total int;
+begin
+  if uid is null then raise exception 'sin sesión'; end if;
+  if jsonb_typeof(p_bloques) <> 'array' then raise exception 'bloques tiene que ser una lista'; end if;
+  select id into v_log from logs where user_id = uid and fecha = mi_hoy();
+  if v_log is null or exists (select 1 from sesiones where log_id = v_log) then return null; end if;
+
+  insert into sesiones (user_id, log_id, inicio, fin, estado, series, copiada)
+    values (uid, v_log, now() - make_interval(mins => least(greatest(coalesce(p_minutos, 1), 1), 300)), now(), 'terminada', 0, true)
+    returning id into v_id;
+  perform fijar_bloques(v_id, p_bloques);
+  select coalesce(sum((b->>'series')::int), 0) into total from sesiones s, jsonb_array_elements(s.bloques) b where s.id = v_id;
+  if total = 0 then
+    delete from sesiones where id = v_id;
+    return null;
+  end if;
+  update sesiones set series = total where id = v_id;
+  return v_id;
 end;
 $$;
 
@@ -4468,6 +4500,7 @@ revoke execute on function
   public.ranking_fuerza(),
   public.fijar_series(uuid, int),
   public.fijar_bloques(uuid, jsonb),
+  public.anotar_entrenamiento_copiado(jsonb, int),
   public.ultimo_ejercicio(),
   public.anotar_peso(numeric),
   public.corregir_peso(date, numeric),
@@ -4523,6 +4556,7 @@ grant execute on function
   public.ranking_fuerza(),
   public.fijar_series(uuid, int),
   public.fijar_bloques(uuid, jsonb),
+  public.anotar_entrenamiento_copiado(jsonb, int),
   public.ultimo_ejercicio(),
   public.anotar_peso(numeric),
   public.corregir_peso(date, numeric),
@@ -4992,7 +5026,7 @@ create trigger rutinas_anotar_semana
   for each row execute function public.anotar_semana_de_rutina();
 
 create or replace function public.version_del_esquema()
-returns int language sql immutable as $$ select 102; $$;
+returns int language sql immutable as $$ select 103; $$;
 
 revoke execute on function public.version_del_esquema() from public;
 grant execute on function public.version_del_esquema() to anon, authenticated;

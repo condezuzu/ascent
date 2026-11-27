@@ -12,6 +12,7 @@ import { miId } from '@compartido/quienSoy';
 import { T } from '@nucleo/textos';
 import { subirFotoDelDia } from '@compartido/foto';
 import { anotarElDia } from '@compartido/anotarDia';
+import { copiarElUltimoEntrenamiento } from '@compartido/rutinas';
 import { useEnVuelo } from '@compartido/useEnVuelo';
 import { eventos } from '@compartido/eventos';
 import { DIA_CAMBIO } from '@compartido/gimnasio';
@@ -160,6 +161,8 @@ function RegistrarDia({
     const resultado = data as ResultadoRegistro;
     // Sin foto no sale FOTOS_CAMBIO: el Álbum se entera por acá de que el día entró.
     eventos.emitir(DIA_CAMBIO);
+    // Lo del último entrenamiento de esa rutina (26/11), sin esperarlo: la hoja no se demora por esto.
+    void copiarElUltimoEntrenamiento(supabase).then((si) => si && eventos.emitir(DIA_CAMBIO));
     // `racha` es la que se veía al abrir la hoja: la de antes de registrar.
     const subio = subidaDeRango(racha, resultado.racha) !== null;
     setSubioAca(subio);
