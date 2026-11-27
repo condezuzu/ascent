@@ -391,6 +391,19 @@ humano.
 
 ## Después (lo que aparezca, anotado y sin tocar)
 
+- **El resumen del año y las medallas** (pedidos por el humano el 27/11/2026: entran por decisión suya, no por
+  la regla; en propuesta, galería 28 y 29, **nada construido**). Lo que ya dijo:
+  - El resumen se pasa tocando, recorre **todos los rangos** (cada lámina con el cuerpo de uno) y recién al final
+    aparece el tuyo, de fondo, con todos los números. El nombre del rango sigue sin aparecer.
+  - Cuenta **desde que se creó la cuenta** («no sabemos lo que pasó antes»), y los días son los que **te tocaban**
+    según tu rutina (`rutina_semanas`), no los 365.
+  - Los pasos del resumen se calculan en el teléfono y no salen de ahí (decisión del 13/10, más abajo): por eso
+    **no hay medallas de pasos**.
+  - Medallas: muchas, con las que tienes, las que estás por ganar y las que faltan; se elige cuál se ve en el
+    perfil; hay medallas de cada año, que salen del resumen. Las cinco por marca que ya existen siguen.
+  - Sin decidir: el «X % de la gente» (comparar con todas las cuentas pide una función en la base, y con pocas
+    cuentas el número baila) y qué medallas y con qué números.
+
 - **Reportar o esconder un ejercicio propio de un amigo** (decisión del humano,
   15/10/2026). Hoy los ejercicios propios los ven tus amigos (migración 76) y
   quedan así; cuando haya más gente va a hacer falta poder reportar uno con un
