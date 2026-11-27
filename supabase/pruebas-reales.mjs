@@ -111,6 +111,8 @@
 //      sale sola, una vez; y sin nada anotado, un rango recién alcanzado también (21/11).
 //  50. probar-mas-quieto — en un SE y en un 15, tocando siempre en el mismo punto: el + no se va de debajo
 //      del dedo cuando la marca pregunta, y cuenta con el peso a medio escribir (23/11).
+//  51. probar-dia-con-rutina — registrar solo el día se lleva lo del último entrenamiento de esa rutina:
+//      una sesión de hoy, terminada y copiada, en la base real (26/11, migración 103).
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -181,6 +183,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'la sección de Moss en Ascent', archivo: 'probar-seccion-moss.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la subida de rango que nadie vio', archivo: 'probar-subida-sin-ver.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el + no se va de debajo del dedo', archivo: 'probar-mas-quieto.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'registrar el día con lo de la rutina', archivo: 'probar-dia-con-rutina.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

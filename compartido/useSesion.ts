@@ -1326,13 +1326,13 @@ export function useSesion(
       const [{ data }] = await Promise.all([
         supabase
           .from('sesiones')
-          .select('bloques, logs!inner(fecha)')
+          .select('bloques, copiada, logs!inner(fecha)')
           .eq('estado', 'terminada')
           .gte('logs.fecha', desde)
           .order('inicio'),
         cargarCatalogoVisible(supabase),
       ]);
-      const filas = (data ?? []) as { bloques?: unknown; logs?: unknown }[];
+      const filas = (data ?? []) as { bloques?: unknown; copiada?: boolean; logs?: unknown }[];
       sesionesRutinaRef.current = filas
         .map((s) => {
           const bloques = Array.isArray(s.bloques) ? (s.bloques as { ejercicio?: string | null }[]) : [];
@@ -1345,7 +1345,10 @@ export function useSesion(
       void rutinaActivaDelTelefono().then((g) => {
         if (g) objetivosRef.current = objetivosDeRepeticiones(g.dias);
       });
+      // Un día copiado de la rutina (migración 103) repite kilos que nadie levantó ese día: no cuenta para «la última
+      // vez» ni para subir de peso. Sí para saber qué toca en la rutina.
       historialConPesosRef.current = filas
+        .filter((s) => !s.copiada)
         .map((s) => {
           const log = Array.isArray(s.logs) ? (s.logs[0] as { fecha?: string }) : (s.logs as { fecha?: string } | null);
           return { fecha: log?.fecha ?? '', bloques: Array.isArray(s.bloques) ? (s.bloques as SesionConPesos['bloques']) : [] };

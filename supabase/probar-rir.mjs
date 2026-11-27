@@ -54,7 +54,8 @@ await page.route((u) => u.pathname.endsWith('/rest/v1/sesiones') && decodeURICom
   const r = await route.fetch();
   const reales = await r.json().catch(() => []);
   if (!Array.isArray(reales)) return route.fulfill({ response: r });
-  await route.fulfill({ response: r, json: [...reales, { id: '00000000-0000-0000-0000-000000000002', bloques: antes.bloques, logs: { fecha: antes.fecha } }, { id: '00000000-0000-0000-0000-000000000001', bloques: anterior.bloques, logs: { fecha: anterior.fecha } }] });
+  // Y ayer, la misma copiada por «Registrar el día» (26/11): no levantó nada, así que la última vez sigue siendo la de dia(3).
+  await route.fulfill({ response: r, json: [...reales, { id: '00000000-0000-0000-0000-000000000002', bloques: antes.bloques, logs: { fecha: antes.fecha } }, { id: '00000000-0000-0000-0000-000000000001', bloques: anterior.bloques, logs: { fecha: anterior.fecha } }, { id: '00000000-0000-0000-0000-000000000003', bloques: anterior.bloques, copiada: true, logs: { fecha: dia(1) } }] });
 });
 const enviados = [];
 page.on('request', (q) => {

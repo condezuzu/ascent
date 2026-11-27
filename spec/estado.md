@@ -109,6 +109,17 @@ las cuentas las pinea la sección 330 de `test:db`. **Nada de esto se vio en un 
   la misma hoja por el editor de un día (`MiRutina` con `soloElDia`): los siete días arriba para elegir (abre en hoy)
   y sus ejercicios para arrastrar, sumar y quitar; «Listo» vuelve a la lista. No es otra hoja encima: un tercer
   modal apilado no se pudo probar en el iPhone. Sonda: `probar-subir-peso`. **Solo en la nativa.**
+- **Las repes quedan escritas** (26/11, a pedido): con «Registrar repeticiones», el + las anota y quedan para la serie
+  que sigue, como el peso; se borran al cambiar de ejercicio o al terminar el bloque (`nucleo/bloques.ts`). Sonda:
+  `probar-reps`.
+- **Registrar el día con lo de la rutina** (26/11, a pedido, migración 103): registrar solo el día se lleva, sin
+  preguntar, lo del último entrenamiento del día de la rutina que toca hoy (la última sesión con la mitad o más de sus
+  ejercicios en ese día; `entrenamientoParaCopiar`). La base lo guarda como sesión terminada y `copiada`
+  (`anotar_entrenamiento_copiado`): cuenta para los músculos y la fatiga, no para el progreso de fuerza. Sin rutina,
+  en descanso o sin uno de antes, queda el día solo. **Solo en la nativa.** Sonda: `probar-dia-con-rutina`.
+  Acordado con Moss (que lo mismo hace en su 0019): la copiada tampoco cuenta para «la última vez», el globo de subir
+  ni «Próxima vez» (sus kilos y su historial, `paraProgresar`). Y en las sugerencias, «sin recuperar» es solo lo
+  `cargado` (faltan 2 días o más), como en Moss. Sonda: `probar-rir` (una copiada ayer no cambia la última vez).
 - **El + en un teléfono chico** (23/11, «tocan el + y se les pone para escribir»). En un SE (medido en la vista web) el
   teclado del peso y las repes tapaba el + entero, y la pregunta de la marca subía la pantalla 173 puntos: en el lugar
   del + quedaban sus botones (5 de 6 series sin contar en la sonda). Ahora, con el teclado arriba, el + sube encima y

@@ -1,6 +1,6 @@
 // «REGISTRAR REPETICIONES» (21/10): un ajuste apagado de fábrica. Apagado, al entrenar no hay
 // nada de repeticiones; prendido, al lado del peso aparece un cuadradito vacío con, en gris, las
-// de la misma serie la última vez. Lo tecleado se anota con el + y el cuadradito queda vacío.
+// de la misma serie la última vez. Lo tecleado se anota con el + y queda escrito para la que sigue (26/11).
 //
 // En la vista web de la nativa (:8090), con una cuenta descartable y una sesión de ayer con press
 // de banca (3 series: 10, 9 y 8 repeticiones), inyectada en la respuesta del historial como en
@@ -118,16 +118,16 @@ try {
   await cuadradito().first().fill('12');
   await page.waitForTimeout(400);
   await sumar();
-  chequear('el + anota las tecleadas y el cuadradito queda vacío, con la pista de la serie siguiente', [await cuadro(), repsMandadas()], [['', '9'], [[12]]]);
+  chequear('el + anota las tecleadas y quedan escritas para la serie siguiente, como el peso', [await cuadro(), repsMandadas()], [['12', '9'], [[12]]]);
   await page.screenshot({ path: join(SALIDA, 'despues-del-mas.png') });
 
   await sumar();
-  chequear('una serie sin teclear va sin repeticiones; la pista sigue con la tercera', [await cuadro(), repsMandadas()], [['', '8'], [[12, null]]]);
+  chequear('la serie siguiente sin teclear lleva las mismas', [await cuadro(), repsMandadas()], [['12', '8'], [[12, 12]]]);
 
   await page.waitForTimeout(2000);
   const { data } = await s.from('sesiones').select('bloques').eq('user_id', uid).eq('estado', 'corriendo');
   const guardadas = (data?.[0]?.bloques ?? []).filter((b) => b.ejercicio === 'press_banca').map((b) => b.reps ?? 'sin llave');
-  chequear('y la base las guardó, serie por serie', guardadas, [[12, null]]);
+  chequear('y la base las guardó, serie por serie', guardadas, [[12, 12]]);
 
   await enAjustes();
   chequear('apagado otra vez: no se piden ni se muestran', await cuadradito().count(), 0);

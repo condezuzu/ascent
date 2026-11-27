@@ -58,7 +58,7 @@ function proximaDe(datos: Datos, id: string, soloSiSeSabe = false): { sube: bool
   const principal = datos.recientes.find((x) => x.id === id)?.principal ?? [];
   const hoy = datos.deHoy.includes(id);
   const p = proximaSesion({
-    sesiones: sesionesDelEjercicio(datos.recientes, id),
+    sesiones: sesionesDelEjercicio(datos.paraProgresar ?? datos.recientes, id),
     tope: datos.objetivos[id] ?? null,
     nocheCortaHoy: datos.nocheCortaHoy && hoy,
     fatigadoHoy: hoy && principal.some((m) => (datos.musculos.get(m)?.vuelveEn ?? 0) > 0),

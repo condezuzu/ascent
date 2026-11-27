@@ -29,6 +29,8 @@ export type SeccionMoss = {
   musculos: Map<string, DelMusculoEnLaSeccion>;
   /** Los ejercicios de los últimos 126 días: el detalle de un músculo y la próxima sesión salen de acá. */
   recientes: EjercicioDeLaSemana[];
+  /** Los mismos sin los días copiados de la rutina: «Próxima vez» sale de acá. Falta en lo guardado antes del 26/11. */
+  paraProgresar?: EjercicioDeLaSemana[];
   nombres: Record<string, string>;
   objetivos: Record<string, number>;
   /** El peso más alto de la última sesión con cada ejercicio (0, con el del cuerpo). */
@@ -61,15 +63,16 @@ const fechaDe = (s: { logs?: unknown }) => {
  * pudo leer queda vacío y su bloque no se muestra.
  */
 /** Las sesiones hechas (no abandonadas) desde un día, y hasta otro sin incluirlo. */
-type SesionConTiempo = SesionHecha & { terminada: boolean; minutos: number | null };
+/** `copiada`: la anotó «Registrar el día» con lo de la rutina (26/11): cuenta para los músculos, no para la fuerza. */
+type SesionConTiempo = SesionHecha & { terminada: boolean; minutos: number | null; copiada: boolean };
 async function sesionesDesde(uid: string, desde: string, hasta?: string): Promise<SesionConTiempo[]> {
-  let q = supabase.from('sesiones').select('bloques, estado, inicio, fin, logs!inner(fecha)').eq('user_id', uid).neq('estado', 'abandonada').gte('logs.fecha', desde);
+  let q = supabase.from('sesiones').select('bloques, estado, inicio, fin, copiada, logs!inner(fecha)').eq('user_id', uid).neq('estado', 'abandonada').gte('logs.fecha', desde);
   if (hasta) q = q.lt('logs.fecha', hasta);
   const { data } = await q;
-  return ((data ?? []) as { bloques?: unknown; logs?: unknown; estado?: string; inicio?: string; fin?: string | null }[]).flatMap((s) => {
+  return ((data ?? []) as { bloques?: unknown; logs?: unknown; estado?: string; inicio?: string; fin?: string | null; copiada?: boolean }[]).flatMap((s) => {
     const fecha = fechaDe(s);
     const minutos = s.inicio && s.fin ? Math.round((Date.parse(s.fin) - Date.parse(s.inicio)) / 60000) : null;
-    return fecha && Array.isArray(s.bloques) ? [{ fecha, bloques: s.bloques as BloqueHecho[], terminada: s.estado === 'terminada', minutos }] : [];
+    return fecha && Array.isArray(s.bloques) ? [{ fecha, bloques: s.bloques as BloqueHecho[], terminada: s.estado === 'terminada', minutos, copiada: s.copiada === true }] : [];
   });
 }
 
@@ -148,6 +151,7 @@ export function useSeccionMoss(activa: boolean, abierta: boolean) {
     const entrenado = typeof primerDia.data?.[0]?.fecha === 'string' && restarDias(hoy, 182) >= primerDia.data[0].fecha;
     const tendenciaDe = (id: string) => {
       const puntos = sesiones.flatMap((s) => {
+        if (s.copiada) return [];
         const series = s.bloques.filter((b) => b.ejercicio === id).flatMap((b) => Array.from({ length: b.series }, (_, i) => ({ peso: b.pesos?.[i] ?? 0, reps: b.reps?.[i] ?? null })));
         const v = mejorE1rm(series);
         return v === null ? [] : [{ t: (Date.parse(`${s.fecha}T12:00:00Z`) - Date.parse(`${hoy}T12:00:00Z`)) / 86400000 / 7, e1rm: v }];
@@ -228,8 +232,10 @@ export function useSeccionMoss(activa: boolean, abierta: boolean) {
     const idsDeHoy = hechasHoy.length ? hechasHoy.flatMap((s) => s.bloques.flatMap((b) => (b.ejercicio ? [b.ejercicio] : []))) : prevista;
     const musculosDeHoy: string[] = [...new Set((idsDeHoy ?? []).flatMap((id): readonly string[] => CAT[id]?.principal ?? (GRUPO_A_MUSCULO[grupoDePropio[id] ?? ''] ? [GRUPO_A_MUSCULO[grupoDePropio[id]]] : [])))];
 
+    // Un día copiado repite kilos que nadie levantó ese día: no cuenta para la próxima vez (como en Moss).
+    const reales = sesiones.filter((s) => !s.copiada);
     const pesos: Record<string, number> = {};
-    for (const s of sesiones) for (const b of s.bloques) if (b.ejercicio) pesos[b.ejercicio] = Math.max(0, ...(b.pesos ?? []).map((x) => x ?? 0));
+    for (const s of reales) for (const b of s.bloques) if (b.ejercicio) pesos[b.ejercicio] = Math.max(0, ...(b.pesos ?? []).map((x) => x ?? 0));
 
     const noche = (mossHoy.data as { noche?: { dormido?: number | null; necesidad?: number | null; deuda_palabra?: EntradaDeHoy['deuda'] } | null } | null)?.noche;
     type Macros = { kcal?: number; proteina?: number; carbohidratos?: number; grasas?: number };
@@ -238,7 +244,8 @@ export function useSeccionMoss(activa: boolean, abierta: boolean) {
     const m = comidaDeAyer?.meta;
     const sugerencias = sugerenciasDeHoy({
       sesion: idsDeHoy ? { musculos: musculosDeHoy, minutos: (hechasHoy.length ? hechasHoy.reduce((t, s) => t + (s.minutos ?? 0), 0) : referencia?.minutos) || 60, hecha: hechasHoy.length > 0 } : null,
-      sinRecuperar: musculosDeHoy.filter((m) => (musculos.get(m)?.vuelveEn ?? 0) > 0),
+      // Solo lo cargado (faltan 2 días o más), lo mismo que Moss: con un día, la sugerencia sobraba.
+      sinRecuperar: musculosDeHoy.filter((m) => musculos.get(m)?.fatiga === 'cargado'),
       objetivo: 'musculo',
       // Moss no sube a qué hora te despertaste: solo cuenta lo dormido.
       noche: typeof noche?.dormido === 'number' ? { dormido: noche.dormido, despertoAntes: null } : null,
@@ -261,6 +268,7 @@ export function useSeccionMoss(activa: boolean, abierta: boolean) {
       hoy,
       musculos,
       recientes,
+      paraProgresar: ejerciciosRecientes(reales, hoy, CAT, grupoDePropio, objetivos),
       nombres,
       objetivos,
       pesos,
