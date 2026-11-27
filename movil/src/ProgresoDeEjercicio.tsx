@@ -79,7 +79,7 @@ export default function ProgresoDeEjercicio({ ejercicio }: { ejercicio: string }
     if (yo.estado === 'no-se') return setNoCargo(true);
     const [{ data: perfil }, { data: ses }, { data: prs }, { data: fila }] = await Promise.all([
       supabase.from('profiles').select('racha_actual, unidad_peso').eq('id', yo.uid).single(),
-      supabase.from('sesiones').select('id, bloques, logs(fecha)').eq('user_id', yo.uid),
+      supabase.from('sesiones').select('id, bloques, copiada, logs(fecha)').eq('user_id', yo.uid),
       supabase.from('prs').select('ejercicio, peso, reps, fecha').eq('user_id', yo.uid).eq('ejercicio', ejercicio),
       supabase.from('ejercicios').select('nombre').eq('id', ejercicio).maybeSingle(),
     ]);

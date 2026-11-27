@@ -117,7 +117,8 @@ export function volumenPorGrupo(bloques: BloqueLeido[], catalogo: Catalogo): Vol
 }
 
 /** Una sesión con su día (el del registro, en hora del usuario) y sus bloques crudos. */
-export type SesionConBloques = { id?: string; fecha: string; bloques: unknown };
+/** `copiada`: la anotó «Registrar el día» con lo de la rutina (migración 103); no cuenta para el progreso de fuerza. */
+export type SesionConBloques = { id?: string; fecha: string; bloques: unknown; copiada?: boolean };
 
 /** El lunes de la semana de una fecha. La semana del gimnasio empieza el lunes. */
 export function lunesDe(fecha: string): string {
@@ -266,11 +267,11 @@ export function sesionesConFecha(filas: unknown): SesionConBloques[] {
   if (!Array.isArray(filas)) return [];
   return filas.flatMap((s) => {
     if (!s || typeof s !== 'object') return [];
-    const x = s as { id?: unknown; bloques?: unknown; logs?: unknown };
+    const x = s as { id?: unknown; bloques?: unknown; logs?: unknown; copiada?: unknown };
     const log = Array.isArray(x.logs) ? x.logs[0] : x.logs;
     const fecha = log && typeof log === 'object' ? (log as { fecha?: unknown }).fecha : undefined;
     if (typeof fecha !== 'string') return [];
-    return [{ id: typeof x.id === 'string' ? x.id : undefined, fecha, bloques: x.bloques }];
+    return [{ id: typeof x.id === 'string' ? x.id : undefined, fecha, bloques: x.bloques, ...(x.copiada === true ? { copiada: true } : {}) }];
   });
 }
 

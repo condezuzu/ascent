@@ -8,9 +8,9 @@ import { L } from './fuentes';
 /**
  * LAS REPETICIONES DE LA PRÓXIMA SERIE (21/10): la caja de `CampoPeso`, sin los botones.
  *
- * A diferencia del peso, avisa a cada tecla: el + que viene después las anota y el cuadradito
- * vuelve a quedar vacío, así que no hay un número "a medio escribir" que se quede pegado.
- * La pista en gris son las de la última vez; no se anotan si no se escriben.
+ * A diferencia del peso, avisa a cada tecla. El + las anota y quedan escritas para la serie que sigue,
+ * como el peso (26/11; antes el cuadradito volvía vacío). La pista en gris son las de la última vez; no se
+ * anotan si no se escriben.
  */
 export default function CampoReps({
   reps,

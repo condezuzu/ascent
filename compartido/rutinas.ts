@@ -2,7 +2,8 @@ import type { Cliente } from '@cliente';
 import { plataforma } from '@plataforma';
 import { disponible } from '@nucleo/esquema';
 import { rutinaPorDia } from '@nucleo/rutina';
-import { diasLimpios, hayAlgo, semanaDeLaDeducida, type DiaDeSemana, type Rutina } from '@nucleo/rutinas';
+import { diasLimpios, ejerciciosDeHoy, entrenamientoParaCopiar, hayAlgo, semanaDeLaDeducida, type DiaDeSemana, type Rutina } from '@nucleo/rutinas';
+import { restarDias } from '@nucleo/fechas';
 import { versionDelEsquema } from '@compartido/esquema';
 import { leerPerfilCache } from '@compartido/cache';
 import { eventos, RUTINA_CAMBIO } from '@compartido/eventos';
@@ -169,4 +170,39 @@ export async function cargarRutinaParaVer(supabase: Cliente, quien: string, esYo
   if (!disponible('entrenarConOtro', version)) return { id: null, nombre: null, dias, deducida: true, escondida: true };
   const { data: muestra, error: eMuestra } = await supabase.rpc('me_muestra_su_rutina', { p_quien: quien });
   return { id: null, nombre: null, dias, deducida: true, escondida: eMuestra ? true : muestra !== true };
+}
+
+/**
+ * «REGISTRAR EL DÍA» CON LO DE LA RUTINA (26/11, a pedido, migración 103): el día recién registrado a mano se lleva lo
+ * del último entrenamiento del día de la rutina que toca hoy, sin preguntar, marcado `copiada`. Sin rutina, en un día
+ * de descanso o sin uno de antes, queda el día solo, como siempre. Nunca tira: si algo falla, el día queda como está.
+ */
+export async function copiarElUltimoEntrenamiento(supabase: Cliente): Promise<boolean> {
+  try {
+    const { data: hoy } = await supabase.rpc('mi_hoy');
+    if (typeof hoy !== 'string') return false;
+    // La de la base (también deja al día la del teléfono, que solo se escribe al abrir Stats o empezar una sesión: recién
+    // entrado, no estaba); sin red, la del teléfono.
+    const rutinas = await cargarMisRutinas(supabase);
+    const activa = rutinas ? (rutinas.find((r) => r.activa) ?? null) : await rutinaActivaDelTelefono();
+    const delDia = ejerciciosDeHoy(activa, new Date(`${hoy}T12:00:00Z`).getUTCDay());
+    if (!delDia.length) return false;
+    const { data } = await supabase
+      .from('sesiones')
+      .select('bloques, inicio, fin, logs!inner(fecha)')
+      .neq('estado', 'abandonada')
+      .gte('logs.fecha', restarDias(hoy, 90))
+      .lt('logs.fecha', hoy);
+    const sesiones = ((data ?? []) as { bloques?: unknown; inicio?: string; fin?: string | null; logs?: { fecha?: string } | { fecha?: string }[] }[]).flatMap((s) => {
+      const fecha = (Array.isArray(s.logs) ? s.logs[0] : s.logs)?.fecha;
+      const minutos = s.inicio && s.fin ? Math.round((Date.parse(s.fin) - Date.parse(s.inicio)) / 60000) : null;
+      return typeof fecha === 'string' && Array.isArray(s.bloques) ? [{ fecha, bloques: s.bloques as { ejercicio?: string | null; series?: number }[], minutos }] : [];
+    });
+    const elegida = entrenamientoParaCopiar(sesiones, delDia, hoy);
+    if (!elegida || !disponible('diaConLoDeLaRutina', await versionDelEsquema(supabase).catch(() => null))) return false;
+    const { data: id } = await supabase.rpc('anotar_entrenamiento_copiado', { p_bloques: elegida.bloques, p_minutos: elegida.minutos ?? 60 });
+    return typeof id === 'string';
+  } catch {
+    return false;
+  }
 }

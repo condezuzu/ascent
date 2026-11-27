@@ -100,7 +100,7 @@ export type EstadoBloques = {
   pesos?: (number | null)[];
   /** Las repeticiones de cada serie de ESTE bloque. Misma regla. */
   reps?: (number | null)[];
-  /** Las repeticiones tecleadas para la PRÓXIMA serie: el + las anota y el cuadradito queda vacío. */
+  /** Las repeticiones tecleadas para la PRÓXIMA serie: el + las anota y quedan escritas para la que sigue. */
   repsAhora?: number;
   /** El RIR de cada serie de ESTE bloque (migración 102). Misma regla que `reps`. */
   rir?: (number | null)[];
@@ -391,11 +391,12 @@ export function sumar(e: EstadoBloques): EstadoBloques {
   // bloque —lo escrito a mano no se pisa al cambiar de modo— y vuelve a valer si
   // se pasa a otro modo, pero mientras tanto no se anota.
   const pesos = [...pesosDe(e.pesos, e.hechas), llevaNumero(e.carga) ? pesoValido(e.peso) : null];
-  // Las repeticiones tecleadas son de ESTA serie: se anotan y el cuadradito queda vacío.
+  // Las repeticiones se anotan y QUEDAN ESCRITAS para la que sigue, como el peso (26/11, a pedido: antes el
+  // cuadradito volvía vacío y había que teclearlas en cada serie).
   const reps = [...repsDe(e.reps, e.hechas), repsValidas(e.repsAhora)];
   const rir = [...rirDe(e.rir, e.hechas), rirValido(e.rirAhora)];
   // Contar una serie con el peso propuesto lo CONFIRMA: deja de ser propuesto.
-  return conRir(conReps(conPesos({ ...(sinRirAhora(sinRepsAhora(sinMarca(e))) as EstadoBloques), hechas: e.hechas + 1 }, pesos), reps), rir);
+  return conRir(conReps(conPesos({ ...(sinRirAhora(sinMarca(e)) as EstadoBloques), hechas: e.hechas + 1 }, pesos), reps), rir);
 }
 
 /** Corregir de menos. Nunca baja de cero ni toca los bloques ya cerrados. */
@@ -464,7 +465,8 @@ export function siguiente(e: EstadoBloques): EstadoBloques {
   return conRir(
     conReps(
       // La distancia es de esa vuelta: el bloque que sigue arranca sin.
-      conPesos({ ...(sinDistancia(sinRirAhora(sinRepsAhora(sinCardio(e)))) as EstadoBloques), cerrados: [...e.cerrados, b].slice(-TOPE_BLOQUES), hechas: 0 }, []),
+      // Las repeticiones escritas se quedan, como el peso: el bloque que sigue es del mismo ejercicio.
+      conPesos({ ...(sinDistancia(sinRirAhora(sinCardio(e))) as EstadoBloques), cerrados: [...e.cerrados, b].slice(-TOPE_BLOQUES), hechas: 0 }, []),
       []
     ),
     []
@@ -487,7 +489,7 @@ export function siguiente(e: EstadoBloques): EstadoBloques {
 export function terminarBloque(e: EstadoBloques): EstadoBloques {
   const cerradoB = siguiente(e);
   if (cerradoB === e) return e; // nada hecho: no se cierra un bloque vacío
-  return { ...(sinDistancia(sinCardio(sinMinutos(sinCarga(sinPeso(cerradoB))))) as EstadoBloques), ejercicio: null };
+  return { ...(sinRepsAhora(sinDistancia(sinCardio(sinMinutos(sinCarga(sinPeso(cerradoB)))))) as EstadoBloques), ejercicio: null };
 }
 
 /**
@@ -501,7 +503,8 @@ export function cambiarEjercicio(e: EstadoBloques, id: string | null): EstadoBlo
   // de press de banca, y arrastrarlos anotaría series con un número falso. El
   // modo tampoco: las zancadas con mancuernas no dicen nada del press.
   // Elegido por la persona: ya no es lo sembrado.
-  const { sembrado: _s, ...elegido } = sinDistancia(sinCardio(sinMinutos(sinCarga(sinPeso(siguiente(e)))))) as EstadoBloques;
+  // Las repeticiones tampoco: son de ese ejercicio.
+  const { sembrado: _s, ...elegido } = sinRepsAhora(sinDistancia(sinCardio(sinMinutos(sinCarga(sinPeso(siguiente(e))))))) as EstadoBloques;
   return { ...elegido, ejercicio: id };
 }
 

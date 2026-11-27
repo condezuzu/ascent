@@ -90,6 +90,8 @@ export const REQUIERE = {
   invitarAlGrupo: 98,
   /** El RIR de cada serie (`rir` en los bloques), con «Registrar RIR» prendido. */
   rirPorSerie: 102,
+  /** «Registrar el día» guarda lo del último entrenamiento de esa rutina (`anotar_entrenamiento_copiado`, `copiada`). */
+  diaConLoDeLaRutina: 103,
 } as const;
 
 export type Funcion = keyof typeof REQUIERE;

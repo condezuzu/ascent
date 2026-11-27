@@ -249,3 +249,21 @@ export function nombreNuevo(existentes: string[], base: string): string {
     if (!existentes.includes(nombre)) return nombre;
   }
 }
+
+/** Una sesión de antes, como la lee «Registrar el día» (26/11). */
+export type SesionParaCopiar = { fecha: string; bloques: readonly { ejercicio?: string | null; series?: number }[]; minutos: number | null };
+
+/**
+ * LO DEL ÚLTIMO ENTRENAMIENTO DE ESA RUTINA (26/11, a pedido): al registrar solo el día, la última sesión de antes de
+ * hoy que fue de ese día de la rutina, o sea con la mitad o más de sus ejercicios en él. Sin ninguna, null.
+ */
+export function entrenamientoParaCopiar<S extends SesionParaCopiar>(sesiones: readonly S[], delDia: readonly string[], hoy: string): S | null {
+  const delDiaSet = new Set(delDia);
+  let elegida: S | null = null;
+  for (const s of sesiones) {
+    if (s.fecha >= hoy || (elegida && s.fecha <= elegida.fecha)) continue;
+    const ids = [...new Set(s.bloques.flatMap((b) => (b.ejercicio && (b.series ?? 0) > 0 ? [b.ejercicio] : [])))];
+    if (ids.length && ids.filter((id) => delDiaSet.has(id)).length * 2 >= ids.length) elegida = s;
+  }
+  return elegida;
+}

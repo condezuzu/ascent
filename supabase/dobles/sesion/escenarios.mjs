@@ -1562,8 +1562,8 @@ async function repsUltimaVez() {
 /**
  * `repsPorSerie` (21/10): con «Registrar repeticiones», las de cada serie. Ayer, press de
  * banca en dos bloques (10 y 9; después 8). Hoy: la pista de la serie que viene es la de esa
- * misma serie ayer; lo tecleado se anota con el + y el cuadradito queda vacío; una serie sin
- * teclear va sin repeticiones. `sin`: nunca se teclea nada, y a la base no llega la llave.
+ * misma serie ayer; lo tecleado se anota con el + y queda escrito (26/11): una serie sin teclear
+ * lleva las de la anterior. `sin`: nunca se teclea nada, y a la base no llega la llave.
  */
 async function repsPorSerie(modo = 'con') {
   servidor.version = 94;

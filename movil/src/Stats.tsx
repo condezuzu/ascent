@@ -177,7 +177,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
     const [{ data: perfil }, { data: logs }, { data: ses }, { data: cat }, { data: prs }, { data: ws }, vid] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', uid).single(),
       supabase.from('logs').select('*').eq('user_id', uid).order('fecha'),
-      supabase.from('sesiones').select('id, bloques, logs(fecha)').eq('user_id', uid),
+      supabase.from('sesiones').select('id, bloques, copiada, logs(fecha)').eq('user_id', uid),
       supabase.from('ejercicios').select('*'),
       // Solo las mías: la RLS también deja leer las de los amigos.
       supabase.from('prs').select('ejercicio, peso, reps, fecha').eq('user_id', uid),
