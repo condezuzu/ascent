@@ -33,7 +33,8 @@ try {
     const t0 = performance.now();
     const mirar = () => {
       const capa = document.querySelector('[data-testid="entrada-de-la-app"]');
-      const trazo = capa?.querySelector('path[stroke-dasharray]');
+      // El del aro, por su largo: desde la D (28/11) hay otros trazos que se dibujan, el borde del eclipse.
+      const trazo = [...(capa?.querySelectorAll('path[stroke-dasharray]') ?? [])].find((p) => parseFloat(p.getAttribute('stroke-dasharray')) > 100);
       const fuera = [...document.querySelectorAll('[data-testid]')].filter((e) => !capa || !capa.contains(e)).length;
       const texto = (document.body?.innerText ?? '').trim().length;
       linea.push({ t: Math.round(performance.now() - t0), capa: !!capa, trazo: trazo ? Number(trazo.getAttribute('stroke-dashoffset')) : null, fuera, texto });

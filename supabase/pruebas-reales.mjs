@@ -187,6 +187,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'el + no se va de debajo del dedo', archivo: 'probar-mas-quieto.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'registrar el día con lo de la rutina', archivo: 'probar-dia-con-rutina.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'la lista de hoy, al día y donde estás', archivo: 'probar-lista-de-hoy.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'la entrada: el cuerpo aterriza en su lugar de Inicio', archivo: 'probar-entrada-d.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {
