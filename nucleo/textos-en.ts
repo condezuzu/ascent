@@ -811,6 +811,7 @@ export const EN: Textos = {
     diaN: (n: number) => `day ${n}`,
     laEscalera: 'Ranks',
     acaEstas: 'you are here',
+    descargaste: (dia: number, mes: string, anio: number) => `You downloaded Ascent on ${mes} ${dia}, ${anio}`,
   },
   volumen: {
     titulo: 'Sets per muscle',
