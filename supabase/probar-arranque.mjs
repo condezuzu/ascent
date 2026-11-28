@@ -56,7 +56,9 @@ try {
     const t0 = performance.now();
     const mirar = () => {
       const capa = document.querySelector('[data-testid="entrada-de-la-app"]');
-      const opacidad = capa ? Number(getComputedStyle(capa).opacity) : 0;
+      const negro = document.querySelector('[data-testid="entrada-negro"]');
+      // En la entrada D (28/11) la capa queda y lo que se apaga es su negro, mientras el cuerpo viaja.
+      const opacidad = capa ? Math.min(Number(getComputedStyle(capa).opacity), negro ? Number(getComputedStyle(negro).opacity) : 1) : 0;
       const inicio = !!document.querySelector('[data-testid="pantalla-inicio"]');
       const rueda = !!document.querySelector('[role="progressbar"]');
       const motor = !!document.querySelector('canvas');

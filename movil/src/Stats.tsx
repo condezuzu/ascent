@@ -81,6 +81,8 @@ type Datos = {
   /** Los días faltados desde el alta (28/10); null sin la migración 97. */
   faltados: number | null;
   sexo: string | null;
+  /** El día que se creó la cuenta, para el pie (27/11). */
+  alta: string | null;
 };
 
 /**
@@ -224,6 +226,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
           : null,
       usadas: (vu ?? []).map((v) => v.fecha as string),
       sexo: (perfil.sexo as string | null) ?? null,
+      alta: alta ? aISO(new Date(alta)) : null,
       faltados:
         eSem || !sem || !alta
           ? null
@@ -420,6 +423,7 @@ export default function Stats({ alSalir }: { alSalir: () => void }) {
           unidad={unidad}
           pesos={datos.pesajes}
           sexo={datos.sexo}
+          alta={datos.alta}
           alCambiar={cargar}
           calendario={<CalendarioDias paleta={pal} alCambiar={cargar} porRevisar={porRevisar} alRevisar={cargar} />}
           anoAbierto={anoAbierto}

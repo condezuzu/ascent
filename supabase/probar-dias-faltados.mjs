@@ -69,6 +69,31 @@ try {
   const rotulo = page.getByText(TX.stats.diasFaltados, { exact: true }).filter({ visible: true });
   const valor = (await rotulo.count()) ? await rotulo.first().locator('xpath=preceding-sibling::*[1]').innerText() : null;
   chequear('la cuarta celda son los días faltados aunque las vidas no estén al máximo (0: la cuenta es de hoy), y no hay ✓', [valor, await page.getByText('✓', { exact: true }).filter({ visible: true }).count()], ['0', 0]);
+
+  // LA FECHA DE DESCARGA, al pie (27/11). Con la cuenta de hoy, mostrar «hoy» también pasaría: después se le
+  // cambia el alta guardada por el 3/3 a la 1:30 UTC, que en Montevideo todavía es el 2.
+  const pie = page.getByTestId('stats-descargaste').filter({ visible: true }).first();
+  const [a, m, d] = dia(0).split('-').map(Number);
+  chequear('al pie de Stats, el día que se creó la cuenta (hoy)', await pie.innerText({ timeout: 30000 }), TX.stats.descargaste(d, TX.fechas.meses[m - 1], a));
+  const cambiadas = await page.evaluate(() => {
+    let n = 0;
+    for (const k of Object.keys(localStorage)) {
+      let v;
+      try { v = JSON.parse(localStorage.getItem(k)); } catch { continue; }
+      const u = v?.user ?? (k.endsWith('-user') ? v : null);
+      if (u?.created_at) { u.created_at = '2026-03-03T01:30:00.000Z'; localStorage.setItem(k, JSON.stringify(v)); n++; }
+    }
+    return n;
+  });
+  if (!cambiadas) throw new Error('no encontré la sesión guardada para cambiarle el alta');
+  // Con la sesión abierta, la pantalla de entrada no aparece: se va directo a la pestaña.
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 240000 });
+  await page.getByRole('tab', { name: /^Stats/ }).first().click({ timeout: 240000 });
+  await pie.waitFor({ timeout: 120000 });
+  await pie.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: join(SALIDA, 'stats-pie.png') });
+  chequear('con el alta del 3/3 a la 1:30 UTC, el 2 de marzo (la hora de acá, no la de UTC)', await pie.innerText(), TX.stats.descargaste(2, TX.fechas.meses[2], 2026));
 } catch (e) {
   fallos++;
   console.log('  FALLA ' + String(e).split('\n')[0].slice(0, 200));

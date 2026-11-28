@@ -48,11 +48,12 @@ export function demoraDeEntrada(i: number): number {
 export const VIAJE_DE_ESQUINA_MS = 620;
 
 /**
- * LA ENTRADA DE LA APP (20/10, la «rápida» de la galería): el aro del logo se dibuja,
- * destella el puntito y la cámara entra al centro. El contenido se monta recién al
- * empezar el zoom: montar el motor mientras el aro se dibuja lo trabaría.
+ * LA ENTRADA DE LA APP (28/11, la D de la galería 31): el aro se dibuja alrededor del planeta a
+ * contraluz y el punto se enciende; con los datos, `enciende` es lo que tarda el cuerpo en
+ * aparecer antes de viajar a Inicio (`viaje`), y `final` lo que tarda la foto en irse cuando
+ * debajo ya está el motor. `zoom` es la salida de antes, para cuando no hay cuerpo.
  */
-export const ENTRADA = { aro: 600, destello: 160, zoom: 360 } as const;
+export const ENTRADA = { aro: 520, punto: 420, destello: 160, enciende: 400, viaje: 700, final: 160, zoom: 360 } as const;
 
 /** Si la sesión no contestó cuando terminó el destello, se espera esto y se abre igual. */
 export const ENTRADA_ESPERA_MAX_MS = 2500;

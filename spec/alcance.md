@@ -401,8 +401,34 @@ humano.
     **no hay medallas de pasos**.
   - Medallas: muchas, con las que tienes, las que estás por ganar y las que faltan; se elige cuál se ve en el
     perfil; hay medallas de cada año, que salen del resumen. Las cinco por marca que ya existen siguen.
-  - Sin decidir: el «X % de la gente» (comparar con todas las cuentas pide una función en la base, y con pocas
-    cuentas el número baila) y qué medallas y con qué números.
+  - Decidido el 27/11 (galería 28 a 33, versión 45):
+    - **Todos los años, solo, sin publicar nada** (pedido el 27/11): el año sale de la fecha, no se escribe a
+      mano en ningún lado (textos, tarjeta de Novedades, aviso, la cinta de las medallas del año).
+    - **Aparece el 25/12 a las 00:00, hora del teléfono, y se va a los 15 días.** El primero cuenta desde que
+      se creó la cuenta; después, de Navidad a Navidad. Sin al menos 10 días entrenados no hay resumen, y una
+      lámina sin datos se saltea (pasos sin Apple Salud).
+    - 13 láminas. El «%» de pierna es la encuesta de Tonal (2023, 52 %), con la fuente abajo; no hay estadística
+      mundial seria de saltear pierna. Pasos sobre un mapa de la comparación (Tour de Francia, Camino…).
+    - Una sola lámina de amigos (más de 3): podio de fuerza con el top 3, puntos DOTS por ejercicio, días y
+      constancia de cada uno.
+    - Se llega desde la tarjeta de Novedades en Ajustes (galería 30) y desde un aviso arriba de Inicio que se
+      despliega 3,5 s (galería 33), una vez por día durante esos 15 días y hasta que se abre «Mi año».
+  - Medallas (galería 29): arriba fijo el nombre con tres lugares; tocar 1, 2 o 3 pone ahí la elegida (una
+    medalla en un solo lugar). Beta tester: cuentas creadas antes del 3/11. Tripulación: las cuentas que pase.
+  - La entrada de la app pasa a ser la D de la galería 31 (eclipse con tu cuerpo), decidido el 27/11.
+
+- **Dividir brazos** (pedido por el humano el 27/11/2026, entra por decisión suya; ya lo había pedido y
+  quedó atrás). En la lista de ejercicios, tren superior pasa a ser espalda, pecho y brazos, y adentro de
+  brazos van hombro, bíceps, tríceps y antebrazo. Ayuda a buscar un ejercicio de un músculo y al resumen del
+  año, que tiene que decir «Bíceps» o «Tríceps», no «Brazos». Toca `nucleo/ejercicios.ts` (`superior`,
+  `GRUPOS_PROPIOS`), `nucleo/medallas.ts` (zonas), `nucleo/semanaMuscular.ts` y `GrupoDelAnio` de
+  `nucleo/progresoCompartido.ts`, que es compartido con Moss: avisarle antes y copiar lo que decida. El
+  catálogo de la base y su `check` van por `src/lib/tipos.ts` (sección 33 de test:db). Los ejercicios de
+  antebrazo: cómo agruparlos, sin decidir.
+
+- **El agujero negro (rango 7), más realista** (27/11/2026, el humano): «me gustan los colores, pero se ve
+  poco realista»; lo quiere con la calidad del sol. **Propuesta aprobada el mismo día: la vista de costado** de la galería 32, con la luz calculada rayo por rayo; falta pasarla al motor
+  (`spec/motor-visual.md` §8).
 
 - **Reportar o esconder un ejercicio propio de un amigo** (decisión del humano,
   15/10/2026). Hoy los ejercicios propios los ven tus amigos (migración 76) y

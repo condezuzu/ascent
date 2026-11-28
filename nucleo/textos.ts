@@ -1284,6 +1284,8 @@ const ES = {
     diaN: (n: number) => `día ${n}`,
     laEscalera: 'Rangos',
     acaEstas: 'aquí estás',
+    // Al pie de Stats, muy chico (27/11, a pedido): es la fecha en que se creó la cuenta.
+    descargaste: (dia: number, mes: string, anio: number) => `Descargaste Ascent el ${dia} de ${mes} de ${anio}`,
   },
 
   // ---------------------------------------------------------------
