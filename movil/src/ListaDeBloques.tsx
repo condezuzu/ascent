@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import type { EstadoBloques } from '@nucleo/bloques';
 import type { Ejercicio } from '@nucleo/tipos';
 import type { Unidad } from '@nucleo/peso';
@@ -115,6 +115,14 @@ function ListaDeBloques({
   const yaHechos = new Set([...estado.cerrados.map((b) => b.ejercicio), estado.hechas > 0 ? estado.ejercicio : null]);
   const loQueSigue = deHoy.filter((e) => !yaHechos.has(e.ejercicio));
   const [editando, setEditando] = useState(false);
+  // LO RECIÉN HECHO, EN EL MEDIO (27/11, a pedido): «Terminar serie» abre esta lista, y con varios bloques el que se
+  // acababa de cerrar quedaba abajo, fuera de la vista. Es el bloque en curso si ya tiene series; si no, el último cerrado.
+  const [reciente, setReciente] = useState<{ y: number; alto: number } | null>(null);
+  const medirReciente = (e: LayoutChangeEvent) => {
+    const { y, height } = e.nativeEvent.layout;
+    setReciente((r) => (r && r.y === y && r.alto === height ? r : { y, alto: height }));
+  };
+  const ultimoCerrado = estado.hechas > 0 ? -1 : estado.cerrados.length - 1;
   // Mientras se arrastra un ejercicio para ordenarlo, la hoja no se desplaza.
   const [arrastrando, setArrastrando] = useState(false);
   const del = (id: string | null) => ejercicios.find((e) => e.id === id);
@@ -153,19 +161,35 @@ function ListaDeBloques({
 
   if (editando) {
     return (
-      <Hoja visible={visible} alCerrar={cerrar} desplazable={!arrastrando}>
+      <Hoja
+        visible={visible}
+        alCerrar={cerrar}
+        desplazable={!arrastrando}
+        pie={
+          <Tocable testID="editar-este-dia-listo" style={estilos.listo} onPress={() => setEditando(false)}>
+            <FondoOctogonal relleno={C.claro} luz={C.claro} />
+            <Text style={estilos.listoTexto}>{T.sesion.listo}</Text>
+          </Tocable>
+        }
+      >
         <Text style={estilos.titulo}>{T.sesion.listaEditarDia}</Text>
         <MiRutina visible soloElDia alArrastrar={setArrastrando} />
-        <Tocable testID="editar-este-dia-listo" style={estilos.listo} onPress={() => setEditando(false)}>
-          <FondoOctogonal relleno={C.claro} luz={C.claro} />
-          <Text style={estilos.listoTexto}>{T.sesion.listo}</Text>
-        </Tocable>
       </Hoja>
     );
   }
 
   return (
-    <Hoja visible={visible} alCerrar={cerrar}>
+    <Hoja
+      visible={visible}
+      alCerrar={cerrar}
+      alMedio={reciente}
+      pie={
+        <Tocable testID="lista-listo" style={estilos.listo} onPress={cerrar}>
+          <FondoOctogonal relleno={C.claro} luz={C.claro} />
+          <Text style={estilos.listoTexto}>{T.sesion.listo}</Text>
+        </Tocable>
+      }
+    >
       <Text style={estilos.titulo}>{T.sesion.listaTitulo}</Text>
 
       <Text style={estilos.seccion}>{T.sesion.listaHecho}</Text>
@@ -179,7 +203,7 @@ function ListaDeBloques({
             // POR SU ID, NO POR EL LUGAR (4/10). Con el lugar, quitar el bloque
             // de arriba le dejaba a la fila de abajo los campos del anterior:
             // un peso a medio teclear se anotaba en OTRO bloque.
-            <View key={clave} style={estilos.fila}>
+            <View key={clave} style={estilos.fila} {...(i === ultimoCerrado ? { testID: 'lista-reciente', onLayout: medirReciente } : null)}>
               <View style={estilos.filaArriba}>
                 <View style={estilos.izquierda}>
                   <View style={[estilos.punto, estilos.puntoHecho]} />
@@ -224,7 +248,7 @@ function ListaDeBloques({
           })}
 
           {estado.hechas > 0 && (
-            <View style={estilos.fila}>
+            <View style={estilos.fila} testID="lista-reciente" onLayout={medirReciente}>
               <View style={estilos.filaArriba}>
                 <View style={estilos.izquierda}>
                   <View style={[estilos.punto, estilos.puntoEnCurso]} />
@@ -260,10 +284,6 @@ function ListaDeBloques({
         )}
       </View>
 
-      <Tocable style={estilos.listo} onPress={cerrar}>
-<FondoOctogonal relleno={C.claro} luz={C.claro} />
-        <Text style={estilos.listoTexto}>{T.sesion.listo}</Text>
-      </Tocable>
       {cambiando !== null && estado.cerrados[cambiando] && (
         <SelectorEjercicio
           visible
@@ -317,6 +337,6 @@ const estilos = conTema(() => StyleSheet.create({
   botonTexto: { color: C.tinta, fontSize: 14 },
   // Debajo del nombre, no del punto.
   pesos: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 14, marginTop: 6, marginLeft: 15 },
-  listo: { paddingVertical: 14, alignItems: 'center', marginTop: 18 },
+  listo: { paddingVertical: 14, alignItems: 'center' },
   listoTexto: { color: C.fondo, fontSize: 15, fontWeight: '600' },
 }));

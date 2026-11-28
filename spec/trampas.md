@@ -1445,6 +1445,27 @@ su prueba (`rutinaConElDiaHecho`, sección 332). Una pantalla que se queda monta
 escucha lo que se guarda en otro lado (`RUTINA_CAMBIO`), sin volver a pedir lo que
 guarda ella misma. `probar-rutina-nueva` lo recorre como él.
 
+## Una lectura que salió antes llega después del guardado (lo contó el dueño, 27/11/2026)
+
+«Cambia la rutina, pero cuando vuelvo a entrar a la lista sigue estando la vieja.» Dos
+caminos, el mismo origen —una copia que no se entera de lo que se acaba de guardar—:
+
+- **La copia del teléfono.** «Editar este día» abre dibujado con lo precargado y se toca
+  enseguida, con la lectura que salió al abrirlo todavía en viaje. Con la red del gimnasio
+  esa lectura (que leyó la rutina de antes) llegaba DESPUÉS del guardado, y
+  `cargarMisRutinas` la escribía en el teléfono: «Lo que sigue» volvía a la vieja.
+- **Lo precargado** (`rutinaPrecargada`). Nadie le avisaba de lo guardado: el editor
+  volvía a abrir con la rutina de antes, y tocar algo ahí guardaba ESA encima. El cambio
+  anterior se perdía de la base (en la sonda, la sentadilla quitada volvió).
+
+**Regla:** una lectura nunca pisa un guardado más nuevo. Lo que guarda cuenta
+(`guardados`), y la lectura que se cruzó con un guardado no se usa: se pide de nuevo. Una
+copia que alimenta el estado inicial de una pantalla escucha lo que se guarda
+(`RUTINA_CAMBIO` lleva la rutina guardada). Sección 348 de `test:db`, con una base de
+mentira que contesta tarde, y `probar-lista-de-hoy`, con `mis_rutinas` a 4 s.
+**Sin tocar:** dos guardados seguidos de la misma rutina viajan a la vez y gana el último
+que llega al servidor, que casi siempre es el último que salió. No se vio fallar.
+
 ## Tests / proceso
 
 **La consulta que se le pasa al humano se corre antes de pasarla.** El 7/10 se
