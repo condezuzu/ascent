@@ -414,7 +414,7 @@ humano.
   antebrazo: cómo agruparlos, sin decidir.
 
 - **El agujero negro (rango 7), más realista** (27/11/2026, el humano): «me gustan los colores, pero se ve
-  poco realista»; lo quiere con la calidad del sol. Primero la propuesta en la galería; después, el motor
+  poco realista»; lo quiere con la calidad del sol. **Propuesta aprobada el mismo día: la vista de costado** de la galería 32, con la luz calculada rayo por rayo; falta pasarla al motor
   (`spec/motor-visual.md` §8).
 
 - **Reportar o esconder un ejercicio propio de un amigo** (decisión del humano,
