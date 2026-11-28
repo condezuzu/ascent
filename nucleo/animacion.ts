@@ -48,12 +48,12 @@ export function demoraDeEntrada(i: number): number {
 export const VIAJE_DE_ESQUINA_MS = 620;
 
 /**
- * LA ENTRADA DE LA APP (28/11, la D de la galería 31): el aro se dibuja alrededor del planeta a
- * contraluz y el punto se enciende; con los datos, `enciende` es lo que tarda el cuerpo en
- * aparecer antes de viajar a Inicio (`viaje`), y `final` lo que tarda la foto en irse cuando
- * debajo ya está el motor. `zoom` es la salida de antes, para cuando no hay cuerpo.
+ * LA ENTRADA DE LA APP (28/11, la D de la galería, con la luz del chat de modelos): `eclipse` es
+ * desde cuándo pueden entrar los datos (el diamante ya encendido). Con los datos, `enciende` es
+ * cuándo termina el eclipse y aparece el cuerpo, `salida` cuándo empieza su `viaje` a Inicio, y
+ * `final` lo que tarda la foto en irse con el motor ya debajo. `zoom`, la salida sin cuerpo.
  */
-export const ENTRADA = { aro: 520, punto: 420, destello: 160, enciende: 400, viaje: 700, final: 160, zoom: 360 } as const;
+export const ENTRADA = { aro: 520, eclipse: 1250, enciende: 260, salida: 600, viaje: 700, final: 160, zoom: 360 } as const;
 
 /** Si la sesión no contestó cuando terminó el destello, se espera esto y se abre igual. */
 export const ENTRADA_ESPERA_MAX_MS = 2500;
