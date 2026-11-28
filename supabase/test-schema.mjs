@@ -20282,6 +20282,14 @@ console.log('\n284. La entrada de la app: el aro del logo, el destello y el zoom
     /Animated\.timing\(zoom, \{[^}]*useNativeDriver: true,/.test(en),
     /if \(fase !== 'esperando' \|\| !\(lista \|\| vencida\)\) return;/.test(en),
   ], [true, true, true]);
+  // La D (28/11): con cuerpo, viaja a su lugar de Inicio (altura «alta», la del pedido del arranque) con el
+  // driver nativo, y la foto se arma del tamaño de Inicio y arranca achicada (agrandada desde chica, borrosa).
+  chequear('la entrada D: viaja con el driver nativo a la altura de Inicio, y la foto arranca achicada', [
+    /Animated\.timing\(viaje, \{[^}]*useNativeDriver: true/.test(en),
+    /cuerpoEn\(cuerpo\.rango, cuerpo\.planeta, 'alta'\)/.test(en),
+    /outputRange: \[1 \/ S, 1\]/.test(en),
+    /setCuerpoDeLaEntrada\(cuerpoDe\(d\.inicio\.datos\.perfil\.racha_actual\)\)/.test(lay),
+  ], [true, true, true, true]);
 }
 console.log('\n285. Anotar el peso: el número grande, − y + y la regla (20/10, la B de la galería)');
 {

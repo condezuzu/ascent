@@ -4,7 +4,7 @@ import { subioLoDeLaSesion } from '@compartido/antesDePreguntar';
 import { Pressable, StyleSheet, View, Animated } from 'react-native';
 import { supabase } from './supabase';
 import { T } from '@nucleo/textos';
-import { deISO, fechaLinda, hoyISO, restarDias } from '@nucleo/fechas';
+import { deISO, fechaLinda, hoyISO, MESES, restarDias } from '@nucleo/fechas';
 import { aKilos, conComa, deKilos, limites, type Unidad } from '@nucleo/peso';
 import { RANGOS, rangoDeRacha } from '@nucleo/rangos';
 import { paletaDe } from '@nucleo/paletas';
@@ -96,6 +96,7 @@ export default function StatsGeneral({
   unidad,
   pesos,
   sexo,
+  alta,
   alCambiar,
   calendario,
   anoAbierto = false,
@@ -107,6 +108,7 @@ export default function StatsGeneral({
   unidad: Unidad;
   sexo: string | null;
   pesos: PesoAnotado[];
+  alta?: string | null;
   alCambiar: () => void;
   /** El calendario del mes, para corregir días: se abre con el botón de debajo del año. */
   calendario?: React.ReactNode;
@@ -297,6 +299,7 @@ export default function StatsGeneral({
           );
         })}
       </View>
+      {alta && <Text testID="stats-descargaste" style={estilos.descargaste}>{T.stats.descargaste(deISO(alta).getDate(), MESES[deISO(alta).getMonth()], deISO(alta).getFullYear())}</Text>}
     </View>
   );
 }
@@ -423,6 +426,7 @@ const estilos = conTema(() => StyleSheet.create({
   et: { ...R.etiqueta },
   puntos: { flexDirection: 'row', gap: 8 },
   nota: { ...R.nota, marginTop: 6  },
+  descargaste: { color: C.apagado, fontSize: 11, textAlign: 'center', marginTop: 28, fontFamily: L.dato },
   dosNumeros: { flexDirection: 'row', gap: 12 },
   numero: { flex: 1 },
   valor: { color: C.tinta, fontSize: 24, fontWeight: '300', fontFamily: L.dato, letterSpacing: -0.8 },

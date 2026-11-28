@@ -104,6 +104,7 @@ export default function Layout() {
   const [entrada, setEntrada] = useState<'logo' | 'abriendo' | 'fin'>('logo');
   const abierta = entrada === 'fin';
   const [datosListos, setDatosListos] = useState(false);
+  const [cuerpoDeLaEntrada, setCuerpoDeLaEntrada] = useState<{ rango: number; planeta: string | null } | null>(null);
   // La entrada espera a las letras: si no, el zoom termina y todo cambia de fuente a la vista.
   const [letrasListas, setLetrasListas] = useState(false);
   useEffect(() => {
@@ -195,6 +196,8 @@ export default function Layout() {
         // se pide lo mismo debajo del logo; Inicio lo pisa al montarse y este se suelta al final.
         if (vivo && d?.inicio.tipo === 'listo' && d.inicio.datos.perfil) {
           pedirFondo(FONDO_DEL_ARRANQUE, { ...cuerpoDe(d.inicio.datos.perfil.racha_actual), esquina: 'abajo-derecha', lecturaMedia: true, atmosfera: true });
+          // La entrada lleva ese mismo cuerpo hasta su lugar: el que el motor está armando abajo (28/11).
+          setCuerpoDeLaEntrada(cuerpoDe(d.inicio.datos.perfil.racha_actual));
         }
       })
       .catch(() => null)
@@ -427,7 +430,7 @@ export default function Layout() {
       </View>
       {/* Fuera de la llave del idioma: cambiarlo en medio no la vuelve a empezar. */}
       {entrada !== 'fin' && (
-        <EntradaDeLaApp lista={letrasListas && sesion !== 'mirando' && (sesion !== 'con' || datosListos)} alAbrir={abrir} alTerminar={terminarEntrada} />
+        <EntradaDeLaApp lista={letrasListas && sesion !== 'mirando' && (sesion !== 'con' || datosListos)} cuerpo={cuerpoDeLaEntrada} alAbrir={abrir} alTerminar={terminarEntrada} />
       )}
       </ProveedorDeSesion>
     </Raiz>
