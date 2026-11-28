@@ -23,9 +23,8 @@ const ARCO = arcoDelLogo();
 const PUNTO = puntoDelLogo();
 const enPt = (u: number) => LADO / 2 + u * ESCALA;
 const PLANETA = LOGO.planeta * ESCALA;
-// El borde del planeta del lado del punto, en dos mitades que salen de -38° hacia los dos lados.
-const LIMBO = ['M20.49 -16.01A26 26 0 0 1 24.11 9.74', 'M20.49 -16.01A26 26 0 0 0 -3.62 -25.75'];
-const MEDIO_LIMBO = 27.3;
+// Hacia el punto (-38°): de ese lado viene la luz del eclipse.
+const HACIA = { x: Math.cos((-38 * Math.PI) / 180), y: Math.sin((-38 * Math.PI) / 180) };
 const PERLA = '#eef1f8';
 const GRIS_ARO = '#c9ccd6';
 // nucleo/horizonte.ts mide en esta pantalla; el motor estira x con el ancho y y y el radio con el alto.
@@ -49,11 +48,11 @@ type Cuerpo = { rango: number; planeta: string | null };
  * `alAbrir` llega al empezar la salida; la app recién se monta con `alTerminar` (ver _layout).
  */
 export default function EntradaDeLaApp({ lista, cuerpo, alAbrir, alTerminar }: { lista: boolean; cuerpo: Cuerpo | null; alAbrir: () => void; alTerminar: () => void }) {
-  // Lo que se anima con el hilo de JS: los trazos y los colores, que el driver nativo no mueve.
+  // Lo que se anima con el hilo de JS: el trazo y los colores, que el driver nativo no mueve.
   const aro = useRef(new Animated.Value(0)).current;
-  const limbo = useRef(new Animated.Value(0)).current;
   const tinte = useRef(new Animated.Value(0)).current;
   // Y con el nativo, todo lo demás: así no se traba cuando el teléfono está ocupado.
+  const limbo = useRef(new Animated.Value(0)).current;
   const silueta = useRef(new Animated.Value(0)).current;
   const perla = useRef(new Animated.Value(0)).current;
   const punto = useRef(new Animated.Value(0)).current;
@@ -84,7 +83,7 @@ export default function EntradaDeLaApp({ lista, cuerpo, alAbrir, alTerminar }: {
         Animated.parallel([
           Animated.timing(aro, { toValue: 1, duration: ENTRADA.aro, easing: DIBUJA, useNativeDriver: false }),
           Animated.timing(silueta, { toValue: 1, duration: 300, useNativeDriver: true }),
-          despues(280, Animated.timing(limbo, { toValue: 1, duration: 480, easing: DIBUJA, useNativeDriver: false })),
+          despues(280, Animated.timing(limbo, { toValue: 1, duration: 560, easing: Easing.out(Easing.quad), useNativeDriver: true })),
           despues(420, Animated.timing(perla, { toValue: 1, duration: 580, easing: LLEGA, useNativeDriver: true })),
           despues(ENTRADA.aro, Animated.parallel([
             Animated.timing(punto, { toValue: 1, duration: ENTRADA.punto, easing: LLEGA, useNativeDriver: true }),
@@ -216,6 +215,27 @@ export default function EntradaDeLaApp({ lista, cuerpo, alAbrir, alTerminar }: {
             </Animated.View>
           </Animated.View>
 
+          {/* LA LUZ DEL ECLIPSE (28/11: «tiene que ser luz, no geométrica»). Degradés corridos hacia el punto, detrás
+              del planeta: asoman como una medialuna del lado de la luz y se apagan solos hacia el otro. Se van con la
+              sombra; corridos, con el cuerpo encendido caerían adentro de él. */}
+          <Animated.View style={[StyleSheet.absoluteFill, { opacity: limbo }]}>
+            <Animated.View style={[StyleSheet.absoluteFill, { opacity: opacidad(enciende, [0, 0.62], [1, 0]) }]}>
+              <Luz id="haloPerla" r={46} corrido={8} paradas={[[0, PERLA, 0], [0.5, PERLA, 0], [0.58, PERLA, 0.42], [0.72, '#cfd6e6', 0.14], [1, '#cfd6e6', 0]]} />
+              {/* Un borde finito y tenue que da la vuelta entera: sin él, el lado sin luz se funde con el negro y el planeta
+                  se lee ovalado. */}
+              <Luz id="bordeParejo" r={30.5} corrido={0} paradas={[[0, '#f4f6fb', 0], [0.83, '#f4f6fb', 0], [0.855, '#f4f6fb', 0.4], [0.9, '#cfd6e6', 0.1], [1, '#cfd6e6', 0]]} />
+              <Luz id="bordePerla" r={30.5} corrido={4.5} paradas={[[0, '#f4f6fb', 0], [0.8, '#f4f6fb', 0], [0.855, '#f4f6fb', 0.95], [0.9, '#cfd6e6', 0.35], [0.95, '#cfd6e6', 0.08], [1, '#cfd6e6', 0]]} />
+            </Animated.View>
+          </Animated.View>
+          {/* Encendido, el cuerpo lleva su resplandor parejo, del borde para afuera. */}
+          {pal && (
+            <Animated.View style={[StyleSheet.absoluteFill, { opacity: opacidad(viaje, [0, 0.37], [1, 0]) }]}>
+              <Animated.View style={[StyleSheet.absoluteFill, { opacity: tinte }]}>
+                <Luz id="haloColor" r={46} corrido={0} paradas={[[0, pal.claro, 0], [0.565, pal.claro, 0], [0.6, pal.claro, 0.35], [0.75, pal.principal, 0.12], [1, pal.principal, 0]]} />
+              </Animated.View>
+            </Animated.View>
+          )}
+
           {/* El planeta a contraluz: tapa el cuerpo hasta que se enciende. */}
           <Animated.View style={[StyleSheet.absoluteFill, { opacity: silueta }]}>
             <Animated.View style={[StyleSheet.absoluteFill, { opacity: opacidad(enciende, [0, 0.62], [1, 0]) }]}>
@@ -223,27 +243,6 @@ export default function EntradaDeLaApp({ lista, cuerpo, alAbrir, alTerminar }: {
                 <Circle r={LOGO.planeta} fill="#05060b" stroke="rgba(255,255,255,0.07)" strokeWidth={0.6} />
               </Svg>
             </Animated.View>
-          </Animated.View>
-
-          {/* El borde de luz del lado del punto, que sale del medio hacia los dos lados. */}
-          <Animated.View style={[StyleSheet.absoluteFill, { opacity: opacidad(enciende, [0.19, 0.69], [1, 0]) }]}>
-            <Svg width={LADO} height={LADO} viewBox="-60 -60 120 120">
-              {LIMBO.map((d, i) =>
-                [7, 1.8].map((ancho) => (
-                  <PathAnimado
-                    key={`${i}-${ancho}`}
-                    d={d}
-                    fill="none"
-                    stroke={tinte.interpolate({ inputRange: [0, 1], outputRange: [PERLA, claro] })}
-                    strokeOpacity={ancho > 2 ? 0.28 : 1}
-                    strokeWidth={ancho}
-                    strokeLinecap="round"
-                    strokeDasharray={[MEDIO_LIMBO, MEDIO_LIMBO]}
-                    strokeDashoffset={limbo.interpolate({ inputRange: [0, 1], outputRange: [MEDIO_LIMBO, 0] })}
-                  />
-                )),
-              )}
-            </Svg>
           </Animated.View>
 
           <Animated.View style={[StyleSheet.absoluteFill, { opacity: opacidad(viaje, [0, 0.34], [1, 0]) }]}>
@@ -333,21 +332,36 @@ export default function EntradaDeLaApp({ lista, cuerpo, alAbrir, alTerminar }: {
   );
 }
 
-/** La corona del eclipse: un anillo de luz pegado al borde del planeta, transparente adentro. */
+/** La corona del eclipse: una bruma tenue alrededor del planeta, transparente adentro (un aro se veía geométrico). */
 function Corona({ id, colores: [borde, medio, afuera] }: { id: string; colores: [string, string, string] }) {
   return (
     <Svg width={LADO} height={LADO} viewBox="-60 -60 120 120">
       <Defs>
         <RadialGradient id={id} cx="50%" cy="50%" r="50%">
           <Stop offset="0" stopColor={medio} stopOpacity={0} />
-          <Stop offset="0.5" stopColor={medio} stopOpacity={0} />
-          <Stop offset="0.585" stopColor={borde} stopOpacity={1} />
-          <Stop offset="0.66" stopColor={medio} stopOpacity={0.5} />
-          <Stop offset="0.8" stopColor={medio} stopOpacity={0.15} />
+          <Stop offset="0.55" stopColor={medio} stopOpacity={0} />
+          <Stop offset="0.64" stopColor={borde} stopOpacity={0.16} />
+          <Stop offset="0.8" stopColor={medio} stopOpacity={0.07} />
           <Stop offset="1" stopColor={afuera} stopOpacity={0} />
         </RadialGradient>
       </Defs>
       <Circle r={46} fill={`url(#${id})`} />
+    </Svg>
+  );
+}
+
+/** Una luz: un degradé radial en un círculo de radio `r`, corrido `corrido` unidades hacia el punto. */
+function Luz({ id, r, corrido, paradas }: { id: string; r: number; corrido: number; paradas: [number, string, number][] }) {
+  return (
+    <Svg width={LADO} height={LADO} viewBox="-60 -60 120 120" style={StyleSheet.absoluteFill}>
+      <Defs>
+        <RadialGradient id={id} cx="50%" cy="50%" r="50%">
+          {paradas.map(([o, c, a]) => (
+            <Stop key={o} offset={String(o)} stopColor={c} stopOpacity={a} />
+          ))}
+        </RadialGradient>
+      </Defs>
+      <Circle cx={HACIA.x * corrido} cy={HACIA.y * corrido} r={r} fill={`url(#${id})`} />
     </Svg>
   );
 }
