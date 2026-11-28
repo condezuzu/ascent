@@ -39,9 +39,16 @@ export async function catalogoDeRutina(supabase: Cliente): Promise<CatalogoDeRut
 // señal. Es de UNA cuenta: con otra en el mismo teléfono no se lee.
 const CLAVE_ACTIVA = 'ascent:rutina-activa';
 
-async function guardarActiva(rutinas: Rutina[]) {
+// UNA LECTURA NO PISA UN GUARDADO MÁS NUEVO (27/11, bug del dueño: «cambia la rutina, pero la lista sigue con la
+// vieja»). «Editar este día» se toca con la lectura que salió al abrirlo todavía en viaje: con la red del gimnasio
+// llegaba después del cambio y dejaba en el teléfono la rutina de antes. Cada guardado cuenta acá; la lectura que se
+// cruzó con uno no se usa.
+let guardados = 0;
+
+/** `leidaCon`: los guardados que había cuando salió la lectura que trae esto. Si después hubo otro, no se escribe. */
+async function guardarActiva(rutinas: Rutina[], leidaCon?: number) {
   const de = (await leerPerfilCache())?.id;
-  if (!de) return;
+  if (!de || (leidaCon !== undefined && leidaCon !== guardados)) return;
   const activa = rutinas.find((r) => r.activa) ?? null;
   await plataforma.almacenamiento.guardar(CLAVE_ACTIVA, JSON.stringify({ de, id: activa?.id ?? null, dias: activa?.dias ?? null })).catch(() => undefined);
 }
@@ -71,16 +78,21 @@ export async function rutinaActivaDelTelefono(): Promise<{ dias: DiaDeSemana[] }
 /** Mis rutinas, o `null` si no se pudo (o la base todavía no las tiene). */
 export async function cargarMisRutinas(supabase: Cliente): Promise<Rutina[] | null> {
   if (!disponible('rutinas', await versionDelEsquema(supabase).catch(() => null))) return null;
-  const { data, error } = await supabase.rpc('mis_rutinas');
-  if (error || !Array.isArray(data)) return null;
-  const rutinas = (data as { id: string; nombre: string; activa: boolean; dias: unknown }[]).map((r) => ({
-    id: r.id,
-    nombre: r.nombre,
-    activa: r.activa === true,
-    dias: diasLimpios(r.dias),
-  }));
-  await guardarActiva(rutinas);
-  return rutinas;
+  for (;;) {
+    const antes = guardados;
+    const { data, error } = await supabase.rpc('mis_rutinas');
+    if (error || !Array.isArray(data)) return null;
+    // Se guardó una mientras esta viajaba: puede traer la de antes. Se pide de nuevo.
+    if (guardados !== antes) continue;
+    const rutinas = (data as { id: string; nombre: string; activa: boolean; dias: unknown }[]).map((r) => ({
+      id: r.id,
+      nombre: r.nombre,
+      activa: r.activa === true,
+      dias: diasLimpios(r.dias),
+    }));
+    await guardarActiva(rutinas, antes);
+    return rutinas;
+  }
 }
 
 /** Sin `id` crea una nueva. Devuelve el id, o `null` si no se guardó. */
@@ -88,10 +100,12 @@ export async function guardarRutina(supabase: Cliente, r: { id: string | null; n
   if (!disponible('rutinas', await versionDelEsquema(supabase).catch(() => null))) return null;
   const { data, error } = await supabase.rpc('guardar_rutina', { p_id: r.id, p_nombre: r.nombre, p_dias: r.dias });
   if (error || typeof data !== 'string') return null;
+  guardados++;
   // LA SESIÓN ARRANCA CON LA COPIA DEL TELÉFONO (cacería del 15/10): editar la activa
   // sin pisarla acá hacía que el primer entrenamiento propusiera la de antes.
   if (r.activa) await guardarActiva([{ id: data, nombre: r.nombre, activa: true, dias: r.dias }]);
-  eventos.emitir(RUTINA_CAMBIO);
+  // Con lo guardado: lo precargado lo anota sin volver a pedirlo (`rutinaPrecargada`).
+  eventos.emitir(RUTINA_CAMBIO, { id: data, nombre: r.nombre, dias: r.dias });
   return data;
 }
 
@@ -100,6 +114,7 @@ export async function guardarRutina(supabase: Cliente, r: { id: string | null; n
 export async function activarRutina(supabase: Cliente, id: string, dias?: DiaDeSemana[]): Promise<boolean> {
   if (!disponible('rutinas', await versionDelEsquema(supabase).catch(() => null))) return false;
   const ok = !(await supabase.rpc('activar_rutina', { p_id: id })).error;
+  if (ok) guardados++;
   if (ok && dias) await guardarActiva([{ id, nombre: '', activa: true, dias }]);
   if (ok) eventos.emitir(RUTINA_CAMBIO);
   return ok;
@@ -126,6 +141,7 @@ export async function copiarRutina(supabase: Cliente, nombre: string, dias: DiaD
 export async function borrarRutina(supabase: Cliente, id: string): Promise<boolean> {
   if (!disponible('rutinas', await versionDelEsquema(supabase).catch(() => null))) return false;
   const ok = !(await supabase.rpc('borrar_rutina', { p_id: id })).error;
+  if (ok) guardados++;
   // Si era la activa, la sesión ya no la puede proponer.
   if (ok && (await idDeLaActiva()) === id) await guardarActiva([]);
   if (ok) eventos.emitir(RUTINA_CAMBIO);

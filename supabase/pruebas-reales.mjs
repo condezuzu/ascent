@@ -113,6 +113,8 @@
 //      del dedo cuando la marca pregunta, y cuenta con el peso a medio escribir (23/11).
 //  51. probar-dia-con-rutina — registrar solo el día se lleva lo del último entrenamiento de esa rutina:
 //      una sesión de hoy, terminada y copiada, en la base real (26/11, migración 103).
+//  52. probar-lista-de-hoy — la lista de hoy al día después de «Editar este día», también con la lectura de
+//      las rutinas a 4 s (la red del gimnasio), y al abrirse sola: lo recién hecho en el medio y «Listo» fijo (27/11).
 //
 // NECESITA LOS DOS DEV SERVERS PRENDIDOS: la web en :3020 y la nativa en
 // :8090. No los levanta: compilar mientras otro dev server corre es justo lo
@@ -184,6 +186,7 @@ const PRUEBAS = [
   ...(soloApi ? [] : [{ nombre: 'la subida de rango que nadie vio', archivo: 'probar-subida-sin-ver.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'el + no se va de debajo del dedo', archivo: 'probar-mas-quieto.mjs', args: [], navegador: true }]),
   ...(soloApi ? [] : [{ nombre: 'registrar el día con lo de la rutina', archivo: 'probar-dia-con-rutina.mjs', args: [], navegador: true }]),
+  ...(soloApi ? [] : [{ nombre: 'la lista de hoy, al día y donde estás', archivo: 'probar-lista-de-hoy.mjs', args: [], navegador: true }]),
 ];
 
 if (!soloApi) {

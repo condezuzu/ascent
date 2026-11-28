@@ -15211,8 +15211,8 @@ console.log('\n195. Los bajos del 4/10: lo que se ve es lo que hay, y lo que se 
   const lista = de195('movil/src/ListaDeBloques.tsx');
   chequear('cerrar la lista confirma lo que quedó tecleado', [
     /const cerrar = \(\) => \{\s*sinConfirmar\.current\?\.\(\);\s*sinConfirmar\.current = null;\s*alCerrar\(\);\s*\};/.test(lista),
-    /<Hoja visible=\{visible\} alCerrar=\{cerrar\}>/.test(lista),
-    /style=\{estilos\.listo\} onPress=\{cerrar\}/.test(lista),
+    /<Hoja\s+visible=\{visible\}\s+alCerrar=\{cerrar\}\s+alMedio=\{reciente\}/.test(lista),
+    /<Tocable testID="lista-listo" style=\{estilos\.listo\} onPress=\{cerrar\}>/.test(lista),
     /alTeclear=\{\(confirmar\) => \{\s*sinConfirmar\.current = confirmar;/.test(lista),
     /alTeclear\?\.\(\(\) => ultima\.current\(\)\);/.test(campo) && /alTeclear\?\.\(null\);/.test(campo),
   ], [true, true, true, true, true]);
@@ -15327,7 +15327,7 @@ console.log('\n195. Los bajos del 4/10: lo que se ve es lo que hay, y lo que se 
 
   // ---- LA LISTA DE LO HECHO: un peso a medio teclear no cae en otro bloque ----
   chequear('las filas de la lista van por su id, y un campo que se va retira su confirmación', [
-    /<View key=\{clave\} style=\{estilos\.fila\}>/.test(lista),
+    /<View key=\{clave\} style=\{estilos\.fila\} \{\.\.\.\(i === ultimoCerrado \? \{ testID: 'lista-reciente', onLayout: medirReciente \} : null\)\}>/.test(lista),
     /<View key=\{i\} style=\{estilos\.fila\}>/.test(lista),
     /if \(tecleando\.current\) avisarQueSeVa\.current\?\.\(null\);/.test(campo),
   ], [true, false, true]);
@@ -18414,7 +18414,7 @@ console.log('\n229. La rutina: en Inicio, en su pantalla, y se ordena arrastrand
   ], [true, true, false, true]);
   chequear('el renglón se rearma cuando se guarda, activa o borra una rutina', [
     /eventos\.escuchar\(RUTINA_CAMBIO/.test(fila),
-    (de229('compartido', 'rutinas.ts').match(/eventos\.emitir\(RUTINA_CAMBIO\)/g) ?? []).length,
+    (de229('compartido', 'rutinas.ts').match(/eventos\.emitir\(RUTINA_CAMBIO[,)]/g) ?? []).length,
   ], [true, 3]);
   const arr = de229('movil', 'src', 'FilasArrastrables.tsx');
   chequear('arrastrar: el PanResponder nace una vez y lee las funciones de AHORA (si no, movería sobre la rutina vieja)', [
@@ -20939,7 +20939,7 @@ console.log('\n309. Subir el peso: la regla de la sección de Moss también en e
     /<Fantasma testID="lista-de-hoy" texto=\{T\.sesion\.verLista\} alTocar=\{\(\) => setLista\(true\)\} estilo=\{globoDelMasVisible \? estilos\.bajoElGlobo : undefined\} \/>/.test(blo309),
     /const loQueSigue = deHoy\.filter\(\(e\) => !yaHechos\.has\(e\.ejercicio\)\);/.test(lista309),
     /<Fantasma testID="editar-este-dia-abrir" texto=\{T\.sesion\.listaEditarDia\} alTocar=\{\(\) => setEditando\(true\)\} enHoja alinear="center" \/>/.test(lista309),
-    /<Hoja visible=\{visible\} alCerrar=\{cerrar\} desplazable=\{!arrastrando\}>\s*<Text style=\{estilos\.titulo\}>\{T\.sesion\.listaEditarDia\}<\/Text>\s*<MiRutina visible soloElDia alArrastrar=\{setArrastrando\} \/>/.test(lista309),
+    /desplazable=\{!arrastrando\}\s*pie=\{\s*<Tocable testID="editar-este-dia-listo" style=\{estilos\.listo\} onPress=\{\(\) => setEditando\(false\)\}>[\s\S]{0,260}?\}\s*>\s*<Text style=\{estilos\.titulo\}>\{T\.sesion\.listaEditarDia\}<\/Text>\s*<MiRutina visible soloElDia alArrastrar=\{setArrastrando\} \/>/.test(lista309),
     (await import('node:fs')).existsSync(join(aca179, '..', 'movil', 'src', 'HojaDeRutina.tsx')),
   ], [true, true, true, true, false]);
   chequear('el editor de un día: los siete días arriba, el de siempre abajo, sin copiar y pegar', [
@@ -22087,6 +22087,90 @@ console.log('\n346. «Registrar el día» se lleva lo del último entrenamiento 
     /sinRecuperar: musculosDeHoy\.filter\(\(m\) => musculos\.get\(m\)\?\.fatiga === 'cargado'\)/.test(sm346),
     [0, 1, 2, 3].map((d) => F346.estadoDeFatiga(d) === 'cargado'),
   ], [true, [false, false, true, true]]);
+}
+
+console.log('\n348. La rutina guardada no la pisa una lectura que salió antes, y lo precargado se entera (27/11, bug del dueño)');
+{
+  // Lo que contó: «cambia la rutina, pero cuando vuelvo a entrar a la lista sigue estando la vieja». Con la red del
+  // gimnasio, la lectura que sale al abrir «Editar este día» llega después del cambio. La sonda es `probar-lista-de-hoy`;
+  // acá, cada cruce por separado, con una base de mentira que guarda de verdad y contesta cuando se le abre la puerta.
+  const E348 = await import('../compartido/esquema.ts');
+  const RU348 = await import('../compartido/rutinas.ts');
+  const PR348 = await import('../compartido/rutinaPrecargada.ts');
+  const { guardarPerfilCache: perfil348 } = await import('../compartido/cache.ts');
+  const { memoria: mem348 } = await import('./dobles/plataforma.mjs');
+  const semana348 = (ids) => Array.from({ length: 7 }, () => ({ descanso: false, ejercicios: ids.map((ejercicio) => ({ ejercicio, series: 3 })) }));
+  const lunes348 = (r) => r?.dias[1].ejercicios.map((e) => e.ejercicio).join('+') ?? null;
+  const puerta348 = () => { let abrir; const espera = new Promise((ok) => (abrir = ok)); return { espera, abrir }; };
+  const pausa348 = () => new Promise((ok) => setTimeout(ok, 15));
+  const b = {
+    rutinas: [{ id: 'r1', nombre: 'Mía', activa: true, dias: semana348(['sentadilla', 'press_banca', 'fondos']) }],
+    lecturas: 0,
+    puertas: {},
+    auth: { getSession: async () => ({ data: { session: { user: { id: 'cuenta-348' } } }, error: null }) },
+    rpc: async (nombre, args) => {
+      if (nombre === 'version_del_esquema') return { data: 103, error: null };
+      // Lee lo que hay AL SALIR; la respuesta espera a que se abra la puerta.
+      const foto = JSON.parse(JSON.stringify(b.rutinas));
+      if (nombre === 'mis_rutinas') b.lecturas++;
+      if (nombre === 'guardar_rutina') {
+        const id = args.p_id ?? `r${b.rutinas.length + 1}`;
+        b.rutinas = args.p_id ? b.rutinas.map((r) => (r.id === id ? { ...r, nombre: args.p_nombre, dias: args.p_dias } : r)) : [...b.rutinas, { id, nombre: args.p_nombre, activa: false, dias: args.p_dias }];
+        return { data: id, error: null };
+      }
+      await b.puertas[nombre]?.espera;
+      if (nombre === 'mis_rutinas') return { data: foto, error: null };
+      if (nombre === 'rutina_activa_de') return { data: foto.find((r) => r.activa) ?? null, error: null };
+      return { data: null, error: null };
+    },
+    from: () => { const q = { select: () => q, eq: () => q, then: (a, c) => Promise.resolve({ data: [], error: null }).then(a, c) }; return q; },
+  };
+  await E348.versionDelEsquema(b, Date.now() + E348.VIGENCIA_MS * 90000);
+  await pausa348();
+  await perfil348({ id: 'cuenta-348', username: 'l' });
+  mem348.delete('ascent:rutina-activa');
+  const guardar348 = (ids) => RU348.guardarRutina(b, { id: 'r1', nombre: 'Mía', dias: semana348(ids), activa: true });
+  const enElTelefono348 = async () => lunes348(await RU348.rutinaActivaDelTelefono());
+
+  // 1. La lectura sale, se guarda un cambio, y recién después llega la lectura (con la rutina de antes).
+  b.puertas.mis_rutinas = puerta348();
+  const lectura = RU348.cargarMisRutinas(b);
+  await pausa348();
+  await guardar348(['press_banca', 'fondos']);
+  const trasGuardar = await enElTelefono348();
+  const primera = b.puertas.mis_rutinas;
+  b.puertas.mis_rutinas = undefined;
+  primera.abrir();
+  const leidas = await lectura;
+  chequear('la lectura que se cruzó con un guardado no se usa: se pide de nuevo, y el teléfono queda con la guardada', [
+    trasGuardar, b.lecturas, lunes348(leidas?.[0]), await enElTelefono348(),
+  ], ['press_banca+fondos', 2, 'press_banca+fondos', 'press_banca+fondos']);
+
+  // 2. Lo precargado: nace de una lectura, y lo que se guarda después queda anotado sin volver a pedir nada.
+  const antes348 = lunes348((await PR348.precargarRutina(b))?.mias?.[0]);
+  const lecturasAntes = b.lecturas;
+  await guardar348(['fondos']);
+  chequear('lo precargado anota la rutina que se guardó después, sin otra lectura: «Editar este día» abre con la nueva', [
+    antes348, lunes348(PR348.rutinaPrecargada()?.mias?.[0]), b.lecturas - lecturasAntes,
+  ], ['press_banca+fondos', 'fondos', 0]);
+
+  // 3. Una precarga en viaje que ya trajo las rutinas (le falta lo demás) cuando se guarda un cambio: no deja la vieja.
+  b.puertas.rutina_activa_de = puerta348();
+  const precarga = PR348.precargarRutina(b);
+  await pausa348();
+  await guardar348(['sentadilla']);
+  const segunda = b.puertas.rutina_activa_de;
+  b.puertas.rutina_activa_de = undefined;
+  segunda.abrir();
+  chequear('la precarga que se cruzó con un guardado se pide de nuevo: no deja la de antes', [
+    lunes348((await precarga)?.mias?.[0]), lunes348(PR348.rutinaPrecargada()?.mias?.[0]),
+  ], ['sentadilla', 'sentadilla']);
+
+  // 4. Una rutina que lo precargado no tiene (una nueva): no se adivina si quedó activa. Se olvida y se pide de nuevo.
+  await RU348.guardarRutina(b, { id: null, nombre: 'Otra', dias: semana348(['jalon']) });
+  chequear('una rutina nueva no se anota a ciegas: lo precargado se olvida', PR348.rutinaPrecargada(), null);
+  mem348.delete('ascent:rutina-activa');
+  PR348.olvidarRutinaPrecargada();
 }
 
 console.log('\n332. «Crear rutina nueva» guarda el día como se entrenó: orden, series y sin lo que no se hizo (6/11, bug del gimnasio)');
