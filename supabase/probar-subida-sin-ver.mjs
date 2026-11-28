@@ -78,9 +78,10 @@ try {
   chequear('el día entró con la app cerrada: racha 6', [!eReg, reg?.racha], [true, 6]);
 
   // Al abrirla, la ceremonia sale sola.
+  // Con la sesión ya abierta no hay entrada que pasar: esperarla gastaba más de dos minutos en cada apertura, y con tres
+  // la sonda se pasaba de su tope (27/11).
   page = await abrir();
-  await pasarLaEntradaNativa(page).catch(() => {});
-  const salio = await ceremonia(page).first().waitFor({ timeout: 60000 }).then(() => true, () => false);
+  const salio = await ceremonia(page).first().waitFor({ timeout: 120000 }).then(() => true, () => false);
   await page.waitForTimeout(3600);
   await page.screenshot({ path: join(SALIDA, '1-al-abrir.png') });
   chequear('al abrir la app, la ceremonia del rango 2 sale sola', [salio, salio && (await page.getByText('Asteroide', { exact: true }).count()) > 0], [true, true]);
@@ -90,16 +91,15 @@ try {
 
   // Recargar no la repite.
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await pasarLaEntradaNativa(page).catch(() => {});
   await iniciar(page).waitFor({ timeout: 120000 });
-  await page.waitForTimeout(4000);
-  chequear('ya vista, no vuelve al abrir de nuevo', await ceremonia(page).count(), 0);
+  // Se le da tiempo a salir: la ceremonia aparece unos segundos después de Inicio, y mirar enseguida no vería nada.
+  const volvio = await ceremonia(page).first().waitFor({ timeout: 30000 }).then(() => true, () => false);
+  chequear('ya vista, no vuelve al abrir de nuevo', volvio, false);
 
   // Sin nada anotado (la primera vez con esta versión): el rango se alcanzó hoy, y se festeja igual.
   await page.evaluate((k) => localStorage.removeItem(k), CLAVE);
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await pasarLaEntradaNativa(page).catch(() => {});
-  const tarde = await ceremonia(page).first().waitFor({ timeout: 60000 }).then(() => true, () => false);
+  const tarde = await ceremonia(page).first().waitFor({ timeout: 120000 }).then(() => true, () => false);
   chequear('sin nada anotado, un rango recién alcanzado se festeja igual', tarde, true);
   chequear('sin errores de la página', errores, []);
 } catch (e) {
