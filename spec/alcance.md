@@ -402,6 +402,8 @@ humano.
   - Medallas: muchas, con las que tienes, las que estás por ganar y las que faltan; se elige cuál se ve en el
     perfil; hay medallas de cada año, que salen del resumen. Las cinco por marca que ya existen siguen.
   - Decidido el 27/11 (galería 28 a 33, versión 45):
+    - **Todos los años, solo, sin publicar nada** (pedido el 27/11): el año sale de la fecha, no se escribe a
+      mano en ningún lado (textos, tarjeta de Novedades, aviso, la cinta de las medallas del año).
     - **Aparece el 25/12 a las 00:00, hora del teléfono, y se va a los 15 días.** El primero cuenta desde que
       se creó la cuenta; después, de Navidad a Navidad. Sin al menos 10 días entrenados no hay resumen, y una
       lámina sin datos se saltea (pasos sin Apple Salud).
