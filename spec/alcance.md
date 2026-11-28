@@ -404,6 +404,19 @@ humano.
   - Sin decidir: el «X % de la gente» (comparar con todas las cuentas pide una función en la base, y con pocas
     cuentas el número baila) y qué medallas y con qué números.
 
+- **Dividir brazos** (pedido por el humano el 27/11/2026, entra por decisión suya; ya lo había pedido y
+  quedó atrás). En la lista de ejercicios, tren superior pasa a ser espalda, pecho y brazos, y adentro de
+  brazos van hombro, bíceps, tríceps y antebrazo. Ayuda a buscar un ejercicio de un músculo y al resumen del
+  año, que tiene que decir «Bíceps» o «Tríceps», no «Brazos». Toca `nucleo/ejercicios.ts` (`superior`,
+  `GRUPOS_PROPIOS`), `nucleo/medallas.ts` (zonas), `nucleo/semanaMuscular.ts` y `GrupoDelAnio` de
+  `nucleo/progresoCompartido.ts`, que es compartido con Moss: avisarle antes y copiar lo que decida. El
+  catálogo de la base y su `check` van por `src/lib/tipos.ts` (sección 33 de test:db). Los ejercicios de
+  antebrazo: cómo agruparlos, sin decidir.
+
+- **El agujero negro (rango 7), más realista** (27/11/2026, el humano): «me gustan los colores, pero se ve
+  poco realista»; lo quiere con la calidad del sol. Primero la propuesta en la galería; después, el motor
+  (`spec/motor-visual.md` §8).
+
 - **Reportar o esconder un ejercicio propio de un amigo** (decisión del humano,
   15/10/2026). Hoy los ejercicios propios los ven tus amigos (migración 76) y
   quedan así; cuando haya más gente va a hacer falta poder reportar uno con un
